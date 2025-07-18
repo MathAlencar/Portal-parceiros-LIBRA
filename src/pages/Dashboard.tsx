@@ -1,8 +1,7 @@
-
 import React from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Users, FileText, BookOpen, Calculator, TrendingUp, Activity, Info, BarChart3 } from 'lucide-react';
+import { Users, FileText, BookOpen, Calculator, TrendingUp, Activity, BarChart3 } from 'lucide-react';
 
 const Dashboard: React.FC = () => {
   const { user } = useAuth();
@@ -156,25 +155,26 @@ const Dashboard: React.FC = () => {
           </CardContent>
         </Card>
 
-        {/* Legenda explicativa */}
-        <div className="mt-6 bg-green-50 border border-green-200 rounded-lg p-4">
-          <div className="flex items-start space-x-3">
-            <BarChart3 className="h-5 w-5 text-green-600 mt-0.5 flex-shrink-0" />
-            <div>
-              <h3 className="text-sm font-semibold text-green-900 mb-2">
-                Sobre este Dashboard
-              </h3>
-              <p className="text-sm text-green-800 leading-relaxed">
-                Este dashboard apresenta uma visão analítica completa dos dados do seu grupo em tempo real. 
-                Aqui você pode acompanhar indicadores de performance, métricas de produtividade, tendências 
-                históricas e comparativos com outros períodos. Os dados são atualizados automaticamente e 
-                refletem as informações mais recentes coletadas através dos formulários e sistemas integrados. 
-                Utilize os filtros e controles interativos do Power BI para explorar diferentes perspectivas 
-                dos dados e obter insights valiosos para a gestão do seu grupo.
-              </p>
+        <Card className="mt-6">
+          <CardContent className="p-6">
+            <div className="flex items-start space-x-3">
+              <BarChart3 className="h-5 w-5 text-green-600 mt-0.5 flex-shrink-0" />
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900 mb-3">
+                  Sobre este Dashboard
+                </h3>
+                <p className="text-gray-700 leading-relaxed">
+                  Este dashboard apresenta uma visão analítica completa dos dados do seu grupo em tempo real. 
+                  Aqui você pode acompanhar indicadores de performance, métricas de produtividade, tendências 
+                  históricas e comparativos com outros períodos. Os dados são atualizados automaticamente e 
+                  refletem as informações mais recentes coletadas através dos formulários e sistemas integrados. 
+                  Utilize os filtros e controles interativos do Power BI para explorar diferentes perspectivas 
+                  dos dados e obter insights valiosos para a gestão do seu grupo.
+                </p>
+              </div>
             </div>
-          </div>
-        </div>
+          </CardContent>
+        </Card>
       </div>
     </div>
   );
