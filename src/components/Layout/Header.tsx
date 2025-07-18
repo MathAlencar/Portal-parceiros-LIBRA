@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Menu } from 'lucide-react';
+import { Menu, LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -9,7 +9,7 @@ interface HeaderProps {
 }
 
 const Header: React.FC<HeaderProps> = ({ onMenuToggle }) => {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
 
   return (
     <header className="bg-white border-b border-gray-200 px-4 py-3 lg:px-6">
@@ -36,6 +36,16 @@ const Header: React.FC<HeaderProps> = ({ onMenuToggle }) => {
                user?.role === 'coordenador' ? 'Coordenador' : 'Usuário'}
             </p>
           </div>
+          
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={logout}
+            className="flex items-center space-x-2"
+          >
+            <LogOut className="h-4 w-4" />
+            <span>Sair</span>
+          </Button>
         </div>
       </div>
     </header>
