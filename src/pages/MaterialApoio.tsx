@@ -1,17 +1,21 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Download, FileText, Video, Plus, ArrowRight } from 'lucide-react';
+import { Download, FileText, Video, Plus, ArrowRight, Edit, Trash2 } from 'lucide-react';
 import { Material } from '@/types/auth';
 import { useAuth } from '@/contexts/AuthContext';
+import MaterialModal from '@/components/Materials/MaterialModal';
+import MaterialTable from '@/components/Materials/MaterialTable';
+import DeleteConfirmModal from '@/components/DeleteConfirmModal';
 
 interface MaterialWithDetails extends Material {
   fileSize: string;
   downloadCount: number;
   thumbnailUrl: string;
+  downloadUrl?: string;
 }
 
 const MaterialApoio: React.FC = () => {
@@ -19,24 +23,31 @@ const MaterialApoio: React.FC = () => {
   const navigate = useNavigate();
   const isAdmin = user?.role === 'admin';
 
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [selectedMaterial, setSelectedMaterial] = useState<MaterialWithDetails | null>(null);
+  const [materialToDelete, setMaterialToDelete] = useState<string | null>(null);
+  const [viewMode, setViewMode] = useState<'cards' | 'table'>('cards');
+
   // Mock data for materials
-  const mockMaterials: MaterialWithDetails[] = [
+  const [mockMaterials, setMockMaterials] = useState<MaterialWithDetails[]>([
     {
       id: '1',
       title: 'Guia Completo do Sistema',
       type: 'file',
-      url: '/downloads/guia-sistema.pdf',
+      url: 'https://drive.google.com/file/d/example1',
       description: 'Manual completo com todas as funcionalidades do sistema, passo a passo para configuração e uso avançado.',
       createdAt: '2024-01-15',
       fileSize: '2.5 MB',
       downloadCount: 127,
-      thumbnailUrl: 'https://images.unsplash.com/photo-1498050108023-c5249f4df085?w=300'
+      thumbnailUrl: 'https://images.unsplash.com/photo-1498050108023-c5249f4df085?w=300',
+      downloadUrl: 'https://drive.google.com/file/d/example1'
     },
     {
       id: '2',
       title: 'Vídeo Tutorial - Primeiros Passos',
       type: 'link',
-      url: 'https://youtube.com/watch?v=example',
+      url: '',
       description: 'Vídeo explicativo sobre como começar a usar a plataforma, ideal para novos usuários.',
       createdAt: '2024-01-12',
       fileSize: 'Online',
@@ -47,47 +58,15 @@ const MaterialApoio: React.FC = () => {
       id: '3',
       title: 'Templates de Relatórios',
       type: 'file',
-      url: '/downloads/templates-relatorios.zip',
+      url: 'https://drive.google.com/file/d/example3',
       description: 'Coleção de templates prontos para criação de relatórios profissionais e apresentações.',
       createdAt: '2024-01-10',
       fileSize: '1.8 MB',
       downloadCount: 203,
-      thumbnailUrl: 'https://images.unsplash.com/photo-1605810230434-7631ac76ec81?w=300'
-    },
-    {
-      id: '4',
-      title: 'Checklist de Configuração',
-      type: 'file',
-      url: '/downloads/checklist-configuracao.pdf',
-      description: 'Lista de verificação para garantir que todas as configurações estejam corretas.',
-      createdAt: '2024-01-08',
-      fileSize: '512 KB',
-      downloadCount: 156,
-      thumbnailUrl: 'https://images.unsplash.com/photo-1483058712412-4245e9b90334?w=300'
-    },
-    {
-      id: '5',
-      title: 'Boas Práticas de Segurança',
-      type: 'file',
-      url: '/downloads/boas-praticas-seguranca.pdf',
-      description: 'Documento com orientações sobre segurança digital e proteção de dados na plataforma.',
-      createdAt: '2024-01-05',
-      fileSize: '1.2 MB',
-      downloadCount: 95,
-      thumbnailUrl: 'https://images.unsplash.com/photo-1472396961693-142e6e269027?w=300'
-    },
-    {
-      id: '6',
-      title: 'Integração com APIs',
-      type: 'link',
-      url: 'https://docs.api.example.com',
-      description: 'Documentação técnica para desenvolvedores sobre integração com APIs externas.',
-      createdAt: '2024-01-02',
-      fileSize: 'Online',
-      downloadCount: 67,
-      thumbnailUrl: 'https://images.unsplash.com/photo-1461749280684-dccba630e2f6?w=300'
+      thumbnailUrl: 'https://images.unsplash.com/photo-1605810230434-7631ac76ec81?w=300',
+      downloadUrl: 'https://drive.google.com/file/d/example3'
     }
-  ];
+  ]);
 
   const getTypeIcon = (type: string) => {
     switch (type) {
@@ -119,6 +98,111 @@ const MaterialApoio: React.FC = () => {
     return new Date(dateString).toLocaleDateString('pt-BR');
   };
 
+  const handleCreateMaterial = () => {
+    setSelectedMaterial(null);
+    setIsModalOpen(true);
+  };
+
+  const handleEditMaterial = (material: MaterialWithDetails) => {
+    setSelectedMaterial(material);
+    setIsModalOpen(true);
+  };
+
+  const handleDeleteMaterial = (materialId: string) => {
+    setMaterialToDelete(materialId);
+    setIsDeleteModalOpen(true);
+  };
+
+  const handleSaveMaterial = (data: any) => {
+    if (selectedMaterial) {
+      // Edit existing material
+      setMockMaterials(prev => prev.map(material => 
+        material.id === selectedMaterial.id 
+          ? {
+              ...material,
+              title: data.title,
+              description: data.description,
+              url: data.downloadUrl || '',
+              downloadUrl: data.downloadUrl,
+              thumbnailUrl: data.thumbnailUrl || material.thumbnailUrl
+            }
+          : material
+      ));
+    } else {
+      // Create new material
+      const newMaterial: MaterialWithDetails = {
+        id: Date.now().toString(),
+        title: data.title,
+        type: data.downloadUrl ? 'file' : 'link',
+        url: data.downloadUrl || '',
+        description: data.description,
+        createdAt: new Date().toISOString().split('T')[0],
+        fileSize: 'N/A',
+        downloadCount: 0,
+        thumbnailUrl: data.thumbnailUrl || 'https://images.unsplash.com/photo-1498050108023-c5249f4df085?w=300',
+        downloadUrl: data.downloadUrl
+      };
+      setMockMaterials(prev => [newMaterial, ...prev]);
+    }
+    setIsModalOpen(false);
+    setSelectedMaterial(null);
+  };
+
+  const confirmDeleteMaterial = () => {
+    if (materialToDelete) {
+      setMockMaterials(prev => prev.filter(material => material.id !== materialToDelete));
+      setMaterialToDelete(null);
+      setIsDeleteModalOpen(false);
+    }
+  };
+
+  const handleDownload = (url: string) => {
+    window.open(url, '_blank', 'noopener noreferrer');
+  };
+
+  if (isAdmin && viewMode === 'table') {
+    return (
+      <div className="p-6 space-y-6">
+        <div className="flex justify-between items-center">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900">Material de Apoio</h1>
+            <p className="text-gray-600">Gerencie os materiais de apoio disponíveis</p>
+          </div>
+          <div className="flex space-x-2">
+            <Button variant="outline" onClick={() => setViewMode('cards')}>
+              Visualização Cards
+            </Button>
+            <Button onClick={handleCreateMaterial}>
+              <Plus className="h-4 w-4 mr-2" />
+              Novo Material
+            </Button>
+          </div>
+        </div>
+
+        <MaterialTable
+          materials={mockMaterials}
+          onEdit={handleEditMaterial}
+          onDelete={handleDeleteMaterial}
+        />
+
+        <MaterialModal
+          isOpen={isModalOpen}
+          onClose={() => setIsModalOpen(false)}
+          onSave={handleSaveMaterial}
+          material={selectedMaterial}
+        />
+
+        <DeleteConfirmModal
+          isOpen={isDeleteModalOpen}
+          onClose={() => setIsDeleteModalOpen(false)}
+          onConfirm={confirmDeleteMaterial}
+          title="Excluir Material"
+          message="Tem certeza que deseja excluir este material? Esta ação não pode ser desfeita."
+        />
+      </div>
+    );
+  }
+
   return (
     <div className="p-6 space-y-6">
       <div className="flex justify-between items-center">
@@ -129,10 +213,15 @@ const MaterialApoio: React.FC = () => {
           </p>
         </div>
         {isAdmin && (
-          <Button>
-            <Plus className="h-4 w-4 mr-2" />
-            Novo Material
-          </Button>
+          <div className="flex space-x-2">
+            <Button variant="outline" onClick={() => setViewMode('table')}>
+              Visualização Tabela
+            </Button>
+            <Button onClick={handleCreateMaterial}>
+              <Plus className="h-4 w-4 mr-2" />
+              Novo Material
+            </Button>
+          </div>
         )}
       </div>
 
@@ -174,21 +263,46 @@ const MaterialApoio: React.FC = () => {
                   <span>{material.fileSize}</span>
                 </div>
 
-                <Button 
-                  onClick={() => handleViewMore(material.id)}
-                  className="w-full group-hover:bg-primary group-hover:text-primary-foreground transition-colors"
-                  variant="outline"
-                >
-                  Ver mais
-                  <ArrowRight className="h-4 w-4 ml-2" />
-                </Button>
+                <div className="space-y-2">
+                  {material.downloadUrl && (
+                    <Button 
+                      onClick={() => handleDownload(material.downloadUrl!)}
+                      className="w-full"
+                      variant="default"
+                    >
+                      <Download className="h-4 w-4 mr-2" />
+                      Baixar PDF
+                    </Button>
+                  )}
+
+                  <Button 
+                    onClick={() => handleViewMore(material.id)}
+                    className="w-full"
+                    variant="outline"
+                  >
+                    Ver mais
+                    <ArrowRight className="h-4 w-4 ml-2" />
+                  </Button>
+                </div>
 
                 {isAdmin && (
                   <div className="flex space-x-2 mt-3 pt-3 border-t">
-                    <Button variant="outline" size="sm" className="flex-1">
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="flex-1"
+                      onClick={() => handleEditMaterial(material)}
+                    >
+                      <Edit className="h-4 w-4 mr-1" />
                       Editar
                     </Button>
-                    <Button variant="outline" size="sm" className="flex-1">
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="flex-1 text-red-600 hover:text-red-700"
+                      onClick={() => handleDeleteMaterial(material.id)}
+                    >
+                      <Trash2 className="h-4 w-4 mr-1" />
                       Excluir
                     </Button>
                   </div>
@@ -214,7 +328,7 @@ const MaterialApoio: React.FC = () => {
                 : 'Novos materiais aparecerão aqui quando disponíveis'}
             </p>
             {isAdmin && (
-              <Button>
+              <Button onClick={handleCreateMaterial}>
                 <Plus className="h-4 w-4 mr-2" />
                 Adicionar Primeiro Material
               </Button>
@@ -222,6 +336,21 @@ const MaterialApoio: React.FC = () => {
           </CardContent>
         </Card>
       )}
+
+      <MaterialModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        onSave={handleSaveMaterial}
+        material={selectedMaterial}
+      />
+
+      <DeleteConfirmModal
+        isOpen={isDeleteModalOpen}
+        onClose={() => setIsDeleteModalOpen(false)}
+        onConfirm={confirmDeleteMaterial}
+        title="Excluir Material"
+        message="Tem certeza que deseja excluir este material? Esta ação não pode ser desfeita."
+      />
     </div>
   );
 };
