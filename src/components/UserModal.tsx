@@ -29,7 +29,7 @@ const UserModal: React.FC<UserModalProps> = ({ isOpen, onClose, user, onSave }) 
     email: '',
     password: '',
     role: 'usuario' as UserRole,
-    groupId: ''
+    groupId: 'none'
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const { toast } = useToast();
@@ -41,7 +41,7 @@ const UserModal: React.FC<UserModalProps> = ({ isOpen, onClose, user, onSave }) 
         email: user.email,
         password: '',
         role: user.role,
-        groupId: user.groupId || ''
+        groupId: user.groupId || 'none'
       });
     } else {
       setFormData({
@@ -49,7 +49,7 @@ const UserModal: React.FC<UserModalProps> = ({ isOpen, onClose, user, onSave }) 
         email: '',
         password: '',
         role: 'usuario',
-        groupId: ''
+        groupId: 'none'
       });
     }
     setErrors({});
@@ -89,7 +89,7 @@ const UserModal: React.FC<UserModalProps> = ({ isOpen, onClose, user, onSave }) 
       name: formData.name,
       email: formData.email,
       role: formData.role,
-      groupId: formData.groupId || null
+      groupId: formData.groupId === 'none' ? null : formData.groupId
     };
 
     if (formData.password) {
@@ -188,7 +188,7 @@ const UserModal: React.FC<UserModalProps> = ({ isOpen, onClose, user, onSave }) 
                 <SelectValue placeholder="Selecione um grupo (opcional)" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Nenhum grupo</SelectItem>
+                <SelectItem value="none">Nenhum grupo</SelectItem>
                 {mockGroups.map((group) => (
                   <SelectItem key={group.id} value={group.id}>
                     {group.name}
