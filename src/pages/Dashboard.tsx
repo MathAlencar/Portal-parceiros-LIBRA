@@ -118,58 +118,62 @@ const Dashboard: React.FC = () => {
   );
 
   const UserDashboard = () => (
-    <div className="min-h-screen bg-gray-50 p-6">
-      <div className="max-w-7xl mx-auto">
+    <div className="min-h-screen bg-gray-50 p-4">
+      <div className="max-w-7xl mx-auto space-y-6">
+        {/* Header Section */}
         <div className="mb-6">
           <h1 className="text-3xl font-bold text-gray-900">
             Dashboard - {user?.name}
           </h1>
           <p className="text-gray-600 mt-2">
-            Visualize os dados e métricas do seu grupo
+            Visualize os dados e métricas do seu grupo em tempo real
           </p>
         </div>
 
-        <Card className="h-[calc(100vh-120px)]">
-          <CardHeader>
-            <CardTitle className="flex items-center space-x-2">
-              <TrendingUp className="h-6 w-6 text-blue-600" />
-              <span>Analytics do Grupo</span>
-            </CardTitle>
-            <CardDescription>
-              Dashboard Power BI configurado especificamente para o seu grupo
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="p-0">
-            <div className="w-full h-full bg-white rounded-lg overflow-hidden">
-              <iframe
-                src="https://app.powerbi.com/view?r=eyJrIjoiMmUxMmZiNTAtZWQ0OC00NjkwLWI4NGEtYThhMjUwZGI4OGZjIiwidCI6IjdmYzZhYTE4LWYxODUtNGQwZi1hYTdlLTQzZGIyNDc5ZGQwZCJ9"
-                width="100%"
-                height="100%"
-                style={{ minHeight: '700px' }}
-                frameBorder="0"
-                allowFullScreen
-                title="Power BI Dashboard"
-                className="rounded-lg"
-              />
-            </div>
-          </CardContent>
-        </Card>
+        {/* Power BI Embed Section - Increased Size */}
+        <div className="w-full">
+          <Card className="shadow-lg">
+            <CardHeader className="pb-4">
+              <CardTitle className="flex items-center space-x-2">
+                <TrendingUp className="h-6 w-6 text-blue-600" />
+                <span>Analytics do Grupo</span>
+              </CardTitle>
+              <CardDescription>
+                Dashboard Power BI configurado especificamente para o seu grupo
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="p-0">
+              <div className="w-full bg-white rounded-lg overflow-hidden border">
+                <iframe
+                  src="https://app.powerbi.com/view?r=eyJrIjoiMmUxMmZiNTAtZWQ0OC00NjkwLWI4NGEtYThhMjUwZGI4OGZjIiwidCI6IjdmYzZhYTE4LWYxODUtNGQwZi1hYTdlLTQzZGIyNDc5ZGQwZCJ9"
+                  width="100%"
+                  height="800"
+                  style={{ minHeight: '800px' }}
+                  frameBorder="0"
+                  allowFullScreen
+                  title="Power BI Dashboard"
+                  className="rounded-lg"
+                />
+              </div>
+            </CardContent>
+          </Card>
+        </div>
 
-        <Card className="mt-6">
+        {/* Explanatory Legend - Outside the Power BI iframe */}
+        <Card className="shadow-md">
           <CardContent className="p-6">
             <div className="flex items-start space-x-3">
               <BarChart3 className="h-5 w-5 text-green-600 mt-0.5 flex-shrink-0" />
               <div>
                 <h3 className="text-lg font-semibold text-gray-900 mb-3">
-                  Sobre este Dashboard
+                  📊 Sobre este Dashboard
                 </h3>
                 <p className="text-gray-700 leading-relaxed">
-                  Este dashboard apresenta uma visão analítica completa dos dados do seu grupo em tempo real. 
-                  Aqui você pode acompanhar indicadores de performance, métricas de produtividade, tendências 
-                  históricas e comparativos com outros períodos. Os dados são atualizados automaticamente e 
-                  refletem as informações mais recentes coletadas através dos formulários e sistemas integrados. 
-                  Utilize os filtros e controles interativos do Power BI para explorar diferentes perspectivas 
-                  dos dados e obter insights valiosos para a gestão do seu grupo.
+                  Este dashboard apresenta uma visão analítica dos dados do seu grupo em tempo real. 
+                  Os dados são atualizados automaticamente com base nos formulários enviados e refletem 
+                  métricas de performance, produtividade e tendências. Use os filtros do Power BI para 
+                  explorar os dados conforme sua necessidade e obter insights valiosos para a gestão 
+                  do seu grupo.
                 </p>
               </div>
             </div>
