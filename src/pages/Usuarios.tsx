@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -7,19 +6,87 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { Plus, Search, Edit, Trash2 } from 'lucide-react';
 import { User, UserRole } from '@/types/auth';
+import { useAuth } from '@/contexts/AuthContext';
+import { useToast } from '@/hooks/use-toast';
+import UserModal from '@/components/UserModal';
+import DeleteConfirmModal from '@/components/DeleteConfirmModal';
 
 const Usuarios: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedRole, setSelectedRole] = useState<string>('all');
-
-  // Mock data
-  const mockUsers: User[] = [
+  const [users, setUsers] = useState<User[]>([
     { id: '1', name: 'Admin Principal', email: 'admin@sistema.com', role: 'admin', groupId: null },
     { id: '2', name: 'João Coordenador', email: 'coord@sistema.com', role: 'coordenador', groupId: '1' },
     { id: '3', name: 'Maria Usuária', email: 'usuario@sistema.com', role: 'usuario', groupId: '1' },
     { id: '4', name: 'Pedro Silva', email: 'pedro@sistema.com', role: 'usuario', groupId: '2' },
     { id: '5', name: 'Ana Santos', email: 'ana@sistema.com', role: 'coordenador', groupId: '2' },
-  ];
+  ]);
+
+  const [userModalOpen, setUserModalOpen] = useState(false);
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [userToDelete, setUserToDelete] = useState<User | null>(null);
+
+  const { user: currentUser } = useAuth();
+  const { toast } = useToast();
+
+  const handleCreateUser = () => {
+    setSelectedUser(null);
+    setUserModalOpen(true);
+  };
+
+  const handleEditUser = (user: User) => {
+    setSelectedUser(user);
+    setUserModalOpen(true);
+  };
+
+  const handleDeleteUser = (user: User) => {
+    // Verificar se o usuário está tentando excluir a si mesmo
+    if (currentUser?.id === user.id && currentUser.role === 'admin') {
+      toast({
+        title: "Ação não permitida",
+        description: "Administradores não podem excluir a si mesmos.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    setUserToDelete(user);
+    setDeleteModalOpen(true);
+  };
+
+  const handleSaveUser = (userData: Partial<User> & { password?: string }) => {
+    if (selectedUser) {
+      // Editar usuário existente
+      setUsers(prev => prev.map(u => 
+        u.id === selectedUser.id 
+          ? { ...u, ...userData }
+          : u
+      ));
+    } else {
+      // Criar novo usuário
+      const newUser: User = {
+        id: Date.now().toString(),
+        name: userData.name!,
+        email: userData.email!,
+        role: userData.role!,
+        groupId: userData.groupId || null
+      };
+      setUsers(prev => [...prev, newUser]);
+    }
+  };
+
+  const confirmDeleteUser = () => {
+    if (userToDelete) {
+      setUsers(prev => prev.filter(u => u.id !== userToDelete.id));
+      toast({
+        title: "Usuário excluído",
+        description: `O usuário ${userToDelete.name} foi excluído com sucesso.`,
+      });
+      setUserToDelete(null);
+      setDeleteModalOpen(false);
+    }
+  };
 
   const getRoleBadge = (role: UserRole) => {
     const colors = {
@@ -41,7 +108,20 @@ const Usuarios: React.FC = () => {
     );
   };
 
-  const filteredUsers = mockUsers.filter(user => {
+  const getGroupName = (groupId: string | null) => {
+    if (!groupId) return '-';
+    
+    const groupNames: Record<string, string> = {
+      '1': 'Grupo Norte',
+      '2': 'Grupo Sul',
+      '3': 'Grupo Leste',
+      '4': 'Grupo Oeste'
+    };
+    
+    return groupNames[groupId] || `Grupo ${groupId}`;
+  };
+
+  const filteredUsers = users.filter(user => {
     const matchesSearch = user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          user.email.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesRole = selectedRole === 'all' || user.role === selectedRole;
@@ -55,7 +135,7 @@ const Usuarios: React.FC = () => {
           <h1 className="text-3xl font-bold text-gray-900">Gerenciar Usuários</h1>
           <p className="text-gray-600">Administre todos os usuários do sistema</p>
         </div>
-        <Button>
+        <Button onClick={handleCreateUser}>
           <Plus className="h-4 w-4 mr-2" />
           Novo Usuário
         </Button>
@@ -120,14 +200,22 @@ const Usuarios: React.FC = () => {
                     <td className="p-3 text-gray-600">{user.email}</td>
                     <td className="p-3">{getRoleBadge(user.role)}</td>
                     <td className="p-3 text-gray-600">
-                      {user.groupId ? `Grupo ${user.groupId}` : '-'}
+                      {getGroupName(user.groupId)}
                     </td>
                     <td className="p-3">
                       <div className="flex space-x-2">
-                        <Button variant="outline" size="sm">
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={() => handleEditUser(user)}
+                        >
                           <Edit className="h-4 w-4" />
                         </Button>
-                        <Button variant="outline" size="sm">
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={() => handleDeleteUser(user)}
+                        >
                           <Trash2 className="h-4 w-4" />
                         </Button>
                       </div>
@@ -139,6 +227,20 @@ const Usuarios: React.FC = () => {
           </div>
         </CardContent>
       </Card>
+
+      <UserModal
+        isOpen={userModalOpen}
+        onClose={() => setUserModalOpen(false)}
+        user={selectedUser}
+        onSave={handleSaveUser}
+      />
+
+      <DeleteConfirmModal
+        isOpen={deleteModalOpen}
+        onClose={() => setDeleteModalOpen(false)}
+        onConfirm={confirmDeleteUser}
+        userName={userToDelete?.name || ''}
+      />
     </div>
   );
 };
