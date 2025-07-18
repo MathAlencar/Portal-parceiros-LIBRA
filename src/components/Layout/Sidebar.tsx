@@ -9,20 +9,26 @@ import {
   BookOpen, 
   Calculator,
   Settings,
-  LogOut,
-  Menu,
-  X
+  LogOut
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
-import { Button } from '@/components/ui/button';
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarFooter,
+  SidebarGroup,
+  SidebarGroupContent,
+  SidebarHeader,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  useSidebar,
+} from '@/components/ui/sidebar';
 
-interface SidebarProps {
-  isOpen: boolean;
-  onToggle: () => void;
-}
-
-const Sidebar: React.FC<SidebarProps> = ({ isOpen, onToggle }) => {
+const AppSidebar: React.FC = () => {
   const { user, logout } = useAuth();
+  const { state } = useSidebar();
+  const isCollapsed = state === 'collapsed';
 
   const getMenuItems = () => {
     const baseItems = [
@@ -63,79 +69,79 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onToggle }) => {
   const menuItems = getMenuItems();
 
   return (
-    <>
-      {/* Mobile overlay */}
-      {isOpen && (
-        <div 
-          className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden"
-          onClick={onToggle}
-        />
-      )}
-
-      {/* Sidebar */}
-      <div className={`
-        fixed top-0 left-0 h-full bg-slate-900 text-white z-50 transition-transform duration-300 ease-in-out
-        ${isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
-        w-64 lg:relative lg:translate-x-0
-      `}>
-        {/* Header */}
-        <div className="p-4 border-b border-slate-700">
-          <div className="flex items-center justify-between">
-            <h2 className="text-xl font-bold text-blue-400">SGP Sistema</h2>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={onToggle}
-              className="lg:hidden text-white hover:bg-slate-800"
-            >
-              <X className="h-5 w-5" />
-            </Button>
+    <Sidebar 
+      collapsible="icon"
+      className="h-screen border-r border-border bg-background"
+    >
+      <SidebarHeader className="border-b border-border p-4">
+        <div className="flex items-center gap-2">
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
+            <LayoutDashboard className="h-4 w-4" />
           </div>
-          <p className="text-sm text-slate-400 mt-1">{user?.name}</p>
-          <span className="text-xs bg-blue-600 px-2 py-1 rounded-full">
-            {user?.role === 'admin' ? 'Administrador' : 
-             user?.role === 'coordenador' ? 'Coordenador' : 'Usuário'}
-          </span>
+          {!isCollapsed && (
+            <div className="flex flex-col">
+              <span className="text-sm font-semibold">SGP Sistema</span>
+              <span className="text-xs text-muted-foreground">{user?.name}</span>
+            </div>
+          )}
         </div>
+        {!isCollapsed && (
+          <div className="mt-2">
+            <span className="inline-flex items-center rounded-full bg-primary/10 px-2 py-1 text-xs font-medium text-primary">
+              {user?.role === 'admin' ? 'Administrador' : 
+               user?.role === 'coordenador' ? 'Coordenador' : 'Usuário'}
+            </span>
+          </div>
+        )}
+      </SidebarHeader>
 
-        {/* Navigation */}
-        <nav className="flex-1 p-4">
-          <ul className="space-y-2">
-            {menuItems.map((item) => (
-              <li key={item.path}>
-                <NavLink
-                  to={item.path}
-                  className={({ isActive }) =>
-                    `flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors duration-200 ${
-                      isActive 
-                        ? 'bg-blue-600 text-white' 
-                        : 'text-slate-300 hover:bg-slate-800 hover:text-white'
-                    }`
-                  }
-                  onClick={() => window.innerWidth < 1024 && onToggle()}
-                >
-                  <item.icon className="h-5 w-5" />
-                  <span>{item.label}</span>
-                </NavLink>
-              </li>
-            ))}
-          </ul>
-        </nav>
+      <SidebarContent className="flex-1 p-2">
+        <SidebarGroup>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {menuItems.map((item) => (
+                <SidebarMenuItem key={item.path}>
+                  <SidebarMenuButton 
+                    asChild
+                    tooltip={isCollapsed ? item.label : undefined}
+                  >
+                    <NavLink
+                      to={item.path}
+                      className={({ isActive }) =>
+                        `flex items-center gap-3 rounded-lg px-3 py-2 transition-all hover:bg-accent ${
+                          isActive 
+                            ? 'bg-primary text-primary-foreground' 
+                            : 'text-foreground hover:text-accent-foreground'
+                        }`
+                      }
+                    >
+                      <item.icon className="h-4 w-4" />
+                      {!isCollapsed && <span>{item.label}</span>}
+                    </NavLink>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+      </SidebarContent>
 
-        {/* Footer */}
-        <div className="p-4 border-t border-slate-700">
-          <Button
-            variant="ghost"
-            onClick={logout}
-            className="w-full justify-start text-slate-300 hover:bg-slate-800 hover:text-white"
-          >
-            <LogOut className="h-5 w-5 mr-3" />
-            Sair
-          </Button>
-        </div>
-      </div>
-    </>
+      <SidebarFooter className="border-t border-border p-2">
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <SidebarMenuButton 
+              onClick={logout}
+              tooltip={isCollapsed ? "Sair" : undefined}
+              className="w-full justify-start text-destructive hover:bg-destructive/10 hover:text-destructive"
+            >
+              <LogOut className="h-4 w-4" />
+              {!isCollapsed && <span>Sair</span>}
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        </SidebarMenu>
+      </SidebarFooter>
+    </Sidebar>
   );
 };
 
-export default Sidebar;
+export default AppSidebar;
