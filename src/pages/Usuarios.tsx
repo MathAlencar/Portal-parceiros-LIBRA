@@ -239,7 +239,8 @@ const Usuarios: React.FC = () => {
         isOpen={deleteModalOpen}
         onClose={() => setDeleteModalOpen(false)}
         onConfirm={confirmDeleteUser}
-        userName={userToDelete?.name || ''}
+        title="Confirmar Exclusão"
+        message={`Tem certeza que deseja excluir o usuário ${userToDelete?.name}? Esta ação não poderá ser desfeita.`}
       />
     </div>
   );
