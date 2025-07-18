@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import LoginForm from '@/components/Auth/LoginForm';
@@ -12,6 +11,8 @@ import Noticias from './Noticias';
 import Simulador from './Simulador';
 import Formulario from './Formulario';
 import MaterialApoio from './MaterialApoio';
+import NewsDetail from '@/components/News/NewsDetail';
+import MaterialDetail from '@/components/Materials/MaterialDetail';
 
 const Index = () => {
   const { isAuthenticated, user } = useAuth();
@@ -36,8 +37,20 @@ const Index = () => {
               <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/usuarios" element={<Usuarios />} />
               <Route path="/noticias" element={<Noticias />} />
+              <Route path="/noticias/:id" element={
+                <div>
+                  <Header onMenuToggle={() => setSidebarOpen(!sidebarOpen)} />
+                  <NewsDetail />
+                </div>
+              } />
               <Route path="/simulador" element={<Simulador />} />
               <Route path="/materiais" element={<MaterialApoio />} />
+              <Route path="/materiais/:id" element={
+                <div>
+                  <Header onMenuToggle={() => setSidebarOpen(!sidebarOpen)} />
+                  <MaterialDetail />
+                </div>
+              } />
               <Route path="/grupos" element={
                 <div className="p-6">
                   <h1 className="text-2xl font-bold mb-4">Gerenciar Grupos</h1>
@@ -69,7 +82,9 @@ const Index = () => {
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/formulario" element={<Formulario />} />
           <Route path="/materiais" element={<MaterialApoio />} />
+          <Route path="/materiais/:id" element={<MaterialDetail />} />
           <Route path="/noticias" element={<Noticias />} />
+          <Route path="/noticias/:id" element={<NewsDetail />} />
           <Route path="/simulador" element={<Simulador />} />
           <Route path="/cadastrar-usuario" element={
             <div className="p-6">

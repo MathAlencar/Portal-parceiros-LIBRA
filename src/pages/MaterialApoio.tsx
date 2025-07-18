@@ -1,9 +1,10 @@
 
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Download, FileText, Video, Image, Plus } from 'lucide-react';
+import { Download, FileText, Video, Plus, ArrowRight } from 'lucide-react';
 import { Material } from '@/types/auth';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -15,6 +16,7 @@ interface MaterialWithDetails extends Material {
 
 const MaterialApoio: React.FC = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const isAdmin = user?.role === 'admin';
 
   // Mock data for materials
@@ -109,14 +111,8 @@ const MaterialApoio: React.FC = () => {
     }
   };
 
-  const handleDownload = (material: MaterialWithDetails) => {
-    if (material.type === 'link') {
-      window.open(material.url, '_blank');
-    } else {
-      // In a real application, this would trigger a file download
-      console.log(`Downloading: ${material.title}`);
-      // You could also implement actual file download logic here
-    }
+  const handleViewMore = (materialId: string) => {
+    navigate(`/materiais/${materialId}`);
   };
 
   const formatDate = (dateString: string) => {
@@ -146,12 +142,12 @@ const MaterialApoio: React.FC = () => {
           const TypeIcon = getTypeIcon(material.type);
           
           return (
-            <Card key={material.id} className="overflow-hidden hover:shadow-lg transition-shadow">
+            <Card key={material.id} className="overflow-hidden hover:shadow-lg transition-shadow cursor-pointer group">
               <div className="h-48 overflow-hidden bg-gray-100">
                 <img 
                   src={material.thumbnailUrl} 
                   alt={material.title}
-                  className="w-full h-full object-cover"
+                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
                 />
               </div>
               
@@ -165,7 +161,7 @@ const MaterialApoio: React.FC = () => {
                     {material.downloadCount}
                   </div>
                 </div>
-                <CardTitle className="text-lg leading-tight">{material.title}</CardTitle>
+                <CardTitle className="text-lg leading-tight line-clamp-2">{material.title}</CardTitle>
               </CardHeader>
               
               <CardContent className="pt-0">
@@ -179,12 +175,12 @@ const MaterialApoio: React.FC = () => {
                 </div>
 
                 <Button 
-                  onClick={() => handleDownload(material)}
-                  className="w-full"
-                  variant={material.type === 'link' ? 'outline' : 'default'}
+                  onClick={() => handleViewMore(material.id)}
+                  className="w-full group-hover:bg-primary group-hover:text-primary-foreground transition-colors"
+                  variant="outline"
                 >
-                  <TypeIcon className="h-4 w-4 mr-2" />
-                  {material.type === 'link' ? 'Acessar' : 'Baixar'}
+                  Ver mais
+                  <ArrowRight className="h-4 w-4 ml-2" />
                 </Button>
 
                 {isAdmin && (
