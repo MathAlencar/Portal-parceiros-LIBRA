@@ -1,10 +1,21 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Users, FileText, BookOpen, Calculator, TrendingUp, Activity, BarChart3 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Users, FileText, BookOpen, Calculator, TrendingUp, Activity, BarChart3, Settings } from 'lucide-react';
 
 const Dashboard: React.FC = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
+
+  // Mock data com segmentação de usuários
+  const userStats = {
+    total: 24,
+    admins: 2,
+    coordenadores: 5,
+    usuarios: 17
+  };
 
   const AdminDashboard = () => (
     <div className="space-y-6">
@@ -15,8 +26,24 @@ const Dashboard: React.FC = () => {
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">24</div>
+            <div className="text-2xl font-bold">{userStats.total}</div>
             <p className="text-xs text-muted-foreground">+2 desde último mês</p>
+            
+            {/* Segmentação de usuários */}
+            <div className="mt-3 space-y-1">
+              <div className="flex justify-between text-xs">
+                <span className="text-muted-foreground">Admins:</span>
+                <span className="font-medium">{userStats.admins}</span>
+              </div>
+              <div className="flex justify-between text-xs">
+                <span className="text-muted-foreground">Coordenadores:</span>
+                <span className="font-medium">{userStats.coordenadores}</span>
+              </div>
+              <div className="flex justify-between text-xs">
+                <span className="text-muted-foreground">Usuários:</span>
+                <span className="font-medium">{userStats.usuarios}</span>
+              </div>
+            </div>
           </CardContent>
         </Card>
 
@@ -94,22 +121,53 @@ const Dashboard: React.FC = () => {
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-2 gap-4">
-              <div className="p-4 border rounded-lg hover:bg-gray-50 cursor-pointer transition-colors">
-                <Users className="h-6 w-6 text-blue-500 mb-2" />
-                <p className="text-sm font-medium">Gerenciar Usuários</p>
-              </div>
-              <div className="p-4 border rounded-lg hover:bg-gray-50 cursor-pointer transition-colors">
-                <FileText className="h-6 w-6 text-green-500 mb-2" />
-                <p className="text-sm font-medium">Criar Notícia</p>
-              </div>
-              <div className="p-4 border rounded-lg hover:bg-gray-50 cursor-pointer transition-colors">
-                <BookOpen className="h-6 w-6 text-purple-500 mb-2" />
-                <p className="text-sm font-medium">Adicionar Material</p>
-              </div>
-              <div className="p-4 border rounded-lg hover:bg-gray-50 cursor-pointer transition-colors">
-                <Calculator className="h-6 w-6 text-orange-500 mb-2" />
-                <p className="text-sm font-medium">Config. Simulador</p>
-              </div>
+              <Button
+                variant="outline"
+                className="h-auto p-4 flex flex-col items-center space-y-2 hover:bg-accent hover:border-primary transition-all"
+                onClick={() => navigate('/usuarios')}
+              >
+                <Users className="h-6 w-6 text-blue-500" />
+                <div className="text-center">
+                  <p className="text-sm font-medium">Gerenciar Usuários</p>
+                  <p className="text-xs text-muted-foreground">Acesse a lista de usuários</p>
+                </div>
+              </Button>
+
+              <Button
+                variant="outline"
+                className="h-auto p-4 flex flex-col items-center space-y-2 hover:bg-accent hover:border-primary transition-all"
+                onClick={() => navigate('/noticias')}
+              >
+                <FileText className="h-6 w-6 text-green-500" />
+                <div className="text-center">
+                  <p className="text-sm font-medium">Criar Notícia</p>
+                  <p className="text-xs text-muted-foreground">Publique uma nova notícia</p>
+                </div>
+              </Button>
+
+              <Button
+                variant="outline"
+                className="h-auto p-4 flex flex-col items-center space-y-2 hover:bg-accent hover:border-primary transition-all"
+                onClick={() => navigate('/materiais')}
+              >
+                <BookOpen className="h-6 w-6 text-purple-500" />
+                <div className="text-center">
+                  <p className="text-sm font-medium">Adicionar Material</p>
+                  <p className="text-xs text-muted-foreground">Cadastre material de apoio</p>
+                </div>
+              </Button>
+
+              <Button
+                variant="outline"
+                className="h-auto p-4 flex flex-col items-center space-y-2 hover:bg-accent hover:border-primary transition-all"
+                onClick={() => navigate('/simulador-config')}
+              >
+                <Settings className="h-6 w-6 text-orange-500" />
+                <div className="text-center">
+                  <p className="text-sm font-medium">Config. Simulador</p>
+                  <p className="text-xs text-muted-foreground">Ajuste as variáveis</p>
+                </div>
+              </Button>
             </div>
           </CardContent>
         </Card>
