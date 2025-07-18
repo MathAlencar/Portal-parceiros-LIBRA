@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -119,64 +118,50 @@ const Dashboard: React.FC = () => {
   );
 
   const UserDashboard = () => (
-    <div className="space-y-6">
-      <Card>
-        <CardHeader>
-          <CardTitle>Power BI Dashboard</CardTitle>
-          <CardDescription>Visualize os dados do seu grupo</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="bg-gray-100 border-2 border-dashed border-gray-300 rounded-lg p-8 text-center">
-            <TrendingUp className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-            <p className="text-gray-600 mb-2">Dashboard Power BI será carregado aqui</p>
-            <p className="text-sm text-gray-500">URL configurada pelo administrador para seu grupo</p>
-          </div>
-        </CardContent>
-      </Card>
+    <div className="min-h-screen bg-gray-50 p-6">
+      <div className="max-w-7xl mx-auto">
+        <div className="mb-6">
+          <h1 className="text-3xl font-bold text-gray-900">
+            Dashboard - {user?.name}
+          </h1>
+          <p className="text-gray-600 mt-2">
+            Visualize os dados e métricas do seu grupo
+          </p>
+        </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <Card>
-          <CardHeader className="text-center">
-            <FileText className="h-8 w-8 text-blue-500 mx-auto mb-2" />
-            <CardTitle className="text-lg">Formulário</CardTitle>
-            <CardDescription>Acesse o formulário do seu grupo</CardDescription>
+        <Card className="h-[calc(100vh-200px)]">
+          <CardHeader>
+            <CardTitle className="flex items-center space-x-2">
+              <TrendingUp className="h-6 w-6 text-blue-600" />
+              <span>Analytics do Grupo</span>
+            </CardTitle>
+            <CardDescription>
+              Dashboard Power BI configurado especificamente para o seu grupo
+            </CardDescription>
           </CardHeader>
-        </Card>
-
-        <Card>
-          <CardHeader className="text-center">
-            <BookOpen className="h-8 w-8 text-green-500 mx-auto mb-2" />
-            <CardTitle className="text-lg">Material de Apoio</CardTitle>
-            <CardDescription>Documentos e recursos disponíveis</CardDescription>
-          </CardHeader>
-        </Card>
-
-        <Card>
-          <CardHeader className="text-center">
-            <Calculator className="h-8 w-8 text-purple-500 mx-auto mb-2" />
-            <CardTitle className="text-lg">Simulador</CardTitle>
-            <CardDescription>Faça simulações com as variáveis</CardDescription>
-          </CardHeader>
+          <CardContent className="p-0">
+            <div className="w-full h-full bg-white rounded-lg overflow-hidden">
+              <iframe
+                src="https://app.powerbi.com/view?r=eyJrIjoiMmUxMmZiNTAtZWQ0OC00NjkwLWI4MGEtYThhMjUwZGI4OGZjIiwidCI6IjdmYzZhYTE4LWYxODUtNGQwZi1hYTdlLTQzZGIyNDc5ZGQwZCJ9"
+                width="100%"
+                height="100%"
+                style={{ minHeight: '600px' }}
+                frameBorder="0"
+                allowFullScreen
+                title="Power BI Dashboard"
+                className="rounded-lg"
+              />
+            </div>
+          </CardContent>
         </Card>
       </div>
     </div>
   );
 
   return (
-    <div className="p-6">
-      <div className="mb-6">
-        <h1 className="text-3xl font-bold text-gray-900">
-          Bem-vindo, {user?.name}!
-        </h1>
-        <p className="text-gray-600">
-          {user?.role === 'admin' 
-            ? 'Gerencie o sistema e monitore as atividades' 
-            : 'Acesse suas ferramentas e recursos disponíveis'}
-        </p>
-      </div>
-
+    <>
       {user?.role === 'admin' ? <AdminDashboard /> : <UserDashboard />}
-    </div>
+    </>
   );
 };
 
