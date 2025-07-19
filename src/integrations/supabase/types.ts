@@ -14,7 +14,181 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      groups: {
+        Row: {
+          created_at: string
+          form_url: string | null
+          id: string
+          name: string
+          power_bi_url: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          form_url?: string | null
+          id?: string
+          name: string
+          power_bi_url?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          form_url?: string | null
+          id?: string
+          name?: string
+          power_bi_url?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      materials: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          title: string
+          type: string
+          updated_at: string
+          url: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          title: string
+          type: string
+          updated_at?: string
+          url: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          title?: string
+          type?: string
+          updated_at?: string
+          url?: string
+        }
+        Relationships: []
+      }
+      news: {
+        Row: {
+          author_id: string
+          category: string
+          content: string
+          created_at: string
+          excerpt: string | null
+          id: string
+          image_url: string | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          author_id: string
+          category?: string
+          content: string
+          created_at?: string
+          excerpt?: string | null
+          id?: string
+          image_url?: string | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          author_id?: string
+          category?: string
+          content?: string
+          created_at?: string
+          excerpt?: string | null
+          id?: string
+          image_url?: string | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "news_author_id_fkey"
+            columns: ["author_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          created_at: string
+          email: string
+          group_id: string | null
+          id: string
+          name: string
+          role: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          group_id?: string | null
+          id: string
+          name: string
+          role?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          group_id?: string | null
+          id?: string
+          name?: string
+          role?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fk_profiles_group_id"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "groups"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      simulation_variables: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          max_value: number
+          min_value: number
+          name: string
+          step_value: number
+          updated_at: string
+          value: number
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          max_value: number
+          min_value: number
+          name: string
+          step_value?: number
+          updated_at?: string
+          value: number
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          max_value?: number
+          min_value?: number
+          name?: string
+          step_value?: number
+          updated_at?: string
+          value?: number
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
