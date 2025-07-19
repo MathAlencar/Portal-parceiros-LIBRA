@@ -4,12 +4,10 @@ import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Plus, Calendar, User, ArrowRight } from 'lucide-react';
 import { News } from '@/types/auth';
 import { useAuth } from '@/contexts/AuthContext';
 import NewsModal from '@/components/News/NewsModal';
-import NewsTable from '@/components/News/NewsTable';
 import NewsFilter from '@/components/News/NewsFilter';
 import DeleteConfirmModal from '@/components/DeleteConfirmModal';
 import { useToast } from '@/hooks/use-toast';
@@ -22,10 +20,13 @@ interface NewsWithCategory extends News {
 }
 
 const Noticias: React.FC = () => {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const isAdmin = user?.role === 'admin';
+  
+  // Verificação de admin com logs para debug
+  const isAdmin = profile?.role === 'admin';
+  console.log('Admin check:', { profile, isAdmin, role: profile?.role });
   
   const [newsModalOpen, setNewsModalOpen] = useState(false);
   const [editingNews, setEditingNews] = useState<NewsWithCategory | null>(null);
@@ -263,57 +264,6 @@ const Noticias: React.FC = () => {
     }
   };
 
-  const NewsGrid = ({ news }: { news: NewsWithCategory[] }) => (
-    <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-      {news.map((newsItem) => (
-        <Card key={newsItem.id} className="overflow-hidden hover:shadow-lg transition-shadow cursor-pointer group">
-          {newsItem.imageUrl && (
-            <div className="h-48 overflow-hidden">
-              <img 
-                src={newsItem.imageUrl} 
-                alt={newsItem.title}
-                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
-              />
-            </div>
-          )}
-          <CardHeader className="pb-3">
-            <div className="flex justify-between items-start mb-2">
-              <Badge variant="secondary" className="mb-2">
-                {categories.find(cat => cat.id === newsItem.category)?.label}
-              </Badge>
-            </div>
-            <CardTitle className="text-lg leading-tight line-clamp-2">{newsItem.title}</CardTitle>
-            <div className="flex items-center space-x-4 text-sm text-gray-500">
-              <div className="flex items-center space-x-1">
-                <Calendar className="h-4 w-4" />
-                <span>{formatDate(newsItem.createdAt)}</span>
-              </div>
-              <div className="flex items-center space-x-1">
-                <User className="h-4 w-4" />
-                <span>Admin</span>
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent className="pt-0">
-            <p className="text-gray-700 leading-relaxed mb-4 line-clamp-3">
-              {newsItem.excerpt}
-            </p>
-            
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => handleReadMore(newsItem.id)}
-              className="w-full group-hover:bg-primary group-hover:text-primary-foreground transition-colors"
-            >
-              Ler mais
-              <ArrowRight className="h-4 w-4 ml-2" />
-            </Button>
-          </CardContent>
-        </Card>
-      ))}
-    </div>
-  );
-
   if (loading) {
     return (
       <div className="p-6 space-y-6">
@@ -329,121 +279,144 @@ const Noticias: React.FC = () => {
 
   return (
     <div className="p-6 space-y-6">
+      {/* Header com botão de criação para admins */}
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Notícias</h1>
           <p className="text-gray-600">
             {isAdmin ? 'Gerencie as notícias do sistema' : 'Fique por dentro das últimas atualizações'}
           </p>
+          {isAdmin && (
+            <p className="text-sm text-green-600 font-medium">✓ Você tem permissões de administrador</p>
+          )}
         </div>
+        
+        {/* BOTÃO DE CRIAÇÃO PARA ADMINS - AZUL */}
         {isAdmin && (
-          <Button onClick={handleCreateNews} className="bg-blue-600 hover:bg-blue-700">
-            <Plus className="h-4 w-4 mr-2" />
+          <Button 
+            onClick={handleCreateNews} 
+            className="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-6 py-3 text-lg"
+            size="lg"
+          >
+            <Plus className="h-5 w-5 mr-2" />
             Criar Notícia
           </Button>
         )}
       </div>
 
-      {isAdmin ? (
-        <Tabs defaultValue="visualizar" className="w-full">
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="visualizar">Visualizar Notícias</TabsTrigger>
-            <TabsTrigger value="gerenciar">Gerenciar Notícias</TabsTrigger>
-          </TabsList>
+      {/* Filtros */}
+      <NewsFilter
+        searchTerm={searchTerm}
+        onSearchChange={setSearchTerm}
+        sortBy={sortBy}
+        onSortChange={setSortBy}
+        categoryFilter={categoryFilter}
+        onCategoryChange={setCategoryFilter}
+        totalResults={filteredAndSortedNews.length}
+        appliedFilters={appliedFilters}
+      />
 
-          <TabsContent value="visualizar" className="space-y-6">
-            <NewsFilter
-              searchTerm={searchTerm}
-              onSearchChange={setSearchTerm}
-              sortBy={sortBy}
-              onSortChange={setSortBy}
-              categoryFilter={categoryFilter}
-              onCategoryChange={setCategoryFilter}
-              totalResults={filteredAndSortedNews.length}
-              appliedFilters={appliedFilters}
-            />
-
-            <NewsGrid news={filteredAndSortedNews} />
-
-            {filteredAndSortedNews.length === 0 && (
-              <Card>
-                <CardContent className="text-center py-12">
-                  <div className="text-gray-400 mb-4">
-                    <Calendar className="h-12 w-12 mx-auto" />
-                  </div>
-                  <h3 className="text-lg font-medium text-gray-900 mb-2">
-                    Nenhuma notícia encontrada
-                  </h3>
-                  <p className="text-gray-600 mb-4">
-                    {news.length === 0 
-                      ? 'Nenhuma notícia foi publicada ainda.'
-                      : 'Tente ajustar os filtros ou limpar a busca para ver mais resultados'}
-                  </p>
-                  {news.length === 0 && (
-                    <Button onClick={handleCreateNews} className="bg-blue-600 hover:bg-blue-700">
-                      <Plus className="h-4 w-4 mr-2" />
-                      Criar Primeira Notícia
-                    </Button>
-                  )}
-                </CardContent>
-              </Card>
-            )}
-          </TabsContent>
-
-          <TabsContent value="gerenciar" className="space-y-6">
-            <div className="flex justify-between items-center">
-              <div>
-                <h2 className="text-xl font-semibold">Gerenciar Notícias</h2>
-                <p className="text-gray-600">Crie, edite e exclua notícias do sistema</p>
+      {/* Grid de notícias */}
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+        {filteredAndSortedNews.map((newsItem) => (
+          <Card key={newsItem.id} className="overflow-hidden hover:shadow-lg transition-shadow cursor-pointer group">
+            {newsItem.imageUrl && (
+              <div className="h-48 overflow-hidden">
+                <img 
+                  src={newsItem.imageUrl} 
+                  alt={newsItem.title}
+                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
+                />
               </div>
+            )}
+            <CardHeader className="pb-3">
+              <div className="flex justify-between items-start mb-2">
+                <Badge variant="secondary" className="mb-2">
+                  {categories.find(cat => cat.id === newsItem.category)?.label}
+                </Badge>
+                {isAdmin && (
+                  <div className="flex space-x-1">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleEditNews(newsItem);
+                      }}
+                    >
+                      Editar
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDeleteNews(newsItem);
+                      }}
+                      className="text-red-600 hover:text-red-700"
+                    >
+                      Excluir
+                    </Button>
+                  </div>
+                )}
+              </div>
+              <CardTitle className="text-lg leading-tight line-clamp-2">{newsItem.title}</CardTitle>
+              <div className="flex items-center space-x-4 text-sm text-gray-500">
+                <div className="flex items-center space-x-1">
+                  <Calendar className="h-4 w-4" />
+                  <span>{formatDate(newsItem.createdAt)}</span>
+                </div>
+                <div className="flex items-center space-x-1">
+                  <User className="h-4 w-4" />
+                  <span>Admin</span>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="pt-0">
+              <p className="text-gray-700 leading-relaxed mb-4 line-clamp-3">
+                {newsItem.excerpt}
+              </p>
+              
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handleReadMore(newsItem.id)}
+                className="w-full group-hover:bg-primary group-hover:text-primary-foreground transition-colors"
+              >
+                Ler mais
+                <ArrowRight className="h-4 w-4 ml-2" />
+              </Button>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+
+      {/* Mensagem quando não há notícias */}
+      {filteredAndSortedNews.length === 0 && (
+        <Card>
+          <CardContent className="text-center py-12">
+            <div className="text-gray-400 mb-4">
+              <Calendar className="h-12 w-12 mx-auto" />
+            </div>
+            <h3 className="text-lg font-medium text-gray-900 mb-2">
+              Nenhuma notícia encontrada
+            </h3>
+            <p className="text-gray-600 mb-4">
+              {news.length === 0 
+                ? 'Nenhuma notícia foi publicada ainda.'
+                : 'Tente ajustar os filtros ou limpar a busca para ver mais resultados'}
+            </p>
+            {news.length === 0 && isAdmin && (
               <Button onClick={handleCreateNews} className="bg-blue-600 hover:bg-blue-700">
                 <Plus className="h-4 w-4 mr-2" />
-                Criar Notícia
+                Criar Primeira Notícia
               </Button>
-            </div>
-
-            <NewsTable 
-              news={news.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())}
-              onEdit={handleEditNews}
-              onDelete={handleDeleteNews}
-            />
-          </TabsContent>
-        </Tabs>
-      ) : (
-        <>
-          <NewsFilter
-            searchTerm={searchTerm}
-            onSearchChange={setSearchTerm}
-            sortBy={sortBy}
-            onSortChange={setSortBy}
-            categoryFilter={categoryFilter}
-            onCategoryChange={setCategoryFilter}
-            totalResults={filteredAndSortedNews.length}
-            appliedFilters={appliedFilters}
-          />
-
-          <NewsGrid news={filteredAndSortedNews} />
-
-          {filteredAndSortedNews.length === 0 && (
-            <Card>
-              <CardContent className="text-center py-12">
-                <div className="text-gray-400 mb-4">
-                  <Calendar className="h-12 w-12 mx-auto" />
-                </div>
-                <h3 className="text-lg font-medium text-gray-900 mb-2">
-                  Nenhuma notícia encontrada
-                </h3>
-                <p className="text-gray-600">
-                  {news.length === 0 
-                    ? 'Nenhuma notícia foi publicada ainda.'
-                    : 'Tente ajustar os filtros ou limpar a busca para ver mais resultados'}
-                </p>
-              </CardContent>
-            </Card>
-          )}
-        </>
+            )}
+          </CardContent>
+        </Card>
       )}
 
+      {/* Modais */}
       <NewsModal
         isOpen={newsModalOpen}
         onClose={() => setNewsModalOpen(false)}

@@ -8,7 +8,6 @@ import { Download, FileText, Video, Plus, ArrowRight, Edit, Trash2 } from 'lucid
 import { Material } from '@/types/auth';
 import { useAuth } from '@/contexts/AuthContext';
 import MaterialModal from '@/components/Materials/MaterialModal';
-import MaterialTable from '@/components/Materials/MaterialTable';
 import MaterialFilter from '@/components/Materials/MaterialFilter';
 import DeleteConfirmModal from '@/components/DeleteConfirmModal';
 import { useToast } from '@/hooks/use-toast';
@@ -22,16 +21,18 @@ interface MaterialWithDetails extends Material {
 }
 
 const MaterialApoio: React.FC = () => {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const isAdmin = user?.role === 'admin';
+  
+  // Verificação de admin com logs para debug
+  const isAdmin = profile?.role === 'admin';
+  console.log('Admin check:', { profile, isAdmin, role: profile?.role });
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [selectedMaterial, setSelectedMaterial] = useState<MaterialWithDetails | null>(null);
   const [materialToDelete, setMaterialToDelete] = useState<string | null>(null);
-  const [viewMode, setViewMode] = useState<'cards' | 'table'>('cards');
   const [loading, setLoading] = useState(true);
 
   // Filter states
@@ -295,71 +296,34 @@ const MaterialApoio: React.FC = () => {
     );
   }
 
-  if (isAdmin && viewMode === 'table') {
-    return (
-      <div className="p-6 space-y-6">
-        <div className="flex justify-between items-center">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900">Material de Apoio</h1>
-            <p className="text-gray-600">Gerencie os materiais de apoio disponíveis</p>
-          </div>
-          <div className="flex space-x-2">
-            <Button variant="outline" onClick={() => setViewMode('cards')}>
-              Visualização Cards
-            </Button>
-            <Button onClick={handleCreateMaterial} className="bg-green-600 hover:bg-green-700">
-              <Plus className="h-4 w-4 mr-2" />
-              Adicionar Material de Apoio
-            </Button>
-          </div>
-        </div>
-
-        <MaterialTable
-          materials={materials}
-          onEdit={handleEditMaterial}
-          onDelete={handleDeleteMaterial}
-        />
-
-        <MaterialModal
-          isOpen={isModalOpen}
-          onClose={() => setIsModalOpen(false)}
-          onSave={handleSaveMaterial}
-          material={selectedMaterial}
-        />
-
-        <DeleteConfirmModal
-          isOpen={isDeleteModalOpen}
-          onClose={() => setIsDeleteModalOpen(false)}
-          onConfirm={confirmDeleteMaterial}
-          title="Excluir Material"
-          message="Tem certeza que deseja excluir este material? Esta ação não pode ser desfeita."
-        />
-      </div>
-    );
-  }
-
   return (
     <div className="p-6 space-y-6">
+      {/* Header com botão de criação para admins */}
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Material de Apoio</h1>
           <p className="text-gray-600">
             {isAdmin ? 'Gerencie os materiais de apoio disponíveis' : 'Acesse tutoriais, guias e recursos para maximizar seu uso da plataforma'}
           </p>
+          {isAdmin && (
+            <p className="text-sm text-green-600 font-medium">✓ Você tem permissões de administrador</p>
+          )}
         </div>
+        
+        {/* BOTÃO DE CRIAÇÃO PARA ADMINS - VERDE */}
         {isAdmin && (
-          <div className="flex space-x-2">
-            <Button variant="outline" onClick={() => setViewMode('table')}>
-              Visualização Tabela
-            </Button>
-            <Button onClick={handleCreateMaterial} className="bg-green-600 hover:bg-green-700">
-              <Plus className="h-4 w-4 mr-2" />
-              Adicionar Material de Apoio
-            </Button>
-          </div>
+          <Button 
+            onClick={handleCreateMaterial} 
+            className="bg-green-600 hover:bg-green-700 text-white font-semibold px-6 py-3 text-lg"
+            size="lg"
+          >
+            <Plus className="h-5 w-5 mr-2" />
+            Adicionar Material de Apoio
+          </Button>
         )}
       </div>
 
+      {/* Filtros */}
       <MaterialFilter
         searchTerm={searchTerm}
         onSearchChange={setSearchTerm}
@@ -371,6 +335,7 @@ const MaterialApoio: React.FC = () => {
         appliedFilters={appliedFilters}
       />
 
+      {/* Grid de materiais */}
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
         {filteredAndSortedMaterials.map((material) => {
           const TypeIcon = getTypeIcon(material.type);
@@ -430,6 +395,7 @@ const MaterialApoio: React.FC = () => {
                   </Button>
                 </div>
 
+                {/* Botões de admin */}
                 {isAdmin && (
                   <div className="flex space-x-2 mt-3 pt-3 border-t">
                     <Button 
@@ -458,6 +424,7 @@ const MaterialApoio: React.FC = () => {
         })}
       </div>
 
+      {/* Mensagem quando não há materiais */}
       {filteredAndSortedMaterials.length === 0 && (
         <Card>
           <CardContent className="text-center py-12">
@@ -484,6 +451,7 @@ const MaterialApoio: React.FC = () => {
         </Card>
       )}
 
+      {/* Modais */}
       <MaterialModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
