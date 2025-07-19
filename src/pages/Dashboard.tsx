@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -6,6 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Users, FileText, BookOpen, Calculator, TrendingUp, Activity, BarChart3, Settings } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import { Group } from '@/types/auth';
 
 interface DashboardStats {
   totalUsers: number;
@@ -37,13 +37,54 @@ const Dashboard: React.FC = () => {
     totalMaterials: 0
   });
   const [recentActivity, setRecentActivity] = useState<RecentActivity[]>([]);
+  const [userGroup, setUserGroup] = useState<Group | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (profile?.role === 'admin') {
       fetchDashboardData();
+    } else {
+      fetchUserGroupData();
     }
   }, [profile]);
+
+  const fetchUserGroupData = async () => {
+    try {
+      setLoading(true);
+      
+      if (profile?.group_id) {
+        console.log('Dashboard: Fetching group data for user group:', profile.group_id);
+        
+        const { data: groupData, error } = await supabase
+          .from('groups')
+          .select('*')
+          .eq('id', profile.group_id)
+          .single();
+
+        if (error) {
+          console.error('Error fetching user group:', error);
+        } else {
+          const formattedGroup: Group = {
+            id: groupData.id,
+            name: groupData.name,
+            powerBiUrl: groupData.power_bi_url || undefined,
+            formUrl: groupData.form_url || undefined,
+            createdAt: groupData.created_at
+          };
+          
+          console.log('Dashboard: User group data loaded:', formattedGroup);
+          setUserGroup(formattedGroup);
+        }
+      } else {
+        console.log('Dashboard: User has no group assigned');
+        setUserGroup(null);
+      }
+    } catch (error) {
+      console.error('Error fetching user group data:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const fetchDashboardData = async () => {
     try {
@@ -360,37 +401,63 @@ const Dashboard: React.FC = () => {
             Dashboard - {profile?.name}
           </h1>
           <p className="text-gray-600 mt-2">
-            Visualize os dados e métricas do seu grupo em tempo real
+            {userGroup ? (
+              <>Grupo: <span className="font-semibold">{userGroup.name}</span> - Visualize os dados e métricas do seu grupo em tempo real</>
+            ) : (
+              'Você não está vinculado a nenhum grupo. Entre em contato com o administrador.'
+            )}
           </p>
         </div>
 
-        <div className="w-full">
-          <Card className="shadow-lg">
-            <CardHeader className="pb-4">
-              <CardTitle className="flex items-center space-x-2">
-                <TrendingUp className="h-6 w-6 text-blue-600" />
-                <span>Analytics do Grupo</span>
-              </CardTitle>
-              <CardDescription>
-                Dashboard Power BI configurado especificamente para o seu grupo
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="p-0">
-              <div className="w-full bg-white rounded-lg overflow-hidden border">
-                <iframe
-                  src="https://app.powerbi.com/view?r=eyJrIjoiMmUxMmZiNTAtZWQ0OC00NjkwLWI4NGEtYThhMjUwZGI4OGZjIiwidCI6IjdmYzZhYTE4LWYxODUtNGQwZi1hYTdlLTQzZGIyNDc5ZGQwZCJ9"
-                  width="100%"
-                  height="800"
-                  style={{ minHeight: '800px' }}
-                  frameBorder="0"
-                  allowFullScreen
-                  title="Power BI Dashboard"
-                  className="rounded-lg"
-                />
+        {userGroup && userGroup.powerBiUrl ? (
+          <div className="w-full">
+            <Card className="shadow-lg">
+              <CardHeader className="pb-4">
+                <CardTitle className="flex items-center space-x-2">
+                  <TrendingUp className="h-6 w-6 text-blue-600" />
+                  <span>Analytics do Grupo - {userGroup.name}</span>
+                </CardTitle>
+                <CardDescription>
+                  Dashboard Power BI configurado especificamente para o seu grupo
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="p-0">
+                <div className="w-full bg-white rounded-lg overflow-hidden border">
+                  <iframe
+                    src={userGroup.powerBiUrl}
+                    width="100%"
+                    height="800"
+                    style={{ minHeight: '800px' }}
+                    frameBorder="0"
+                    allowFullScreen
+                    title={`Power BI Dashboard - ${userGroup.name}`}
+                    className="rounded-lg"
+                  />
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        ) : (
+          <Card className="shadow-md">
+            <CardContent className="p-6">
+              <div className="flex items-start space-x-3">
+                <BarChart3 className="h-5 w-5 text-orange-600 mt-0.5 flex-shrink-0" />
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-3">
+                    📊 Dashboard não configurado
+                  </h3>
+                  <p className="text-gray-700 leading-relaxed">
+                    {userGroup ? (
+                      `O grupo "${userGroup.name}" ainda não possui um link do Power BI configurado. Entre em contato com o administrador para configurar o dashboard.`
+                    ) : (
+                      'Você não está vinculado a nenhum grupo ou o grupo não possui dashboard configurado. Entre em contato com o administrador.'
+                    )}
+                  </p>
+                </div>
               </div>
             </CardContent>
           </Card>
-        </div>
+        )}
 
         <Card className="shadow-md">
           <CardContent className="p-6">

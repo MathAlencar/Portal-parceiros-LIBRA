@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Plus, Search, Edit, Trash2 } from 'lucide-react';
-import { User, UserRole } from '@/types/auth';
+import { User, UserRole, Group } from '@/types/auth';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import UserModal from '@/components/UserModal';
@@ -17,6 +17,7 @@ const Usuarios: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedRole, setSelectedRole] = useState<string>('all');
   const [users, setUsers] = useState<User[]>([]);
+  const [groups, setGroups] = useState<Group[]>([]);
   const [loading, setLoading] = useState(true);
 
   const [userModalOpen, setUserModalOpen] = useState(false);
@@ -28,19 +29,21 @@ const Usuarios: React.FC = () => {
   const { toast } = useToast();
 
   useEffect(() => {
-    fetchUsers();
+    fetchUsersAndGroups();
   }, []);
 
-  const fetchUsers = async () => {
+  const fetchUsersAndGroups = async () => {
     try {
       setLoading(true);
-      const { data, error } = await supabase
+      
+      // Fetch users
+      const { data: usersData, error: usersError } = await supabase
         .from('profiles')
         .select('*')
         .order('created_at', { ascending: false });
 
-      if (error) {
-        console.error('Error fetching users:', error);
+      if (usersError) {
+        console.error('Error fetching users:', usersError);
         toast({
           title: "Erro ao carregar usuários",
           description: "Não foi possível carregar a lista de usuários.",
@@ -49,7 +52,22 @@ const Usuarios: React.FC = () => {
         return;
       }
 
-      const formattedUsers: User[] = data.map(profile => ({
+      // Fetch groups
+      const { data: groupsData, error: groupsError } = await supabase
+        .from('groups')
+        .select('*')
+        .order('name');
+
+      if (groupsError) {
+        console.error('Error fetching groups:', groupsError);
+        toast({
+          title: "Erro ao carregar grupos",
+          description: "Não foi possível carregar a lista de grupos.",
+          variant: "destructive",
+        });
+      }
+
+      const formattedUsers: User[] = usersData.map(profile => ({
         id: profile.id,
         name: profile.name,
         email: profile.email,
@@ -57,11 +75,23 @@ const Usuarios: React.FC = () => {
         groupId: profile.group_id
       }));
 
+      const formattedGroups: Group[] = groupsData?.map(group => ({
+        id: group.id,
+        name: group.name,
+        powerBiUrl: group.power_bi_url || undefined,
+        formUrl: group.form_url || undefined,
+        createdAt: group.created_at
+      })) || [];
+
+      console.log('Usuarios: Loaded users:', formattedUsers);
+      console.log('Usuarios: Loaded groups:', formattedGroups);
+
       setUsers(formattedUsers);
+      setGroups(formattedGroups);
     } catch (error) {
-      console.error('Error fetching users:', error);
+      console.error('Error fetching users and groups:', error);
       toast({
-        title: "Erro ao carregar usuários",
+        title: "Erro ao carregar dados",
         description: "Ocorreu um erro inesperado.",
         variant: "destructive",
       });
@@ -133,7 +163,7 @@ const Usuarios: React.FC = () => {
         return;
       }
 
-      await fetchUsers(); // Refresh the list
+      await fetchUsersAndGroups(); // Refresh the list
       setUserModalOpen(false);
       setSelectedUser(null);
     } catch (error) {
@@ -170,7 +200,7 @@ const Usuarios: React.FC = () => {
         description: `O usuário ${userToDelete.name} foi excluído com sucesso.`,
       });
 
-      await fetchUsers(); // Refresh the list
+      await fetchUsersAndGroups(); // Refresh the list
       setUserToDelete(null);
       setDeleteModalOpen(false);
     } catch (error) {
@@ -206,9 +236,8 @@ const Usuarios: React.FC = () => {
   const getGroupName = (groupId: string | null) => {
     if (!groupId) return '-';
     
-    // This would ideally fetch from the groups table
-    // For now, using a placeholder
-    return `Grupo ${groupId.slice(0, 8)}`;
+    const group = groups.find(g => g.id === groupId);
+    return group ? group.name : 'Grupo não encontrado';
   };
 
   const filteredUsers = users.filter(user => {

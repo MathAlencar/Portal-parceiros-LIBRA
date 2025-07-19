@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Label } from '@/components/ui/label';
 import { User, UserRole, Group } from '@/types/auth';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 
 interface UserModalProps {
   isOpen: boolean;
@@ -14,14 +15,6 @@ interface UserModalProps {
   user?: User | null;
   onSave: (userData: Partial<User> & { password?: string }) => void;
 }
-
-// Mock groups data - in real app would come from backend
-const mockGroups: Group[] = [
-  { id: '1', name: 'Grupo Norte', createdAt: '2024-01-01' },
-  { id: '2', name: 'Grupo Sul', createdAt: '2024-01-02' },
-  { id: '3', name: 'Grupo Leste', createdAt: '2024-01-03' },
-  { id: '4', name: 'Grupo Oeste', createdAt: '2024-01-04' },
-];
 
 const UserModal: React.FC<UserModalProps> = ({ isOpen, onClose, user, onSave }) => {
   const [formData, setFormData] = useState({
@@ -32,10 +25,60 @@ const UserModal: React.FC<UserModalProps> = ({ isOpen, onClose, user, onSave }) 
     groupId: 'none'
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [groups, setGroups] = useState<Group[]>([]);
+  const [loadingGroups, setLoadingGroups] = useState(true);
   const { toast } = useToast();
+
+  // Fetch groups from Supabase
+  useEffect(() => {
+    const fetchGroups = async () => {
+      try {
+        setLoadingGroups(true);
+        const { data, error } = await supabase
+          .from('groups')
+          .select('*')
+          .order('name');
+
+        if (error) {
+          console.error('Error fetching groups:', error);
+          toast({
+            title: "Erro ao carregar grupos",
+            description: "Não foi possível carregar a lista de grupos.",
+            variant: "destructive",
+          });
+          return;
+        }
+
+        const formattedGroups: Group[] = data.map(group => ({
+          id: group.id,
+          name: group.name,
+          powerBiUrl: group.power_bi_url || undefined,
+          formUrl: group.form_url || undefined,
+          createdAt: group.created_at
+        }));
+
+        console.log('UserModal: Loaded groups from Supabase:', formattedGroups);
+        setGroups(formattedGroups);
+      } catch (error) {
+        console.error('Error fetching groups:', error);
+        toast({
+          title: "Erro ao carregar grupos",
+          description: "Ocorreu um erro inesperado ao carregar grupos.",
+          variant: "destructive",
+        });
+      } finally {
+        setLoadingGroups(false);
+      }
+    };
+
+    if (isOpen) {
+      fetchGroups();
+    }
+  }, [isOpen, toast]);
 
   useEffect(() => {
     if (user) {
+      console.log('UserModal: Setting form data for user:', user);
       setFormData({
         name: user.name,
         email: user.email,
@@ -96,6 +139,7 @@ const UserModal: React.FC<UserModalProps> = ({ isOpen, onClose, user, onSave }) 
       userData.password = formData.password;
     }
 
+    console.log('UserModal: Saving user data:', userData);
     onSave(userData);
     toast({
       title: user ? "Usuário atualizado" : "Usuário criado",
@@ -104,13 +148,9 @@ const UserModal: React.FC<UserModalProps> = ({ isOpen, onClose, user, onSave }) 
     onClose();
   };
 
-  const getRoleLabel = (role: UserRole) => {
-    const labels = {
-      admin: 'Administrador',
-      coordenador: 'Coordenador',
-      usuario: 'Usuário'
-    };
-    return labels[role];
+  const getGroupName = (groupId: string) => {
+    const group = groups.find(g => g.id === groupId);
+    return group ? group.name : 'Grupo não encontrado';
   };
 
   return (
@@ -183,19 +223,25 @@ const UserModal: React.FC<UserModalProps> = ({ isOpen, onClose, user, onSave }) 
             <Select
               value={formData.groupId}
               onValueChange={(value) => setFormData(prev => ({ ...prev, groupId: value }))}
+              disabled={loadingGroups}
             >
               <SelectTrigger>
-                <SelectValue placeholder="Selecione um grupo (opcional)" />
+                <SelectValue placeholder={loadingGroups ? "Carregando grupos..." : "Selecione um grupo (opcional)"} />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="none">Nenhum grupo</SelectItem>
-                {mockGroups.map((group) => (
+                {groups.map((group) => (
                   <SelectItem key={group.id} value={group.id}>
                     {group.name}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
+            {formData.groupId !== 'none' && (
+              <p className="text-xs text-muted-foreground mt-1">
+                Grupo selecionado: {getGroupName(formData.groupId)}
+              </p>
+            )}
           </div>
         </div>
 
