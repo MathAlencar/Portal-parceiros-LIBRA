@@ -1,4 +1,5 @@
-import React, { useState, useMemo } from 'react';
+
+import React, { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -10,6 +11,8 @@ import MaterialModal from '@/components/Materials/MaterialModal';
 import MaterialTable from '@/components/Materials/MaterialTable';
 import MaterialFilter from '@/components/Materials/MaterialFilter';
 import DeleteConfirmModal from '@/components/DeleteConfirmModal';
+import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 
 interface MaterialWithDetails extends Material {
   fileSize: string;
@@ -21,6 +24,7 @@ interface MaterialWithDetails extends Material {
 const MaterialApoio: React.FC = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const { toast } = useToast();
   const isAdmin = user?.role === 'admin';
 
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -28,54 +32,66 @@ const MaterialApoio: React.FC = () => {
   const [selectedMaterial, setSelectedMaterial] = useState<MaterialWithDetails | null>(null);
   const [materialToDelete, setMaterialToDelete] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'cards' | 'table'>('cards');
+  const [loading, setLoading] = useState(true);
 
   // Filter states
   const [searchTerm, setSearchTerm] = useState('');
   const [sortBy, setSortBy] = useState('recent');
   const [typeFilter, setTypeFilter] = useState('all');
 
-  // Mock data for materials
-  const [mockMaterials, setMockMaterials] = useState<MaterialWithDetails[]>([
-    {
-      id: '1',
-      title: 'Guia Completo do Sistema',
-      type: 'file',
-      url: 'https://drive.google.com/file/d/example1',
-      description: 'Manual completo com todas as funcionalidades do sistema, passo a passo para configuração e uso avançado.',
-      createdAt: '2024-01-15',
-      fileSize: '2.5 MB',
-      downloadCount: 127,
-      thumbnailUrl: 'https://images.unsplash.com/photo-1498050108023-c5249f4df085?w=300',
-      downloadUrl: 'https://drive.google.com/file/d/example1'
-    },
-    {
-      id: '2',
-      title: 'Vídeo Tutorial - Primeiros Passos',
-      type: 'link',
-      url: '',
-      description: 'Vídeo explicativo sobre como começar a usar a plataforma, ideal para novos usuários.',
-      createdAt: '2024-01-12',
-      fileSize: 'Online',
-      downloadCount: 89,
-      thumbnailUrl: 'https://images.unsplash.com/photo-1487058792275-0ad4aaf24ca7?w=300'
-    },
-    {
-      id: '3',
-      title: 'Templates de Relatórios',
-      type: 'file',
-      url: 'https://drive.google.com/file/d/example3',
-      description: 'Coleção de templates prontos para criação de relatórios profissionais e apresentações.',
-      createdAt: '2024-01-10',
-      fileSize: '1.8 MB',
-      downloadCount: 203,
-      thumbnailUrl: 'https://images.unsplash.com/photo-1605810230434-7631ac76ec81?w=300',
-      downloadUrl: 'https://drive.google.com/file/d/example3'
+  const [materials, setMaterials] = useState<MaterialWithDetails[]>([]);
+
+  useEffect(() => {
+    fetchMaterials();
+  }, []);
+
+  const fetchMaterials = async () => {
+    try {
+      setLoading(true);
+      const { data, error } = await supabase
+        .from('materials')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Error fetching materials:', error);
+        toast({
+          title: "Erro ao carregar materiais",
+          description: "Não foi possível carregar os materiais.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const formattedMaterials: MaterialWithDetails[] = data.map(material => ({
+        id: material.id,
+        title: material.title,
+        type: material.type,
+        url: material.url,
+        description: material.description || '',
+        createdAt: material.created_at,
+        fileSize: 'N/A', // This would need to be calculated or stored
+        downloadCount: 0, // This would need to be tracked separately
+        thumbnailUrl: 'https://images.unsplash.com/photo-1498050108023-c5249f4df085?w=300',
+        downloadUrl: material.url || undefined
+      }));
+
+      setMaterials(formattedMaterials);
+    } catch (error) {
+      console.error('Error fetching materials:', error);
+      toast({
+        title: "Erro ao carregar materiais",
+        description: "Ocorreu um erro inesperado.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
     }
-  ]);
+  };
 
   // Filter and sort logic
   const filteredAndSortedMaterials = useMemo(() => {
-    let filtered = [...mockMaterials];
+    let filtered = [...materials];
 
     // Apply search filter
     if (searchTerm) {
@@ -100,7 +116,7 @@ const MaterialApoio: React.FC = () => {
     }
 
     return filtered;
-  }, [mockMaterials, searchTerm, typeFilter, sortBy]);
+  }, [materials, searchTerm, typeFilter, sortBy]);
 
   // Generate applied filters text
   const appliedFilters = useMemo(() => {
@@ -163,52 +179,127 @@ const MaterialApoio: React.FC = () => {
     setIsDeleteModalOpen(true);
   };
 
-  const handleSaveMaterial = (data: any) => {
-    if (selectedMaterial) {
-      // Edit existing material
-      setMockMaterials(prev => prev.map(material => 
-        material.id === selectedMaterial.id 
-          ? {
-              ...material,
-              title: data.title,
-              description: data.description,
-              url: data.downloadUrl || '',
-              downloadUrl: data.downloadUrl,
-              thumbnailUrl: data.thumbnailUrl || material.thumbnailUrl
-            }
-          : material
-      ));
-    } else {
-      // Create new material
-      const newMaterial: MaterialWithDetails = {
-        id: Date.now().toString(),
-        title: data.title,
-        type: data.downloadUrl ? 'file' : 'link',
-        url: data.downloadUrl || '',
-        description: data.description,
-        createdAt: new Date().toISOString().split('T')[0],
-        fileSize: 'N/A',
-        downloadCount: 0,
-        thumbnailUrl: data.thumbnailUrl || 'https://images.unsplash.com/photo-1498050108023-c5249f4df085?w=300',
-        downloadUrl: data.downloadUrl
-      };
-      setMockMaterials(prev => [newMaterial, ...prev]);
+  const handleSaveMaterial = async (data: any) => {
+    try {
+      if (selectedMaterial) {
+        // Edit existing material
+        const { error } = await supabase
+          .from('materials')
+          .update({
+            title: data.title,
+            description: data.description,
+            url: data.downloadUrl || data.url,
+            type: data.downloadUrl ? 'file' : 'link'
+          })
+          .eq('id', selectedMaterial.id);
+
+        if (error) {
+          console.error('Error updating material:', error);
+          toast({
+            title: "Erro ao atualizar material",
+            description: "Não foi possível atualizar o material.",
+            variant: "destructive",
+          });
+          return;
+        }
+
+        toast({
+          title: "Material atualizado",
+          description: "O material foi atualizado com sucesso.",
+        });
+      } else {
+        // Create new material
+        const { error } = await supabase
+          .from('materials')
+          .insert({
+            title: data.title,
+            description: data.description,
+            url: data.downloadUrl || data.url,
+            type: data.downloadUrl ? 'file' : 'link'
+          });
+
+        if (error) {
+          console.error('Error creating material:', error);
+          toast({
+            title: "Erro ao criar material",
+            description: "Não foi possível criar o material.",
+            variant: "destructive",
+          });
+          return;
+        }
+
+        toast({
+          title: "Material criado",
+          description: "O material foi criado com sucesso.",
+        });
+      }
+
+      await fetchMaterials(); // Refresh the list
+      setIsModalOpen(false);
+      setSelectedMaterial(null);
+    } catch (error) {
+      console.error('Error saving material:', error);
+      toast({
+        title: "Erro ao salvar material",
+        description: "Ocorreu um erro inesperado.",
+        variant: "destructive",
+      });
     }
-    setIsModalOpen(false);
-    setSelectedMaterial(null);
   };
 
-  const confirmDeleteMaterial = () => {
-    if (materialToDelete) {
-      setMockMaterials(prev => prev.filter(material => material.id !== materialToDelete));
+  const confirmDeleteMaterial = async () => {
+    if (!materialToDelete) return;
+
+    try {
+      const { error } = await supabase
+        .from('materials')
+        .delete()
+        .eq('id', materialToDelete);
+
+      if (error) {
+        console.error('Error deleting material:', error);
+        toast({
+          title: "Erro ao excluir material",
+          description: "Não foi possível excluir o material.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      toast({
+        title: "Material excluído",
+        description: "O material foi excluído com sucesso.",
+      });
+
+      await fetchMaterials(); // Refresh the list
       setMaterialToDelete(null);
       setIsDeleteModalOpen(false);
+    } catch (error) {
+      console.error('Error deleting material:', error);
+      toast({
+        title: "Erro ao excluir material",
+        description: "Ocorreu um erro inesperado.",
+        variant: "destructive",
+      });
     }
   };
 
   const handleDownload = (url: string) => {
     window.open(url, '_blank', 'noopener noreferrer');
   };
+
+  if (loading) {
+    return (
+      <div className="p-6 space-y-6">
+        <div className="flex justify-between items-center">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900">Material de Apoio</h1>
+            <p className="text-gray-600">Carregando materiais...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (isAdmin && viewMode === 'table') {
     return (
@@ -230,7 +321,7 @@ const MaterialApoio: React.FC = () => {
         </div>
 
         <MaterialTable
-          materials={mockMaterials}
+          materials={materials}
           onEdit={handleEditMaterial}
           onDelete={handleDeleteMaterial}
         />
@@ -275,7 +366,6 @@ const MaterialApoio: React.FC = () => {
         )}
       </div>
 
-      {/* Filters */}
       <MaterialFilter
         searchTerm={searchTerm}
         onSearchChange={setSearchTerm}
@@ -287,7 +377,6 @@ const MaterialApoio: React.FC = () => {
         appliedFilters={appliedFilters}
       />
 
-      {/* Materials Grid */}
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
         {filteredAndSortedMaterials.map((material) => {
           const TypeIcon = getTypeIcon(material.type);
@@ -385,13 +474,13 @@ const MaterialApoio: React.FC = () => {
               Nenhum material encontrado
             </h3>
             <p className="text-gray-600 mb-4">
-              {mockMaterials.length === 0 
+              {materials.length === 0 
                 ? (isAdmin 
                     ? 'Comece adicionando o primeiro material de apoio'
                     : 'Novos materiais aparecerão aqui quando disponíveis')
                 : 'Tente ajustar os filtros ou limpar a busca para ver mais resultados'}
             </p>
-            {isAdmin && mockMaterials.length === 0 && (
+            {isAdmin && materials.length === 0 && (
               <Button onClick={handleCreateMaterial}>
                 <Plus className="h-4 w-4 mr-2" />
                 Adicionar Primeiro Material

@@ -1,21 +1,204 @@
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Users, FileText, BookOpen, Calculator, TrendingUp, Activity, BarChart3, Settings } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+
+interface DashboardStats {
+  totalUsers: number;
+  admins: number;
+  coordenadores: number;
+  usuarios: number;
+  totalGroups: number;
+  totalNews: number;
+  totalMaterials: number;
+}
+
+interface RecentActivity {
+  id: string;
+  type: 'user' | 'news' | 'material';
+  description: string;
+  createdAt: string;
+}
 
 const Dashboard: React.FC = () => {
   const { profile } = useAuth();
   const navigate = useNavigate();
+  const [stats, setStats] = useState<DashboardStats>({
+    totalUsers: 0,
+    admins: 0,
+    coordenadores: 0,
+    usuarios: 0,
+    totalGroups: 0,
+    totalNews: 0,
+    totalMaterials: 0
+  });
+  const [recentActivity, setRecentActivity] = useState<RecentActivity[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  // Mock data com segmentação de usuários
-  const userStats = {
-    total: 24,
-    admins: 2,
-    coordenadores: 5,
-    usuarios: 17
+  useEffect(() => {
+    if (profile?.role === 'admin') {
+      fetchDashboardData();
+    }
+  }, [profile]);
+
+  const fetchDashboardData = async () => {
+    try {
+      setLoading(true);
+
+      // Fetch user statistics
+      const { data: profiles, error: profilesError } = await supabase
+        .from('profiles')
+        .select('role');
+
+      if (profilesError) {
+        console.error('Error fetching profiles:', profilesError);
+      }
+
+      // Count users by role
+      const userStats = profiles?.reduce((acc, profile) => {
+        acc.totalUsers++;
+        if (profile.role === 'admin') acc.admins++;
+        else if (profile.role === 'coordenador') acc.coordenadores++;
+        else if (profile.role === 'usuario') acc.usuarios++;
+        return acc;
+      }, { totalUsers: 0, admins: 0, coordenadores: 0, usuarios: 0 }) || 
+      { totalUsers: 0, admins: 0, coordenadores: 0, usuarios: 0 };
+
+      // Fetch groups count
+      const { count: groupsCount, error: groupsError } = await supabase
+        .from('groups')
+        .select('*', { count: 'exact', head: true });
+
+      if (groupsError) {
+        console.error('Error fetching groups count:', groupsError);
+      }
+
+      // Fetch news count
+      const { count: newsCount, error: newsError } = await supabase
+        .from('news')
+        .select('*', { count: 'exact', head: true });
+
+      if (newsError) {
+        console.error('Error fetching news count:', newsError);
+      }
+
+      // Fetch materials count
+      const { count: materialsCount, error: materialsError } = await supabase
+        .from('materials')
+        .select('*', { count: 'exact', head: true });
+
+      if (materialsError) {
+        console.error('Error fetching materials count:', materialsError);
+      }
+
+      setStats({
+        ...userStats,
+        totalGroups: groupsCount || 0,
+        totalNews: newsCount || 0,
+        totalMaterials: materialsCount || 0
+      });
+
+      // Fetch recent activity
+      await fetchRecentActivity();
+
+    } catch (error) {
+      console.error('Error fetching dashboard data:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchRecentActivity = async () => {
+    try {
+      // Get recent users
+      const { data: recentProfiles } = await supabase
+        .from('profiles')
+        .select('name, created_at')
+        .order('created_at', { ascending: false })
+        .limit(3);
+
+      // Get recent news
+      const { data: recentNews } = await supabase
+        .from('news')
+        .select('title, created_at')
+        .order('created_at', { ascending: false })
+        .limit(3);
+
+      // Get recent materials
+      const { data: recentMaterials } = await supabase
+        .from('materials')
+        .select('title, created_at')
+        .order('created_at', { ascending: false })
+        .limit(3);
+
+      const activities: RecentActivity[] = [];
+
+      // Add recent users
+      recentProfiles?.forEach(profile => {
+        activities.push({
+          id: `user-${profile.name}`,
+          type: 'user',
+          description: `Novo usuário cadastrado: ${profile.name}`,
+          createdAt: profile.created_at
+        });
+      });
+
+      // Add recent news
+      recentNews?.forEach(news => {
+        activities.push({
+          id: `news-${news.title}`,
+          type: 'news',
+          description: `Notícia publicada: ${news.title}`,
+          createdAt: news.created_at
+        });
+      });
+
+      // Add recent materials
+      recentMaterials?.forEach(material => {
+        activities.push({
+          id: `material-${material.title}`,
+          type: 'material',
+          description: `Material adicionado: ${material.title}`,
+          createdAt: material.created_at
+        });
+      });
+
+      // Sort by creation date and take the 5 most recent
+      activities.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      setRecentActivity(activities.slice(0, 5));
+
+    } catch (error) {
+      console.error('Error fetching recent activity:', error);
+    }
+  };
+
+  const formatTimeAgo = (dateString: string) => {
+    const now = new Date();
+    const date = new Date(dateString);
+    const diffInMinutes = Math.floor((now.getTime() - date.getTime()) / (1000 * 60));
+
+    if (diffInMinutes < 60) {
+      return `há ${diffInMinutes} minuto${diffInMinutes !== 1 ? 's' : ''}`;
+    } else if (diffInMinutes < 1440) {
+      const hours = Math.floor(diffInMinutes / 60);
+      return `há ${hours} hora${hours !== 1 ? 's' : ''}`;
+    } else {
+      const days = Math.floor(diffInMinutes / 1440);
+      return `há ${days} dia${days !== 1 ? 's' : ''}`;
+    }
+  };
+
+  const getActivityColor = (type: string) => {
+    switch (type) {
+      case 'user': return 'bg-blue-500';
+      case 'news': return 'bg-green-500';
+      case 'material': return 'bg-purple-500';
+      default: return 'bg-gray-500';
+    }
   };
 
   const AdminDashboard = () => (
@@ -27,22 +210,21 @@ const Dashboard: React.FC = () => {
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{userStats.total}</div>
-            <p className="text-xs text-muted-foreground">+2 desde último mês</p>
+            <div className="text-2xl font-bold">{loading ? '...' : stats.totalUsers}</div>
+            <p className="text-xs text-muted-foreground">Usuários cadastrados</p>
             
-            {/* Segmentação de usuários */}
             <div className="mt-3 space-y-1">
               <div className="flex justify-between text-xs">
                 <span className="text-muted-foreground">Admins:</span>
-                <span className="font-medium">{userStats.admins}</span>
+                <span className="font-medium">{loading ? '...' : stats.admins}</span>
               </div>
               <div className="flex justify-between text-xs">
                 <span className="text-muted-foreground">Coordenadores:</span>
-                <span className="font-medium">{userStats.coordenadores}</span>
+                <span className="font-medium">{loading ? '...' : stats.coordenadores}</span>
               </div>
               <div className="flex justify-between text-xs">
                 <span className="text-muted-foreground">Usuários:</span>
-                <span className="font-medium">{userStats.usuarios}</span>
+                <span className="font-medium">{loading ? '...' : stats.usuarios}</span>
               </div>
             </div>
           </CardContent>
@@ -54,8 +236,8 @@ const Dashboard: React.FC = () => {
             <Activity className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">8</div>
-            <p className="text-xs text-muted-foreground">+1 este mês</p>
+            <div className="text-2xl font-bold">{loading ? '...' : stats.totalGroups}</div>
+            <p className="text-xs text-muted-foreground">Grupos cadastrados</p>
           </CardContent>
         </Card>
 
@@ -65,8 +247,8 @@ const Dashboard: React.FC = () => {
             <FileText className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">12</div>
-            <p className="text-xs text-muted-foreground">+3 esta semana</p>
+            <div className="text-2xl font-bold">{loading ? '...' : stats.totalNews}</div>
+            <p className="text-xs text-muted-foreground">Notícias no sistema</p>
           </CardContent>
         </Card>
 
@@ -76,8 +258,8 @@ const Dashboard: React.FC = () => {
             <BookOpen className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">45</div>
-            <p className="text-xs text-muted-foreground">+5 este mês</p>
+            <div className="text-2xl font-bold">{loading ? '...' : stats.totalMaterials}</div>
+            <p className="text-xs text-muted-foreground">Materiais cadastrados</p>
           </CardContent>
         </Card>
       </div>
@@ -90,27 +272,21 @@ const Dashboard: React.FC = () => {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              <div className="flex items-center space-x-4">
-                <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                <div className="flex-1">
-                  <p className="text-sm font-medium">Novo usuário cadastrado</p>
-                  <p className="text-xs text-muted-foreground">há 2 horas</p>
-                </div>
-              </div>
-              <div className="flex items-center space-x-4">
-                <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                <div className="flex-1">
-                  <p className="text-sm font-medium">Notícia publicada</p>
-                  <p className="text-xs text-muted-foreground">há 5 horas</p>
-                </div>
-              </div>
-              <div className="flex items-center space-x-4">
-                <div className="w-2 h-2 bg-yellow-500 rounded-full"></div>
-                <div className="flex-1">
-                  <p className="text-sm font-medium">Material de apoio atualizado</p>
-                  <p className="text-xs text-muted-foreground">há 1 dia</p>
-                </div>
-              </div>
+              {loading ? (
+                <div className="text-center text-muted-foreground">Carregando atividades...</div>
+              ) : recentActivity.length === 0 ? (
+                <div className="text-center text-muted-foreground">Nenhuma atividade recente</div>
+              ) : (
+                recentActivity.map((activity) => (
+                  <div key={activity.id} className="flex items-center space-x-4">
+                    <div className={`w-2 h-2 rounded-full ${getActivityColor(activity.type)}`}></div>
+                    <div className="flex-1">
+                      <p className="text-sm font-medium">{activity.description}</p>
+                      <p className="text-xs text-muted-foreground">{formatTimeAgo(activity.createdAt)}</p>
+                    </div>
+                  </div>
+                ))
+              )}
             </div>
           </CardContent>
         </Card>
@@ -179,7 +355,6 @@ const Dashboard: React.FC = () => {
   const UserDashboard = () => (
     <div className="min-h-screen bg-gray-50 p-4">
       <div className="max-w-7xl mx-auto space-y-6">
-        {/* Header Section */}
         <div className="mb-6">
           <h1 className="text-3xl font-bold text-gray-900">
             Dashboard - {profile?.name}
@@ -189,7 +364,6 @@ const Dashboard: React.FC = () => {
           </p>
         </div>
 
-        {/* Power BI Embed Section - Increased Size */}
         <div className="w-full">
           <Card className="shadow-lg">
             <CardHeader className="pb-4">
@@ -218,7 +392,6 @@ const Dashboard: React.FC = () => {
           </Card>
         </div>
 
-        {/* Explanatory Legend - Outside the Power BI iframe */}
         <Card className="shadow-md">
           <CardContent className="p-6">
             <div className="flex items-start space-x-3">

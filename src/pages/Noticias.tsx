@@ -1,4 +1,5 @@
-import React, { useState, useMemo } from 'react';
+
+import React, { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -11,6 +12,8 @@ import NewsModal from '@/components/News/NewsModal';
 import NewsTable from '@/components/News/NewsTable';
 import NewsFilter from '@/components/News/NewsFilter';
 import DeleteConfirmModal from '@/components/DeleteConfirmModal';
+import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 
 interface NewsWithCategory extends News {
   category: string;
@@ -21,60 +24,21 @@ interface NewsWithCategory extends News {
 const Noticias: React.FC = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const { toast } = useToast();
   const isAdmin = user?.role === 'admin';
+  
   const [newsModalOpen, setNewsModalOpen] = useState(false);
   const [editingNews, setEditingNews] = useState<NewsWithCategory | null>(null);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [newsToDelete, setNewsToDelete] = useState<NewsWithCategory | null>(null);
+  const [loading, setLoading] = useState(true);
 
   // Filter states
   const [searchTerm, setSearchTerm] = useState('');
   const [sortBy, setSortBy] = useState('recent');
   const [categoryFilter, setCategoryFilter] = useState('todas');
 
-  // Mock data with categories and images
-  const [mockNews, setMockNews] = useState<NewsWithCategory[]>([
-    {
-      id: '1',
-      title: 'Nova funcionalidade de relatórios disponível',
-      content: 'Agora você pode gerar relatórios detalhados diretamente pelo sistema com exportação em múltiplos formatos e gráficos interativos para melhor análise dos dados. Esta funcionalidade permite criar dashboards personalizados e relatórios automáticos que podem ser enviados por email ou baixados em PDF.',
-      excerpt: 'Agora você pode gerar relatórios detalhados diretamente pelo sistema com exportação em múltiplos formatos e gráficos interativos.',
-      createdAt: '2024-01-15',
-      authorId: '1',
-      category: 'sistema',
-      imageUrl: 'https://images.unsplash.com/photo-1461749280684-dccba630e2f6?w=400'
-    },
-    {
-      id: '2',
-      title: 'Manutenção programada para este final de semana',
-      content: 'O sistema passará por manutenção no sábado das 02:00 às 06:00 para implementação de melhorias e correções importantes. Durante este período, o acesso à plataforma estará temporariamente indisponível.',
-      excerpt: 'O sistema passará por manutenção no sábado das 02:00 às 06:00 para implementação de melhorias e correções.',
-      createdAt: '2024-01-12',
-      authorId: '1',
-      category: 'manutencao',
-      imageUrl: 'https://images.unsplash.com/photo-1518770660439-4636190af475?w=400'
-    },
-    {
-      id: '3',
-      title: 'Novos materiais de treinamento disponíveis',
-      content: 'Foram adicionados novos vídeos tutoriais e documentos na seção de Material de Apoio para ajudar no aprendizado das funcionalidades da plataforma. Os materiais incluem guias passo a passo e exemplos práticos.',
-      excerpt: 'Novos vídeos tutoriais e documentos foram adicionados para ajudar no aprendizado das funcionalidades da plataforma.',
-      createdAt: '2024-01-10',
-      authorId: '1',
-      category: 'treinamento',
-      imageUrl: 'https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?w=400'
-    },
-    {
-      id: '4',
-      title: 'Atualização de segurança implementada',
-      content: 'Uma nova camada de segurança foi implementada para proteger melhor os dados dos usuários com criptografia aprimorada e autenticação de dois fatores. Todas as senhas foram resetadas e os usuários precisarão criar novas credenciais.',
-      excerpt: 'Nova camada de segurança com criptografia aprimorada e autenticação de dois fatores foi implementada.',
-      createdAt: '2024-01-08',
-      authorId: '1',
-      category: 'sistema',
-      imageUrl: 'https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?w=400'
-    }
-  ]);
+  const [news, setNews] = useState<NewsWithCategory[]>([]);
 
   const categories = [
     { id: 'todas', label: 'Todas as Notícias' },
@@ -86,21 +50,67 @@ const Noticias: React.FC = () => {
     { id: 'eventos', label: 'Eventos' }
   ];
 
+  useEffect(() => {
+    fetchNews();
+  }, []);
+
+  const fetchNews = async () => {
+    try {
+      setLoading(true);
+      const { data, error } = await supabase
+        .from('news')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Error fetching news:', error);
+        toast({
+          title: "Erro ao carregar notícias",
+          description: "Não foi possível carregar as notícias.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const formattedNews: NewsWithCategory[] = data.map(newsItem => ({
+        id: newsItem.id,
+        title: newsItem.title,
+        content: newsItem.content,
+        createdAt: newsItem.created_at,
+        authorId: newsItem.author_id,
+        category: newsItem.category || 'sistema',
+        imageUrl: newsItem.image_url || undefined,
+        excerpt: newsItem.excerpt || newsItem.content.substring(0, 150) + (newsItem.content.length > 150 ? '...' : '')
+      }));
+
+      setNews(formattedNews);
+    } catch (error) {
+      console.error('Error fetching news:', error);
+      toast({
+        title: "Erro ao carregar notícias",
+        description: "Ocorreu um erro inesperado.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // Filter and sort logic
   const filteredAndSortedNews = useMemo(() => {
-    let filtered = [...mockNews];
+    let filtered = [...news];
 
     // Apply search filter
     if (searchTerm) {
-      filtered = filtered.filter(news => 
-        news.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        news.content.toLowerCase().includes(searchTerm.toLowerCase())
+      filtered = filtered.filter(newsItem => 
+        newsItem.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        newsItem.content.toLowerCase().includes(searchTerm.toLowerCase())
       );
     }
 
     // Apply category filter
     if (categoryFilter !== 'todas') {
-      filtered = filtered.filter(news => news.category === categoryFilter);
+      filtered = filtered.filter(newsItem => newsItem.category === categoryFilter);
     }
 
     // Apply sorting
@@ -111,7 +121,7 @@ const Noticias: React.FC = () => {
     }
 
     return filtered;
-  }, [mockNews, searchTerm, categoryFilter, sortBy]);
+  }, [news, searchTerm, categoryFilter, sortBy]);
 
   // Generate applied filters text
   const appliedFilters = useMemo(() => {
@@ -141,46 +151,121 @@ const Noticias: React.FC = () => {
     setNewsModalOpen(true);
   };
 
-  const handleEditNews = (news: NewsWithCategory) => {
-    setEditingNews(news);
+  const handleEditNews = (newsItem: NewsWithCategory) => {
+    setEditingNews(newsItem);
     setNewsModalOpen(true);
   };
 
-  const handleDeleteNews = (news: NewsWithCategory) => {
-    setNewsToDelete(news);
+  const handleDeleteNews = (newsItem: NewsWithCategory) => {
+    setNewsToDelete(newsItem);
     setDeleteModalOpen(true);
   };
 
-  const confirmDeleteNews = () => {
-    if (newsToDelete) {
-      setMockNews(prev => prev.filter(news => news.id !== newsToDelete.id));
+  const confirmDeleteNews = async () => {
+    if (!newsToDelete) return;
+
+    try {
+      const { error } = await supabase
+        .from('news')
+        .delete()
+        .eq('id', newsToDelete.id);
+
+      if (error) {
+        console.error('Error deleting news:', error);
+        toast({
+          title: "Erro ao excluir notícia",
+          description: "Não foi possível excluir a notícia.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      toast({
+        title: "Notícia excluída",
+        description: "A notícia foi excluída com sucesso.",
+      });
+
+      await fetchNews(); // Refresh the list
       setDeleteModalOpen(false);
       setNewsToDelete(null);
+    } catch (error) {
+      console.error('Error deleting news:', error);
+      toast({
+        title: "Erro ao excluir notícia",
+        description: "Ocorreu um erro inesperado.",
+        variant: "destructive",
+      });
     }
   };
 
-  const handleSaveNews = (data: any) => {
-    if (editingNews) {
-      // Edit existing news
-      setMockNews(prev => prev.map(news => 
-        news.id === editingNews.id 
-          ? { 
-              ...news, 
-              ...data, 
-              excerpt: data.content.substring(0, 150) + (data.content.length > 150 ? '...' : '')
-            }
-          : news
-      ));
-    } else {
-      // Create new news
-      const newNews: NewsWithCategory = {
-        id: (mockNews.length + 1).toString(),
-        ...data,
-        excerpt: data.content.substring(0, 150) + (data.content.length > 150 ? '...' : ''),
-        createdAt: new Date().toISOString().split('T')[0],
-        authorId: user?.id || '1',
-      };
-      setMockNews(prev => [newNews, ...prev]);
+  const handleSaveNews = async (data: any) => {
+    try {
+      if (editingNews) {
+        // Edit existing news
+        const { error } = await supabase
+          .from('news')
+          .update({
+            title: data.title,
+            content: data.content,
+            category: data.category,
+            image_url: data.imageUrl,
+            excerpt: data.content.substring(0, 150) + (data.content.length > 150 ? '...' : '')
+          })
+          .eq('id', editingNews.id);
+
+        if (error) {
+          console.error('Error updating news:', error);
+          toast({
+            title: "Erro ao atualizar notícia",
+            description: "Não foi possível atualizar a notícia.",
+            variant: "destructive",
+          });
+          return;
+        }
+
+        toast({
+          title: "Notícia atualizada",
+          description: "A notícia foi atualizada com sucesso.",
+        });
+      } else {
+        // Create new news
+        const { error } = await supabase
+          .from('news')
+          .insert({
+            title: data.title,
+            content: data.content,
+            category: data.category,
+            image_url: data.imageUrl,
+            excerpt: data.content.substring(0, 150) + (data.content.length > 150 ? '...' : ''),
+            author_id: user?.id || 'unknown'
+          });
+
+        if (error) {
+          console.error('Error creating news:', error);
+          toast({
+            title: "Erro ao criar notícia",
+            description: "Não foi possível criar a notícia.",
+            variant: "destructive",
+          });
+          return;
+        }
+
+        toast({
+          title: "Notícia criada",
+          description: "A notícia foi criada com sucesso.",
+        });
+      }
+
+      await fetchNews(); // Refresh the list
+      setNewsModalOpen(false);
+      setEditingNews(null);
+    } catch (error) {
+      console.error('Error saving news:', error);
+      toast({
+        title: "Erro ao salvar notícia",
+        description: "Ocorreu um erro inesperado.",
+        variant: "destructive",
+      });
     }
   };
 
@@ -235,6 +320,19 @@ const Noticias: React.FC = () => {
     </div>
   );
 
+  if (loading) {
+    return (
+      <div className="p-6 space-y-6">
+        <div className="flex justify-between items-center">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900">Notícias</h1>
+            <p className="text-gray-600">Carregando notícias...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="p-6 space-y-6">
       <div className="flex justify-between items-center">
@@ -267,7 +365,6 @@ const Noticias: React.FC = () => {
 
             <NewsGrid news={filteredAndSortedNews} />
 
-            {/* Empty state for filtered results */}
             {filteredAndSortedNews.length === 0 && (
               <Card>
                 <CardContent className="text-center py-12">
@@ -278,7 +375,9 @@ const Noticias: React.FC = () => {
                     Nenhuma notícia encontrada
                   </h3>
                   <p className="text-gray-600">
-                    Tente ajustar os filtros ou limpar a busca para ver mais resultados
+                    {news.length === 0 
+                      ? 'Nenhuma notícia foi publicada ainda.'
+                      : 'Tente ajustar os filtros ou limpar a busca para ver mais resultados'}
                   </p>
                 </CardContent>
               </Card>
@@ -298,7 +397,7 @@ const Noticias: React.FC = () => {
             </div>
 
             <NewsTable 
-              news={mockNews.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())}
+              news={news.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())}
               onEdit={handleEditNews}
               onDelete={handleDeleteNews}
             />
@@ -319,7 +418,6 @@ const Noticias: React.FC = () => {
 
           <NewsGrid news={filteredAndSortedNews} />
 
-          {/* Empty state for regular users */}
           {filteredAndSortedNews.length === 0 && (
             <Card>
               <CardContent className="text-center py-12">
@@ -330,7 +428,9 @@ const Noticias: React.FC = () => {
                   Nenhuma notícia encontrada
                 </h3>
                 <p className="text-gray-600">
-                  Tente ajustar os filtros ou limpar a busca para ver mais resultados
+                  {news.length === 0 
+                    ? 'Nenhuma notícia foi publicada ainda.'
+                    : 'Tente ajustar os filtros ou limpar a busca para ver mais resultados'}
                 </p>
               </CardContent>
             </Card>
@@ -338,7 +438,6 @@ const Noticias: React.FC = () => {
         </>
       )}
 
-      {/* Modals */}
       <NewsModal
         isOpen={newsModalOpen}
         onClose={() => setNewsModalOpen(false)}

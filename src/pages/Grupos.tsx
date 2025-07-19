@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import {
   Table,
@@ -15,36 +15,11 @@ import GroupModal from '@/components/GroupModal';
 import GroupViewModal from '@/components/GroupViewModal';
 import DeleteConfirmModal from '@/components/DeleteConfirmModal';
 import { useToast } from '@/hooks/use-toast';
-
-// Mock data for groups
-const mockGroups: Group[] = [
-  {
-    id: '1',
-    name: 'Grupo 1',
-    powerBiUrl: 'https://app.powerbi.com/view?r=eyJrIjoiZXhhbXBsZSIsInQiOiJhIn0%3D',
-    formUrl: 'https://forms.office.com/pages/designpagev2.aspx?subpage=design&FormId=example',
-    createdAt: '2024-01-15T10:00:00Z'
-  },
-  {
-    id: '2',
-    name: 'Grupo 2',
-    powerBiUrl: 'https://app.powerbi.com/view?r=eyJrIjoiZXhhbXBsZTIiLCJ0IjoiYSJ9',
-    formUrl: 'https://forms.office.com/pages/designpagev2.aspx?subpage=design&FormId=example2',
-    createdAt: '2024-01-20T14:30:00Z'
-  }
-];
-
-// Mock function to get user count by group
-const getUserCountByGroup = (groupId: string): number => {
-  const counts: Record<string, number> = {
-    '1': 5,
-    '2': 2
-  };
-  return counts[groupId] || 0;
-};
+import { supabase } from '@/integrations/supabase/client';
 
 const Grupos: React.FC = () => {
-  const [groups, setGroups] = useState<Group[]>(mockGroups);
+  const [groups, setGroups] = useState<Group[]>([]);
+  const [loading, setLoading] = useState(true);
   const [isGroupModalOpen, setIsGroupModalOpen] = useState(false);
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
@@ -52,6 +27,69 @@ const Grupos: React.FC = () => {
   const [viewingContent, setViewingContent] = useState<{type: 'powerbi' | 'form', url: string, groupName: string} | null>(null);
   const [deletingGroup, setDeletingGroup] = useState<Group | null>(null);
   const { toast } = useToast();
+
+  useEffect(() => {
+    fetchGroups();
+  }, []);
+
+  const fetchGroups = async () => {
+    try {
+      setLoading(true);
+      const { data, error } = await supabase
+        .from('groups')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Error fetching groups:', error);
+        toast({
+          title: "Erro ao carregar grupos",
+          description: "Não foi possível carregar a lista de grupos.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const formattedGroups: Group[] = data.map(group => ({
+        id: group.id,
+        name: group.name,
+        powerBiUrl: group.power_bi_url || undefined,
+        formUrl: group.form_url || undefined,
+        createdAt: group.created_at
+      }));
+
+      setGroups(formattedGroups);
+    } catch (error) {
+      console.error('Error fetching groups:', error);
+      toast({
+        title: "Erro ao carregar grupos",
+        description: "Ocorreu um erro inesperado.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Function to get user count by group from profiles table
+  const getUserCountByGroup = async (groupId: string): Promise<number> => {
+    try {
+      const { count, error } = await supabase
+        .from('profiles')
+        .select('*', { count: 'exact', head: true })
+        .eq('group_id', groupId);
+
+      if (error) {
+        console.error('Error fetching user count:', error);
+        return 0;
+      }
+
+      return count || 0;
+    } catch (error) {
+      console.error('Error fetching user count:', error);
+      return 0;
+    }
+  };
 
   const handleCreateGroup = () => {
     setEditingGroup(null);
@@ -73,50 +111,124 @@ const Grupos: React.FC = () => {
     setIsViewModalOpen(true);
   };
 
-  const handleSaveGroup = (groupData: Omit<Group, 'id' | 'createdAt'>) => {
-    if (editingGroup) {
-      // Update existing group
-      setGroups(prev => prev.map(group => 
-        group.id === editingGroup.id 
-          ? { ...group, ...groupData }
-          : group
-      ));
+  const handleSaveGroup = async (groupData: Omit<Group, 'id' | 'createdAt'>) => {
+    try {
+      if (editingGroup) {
+        // Update existing group
+        const { error } = await supabase
+          .from('groups')
+          .update({
+            name: groupData.name,
+            power_bi_url: groupData.powerBiUrl,
+            form_url: groupData.formUrl
+          })
+          .eq('id', editingGroup.id);
+
+        if (error) {
+          console.error('Error updating group:', error);
+          toast({
+            title: "Erro ao atualizar grupo",
+            description: "Não foi possível atualizar o grupo.",
+            variant: "destructive",
+          });
+          return;
+        }
+
+        toast({
+          title: "Grupo atualizado",
+          description: "As informações do grupo foram atualizadas com sucesso.",
+        });
+      } else {
+        // Create new group
+        const { error } = await supabase
+          .from('groups')
+          .insert({
+            name: groupData.name,
+            power_bi_url: groupData.powerBiUrl,
+            form_url: groupData.formUrl
+          });
+
+        if (error) {
+          console.error('Error creating group:', error);
+          toast({
+            title: "Erro ao criar grupo",
+            description: "Não foi possível criar o grupo.",
+            variant: "destructive",
+          });
+          return;
+        }
+
+        toast({
+          title: "Grupo criado",
+          description: "O novo grupo foi criado com sucesso.",
+        });
+      }
+
+      await fetchGroups(); // Refresh the list
+      setIsGroupModalOpen(false);
+      setEditingGroup(null);
+    } catch (error) {
+      console.error('Error saving group:', error);
       toast({
-        title: "Grupo atualizado",
-        description: "As informações do grupo foram atualizadas com sucesso.",
-      });
-    } else {
-      // Create new group
-      const newGroup: Group = {
-        id: Date.now().toString(),
-        ...groupData,
-        createdAt: new Date().toISOString()
-      };
-      setGroups(prev => [...prev, newGroup]);
-      toast({
-        title: "Grupo criado",
-        description: "O novo grupo foi criado com sucesso.",
+        title: "Erro ao salvar grupo",
+        description: "Ocorreu um erro inesperado.",
+        variant: "destructive",
       });
     }
-    setIsGroupModalOpen(false);
-    setEditingGroup(null);
   };
 
-  const handleConfirmDelete = () => {
-    if (deletingGroup) {
-      setGroups(prev => prev.filter(group => group.id !== deletingGroup.id));
+  const handleConfirmDelete = async () => {
+    if (!deletingGroup) return;
+
+    try {
+      const { error } = await supabase
+        .from('groups')
+        .delete()
+        .eq('id', deletingGroup.id);
+
+      if (error) {
+        console.error('Error deleting group:', error);
+        toast({
+          title: "Erro ao excluir grupo",
+          description: "Não foi possível excluir o grupo.",
+          variant: "destructive",
+        });
+        return;
+      }
+
       toast({
         title: "Grupo excluído",
         description: "O grupo foi removido com sucesso.",
       });
+
+      await fetchGroups(); // Refresh the list
       setIsDeleteModalOpen(false);
       setDeletingGroup(null);
+    } catch (error) {
+      console.error('Error deleting group:', error);
+      toast({
+        title: "Erro ao excluir grupo",
+        description: "Ocorreu um erro inesperado.",
+        variant: "destructive",
+      });
     }
   };
 
+  if (loading) {
+    return (
+      <div className="container mx-auto p-6 space-y-6">
+        <div className="flex justify-between items-center">
+          <div>
+            <h1 className="text-3xl font-bold text-foreground">Gerenciar Grupos</h1>
+            <p className="text-muted-foreground mt-1">Carregando grupos...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="container mx-auto p-6 space-y-6">
-      {/* Header */}
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-3xl font-bold text-foreground">Gerenciar Grupos</h1>
@@ -130,7 +242,6 @@ const Grupos: React.FC = () => {
         </Button>
       </div>
 
-      {/* Groups Table */}
       <div className="bg-card rounded-lg border">
         <Table>
           <TableHeader>
@@ -151,71 +262,20 @@ const Grupos: React.FC = () => {
               </TableRow>
             ) : (
               groups.map((group) => (
-                <TableRow key={group.id}>
-                  <TableCell className="font-medium">{group.name}</TableCell>
-                  <TableCell>
-                    {group.powerBiUrl ? (
-                      <Button 
-                        variant="outline" 
-                        size="sm"
-                        onClick={() => handleViewContent('powerbi', group.powerBiUrl!, group.name)}
-                        className="flex items-center gap-1"
-                      >
-                        <Eye className="h-3 w-3" />
-                        Ver
-                      </Button>
-                    ) : (
-                      <span className="text-muted-foreground text-sm">Não configurado</span>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    {group.formUrl ? (
-                      <Button 
-                        variant="outline" 
-                        size="sm"
-                        onClick={() => handleViewContent('form', group.formUrl!, group.name)}
-                        className="flex items-center gap-1"
-                      >
-                        <Eye className="h-3 w-3" />
-                        Ver
-                      </Button>
-                    ) : (
-                      <span className="text-muted-foreground text-sm">Não configurado</span>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    <span className="text-sm">
-                      {getUserCountByGroup(group.id)} usuários
-                    </span>
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex justify-end gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleEditGroup(group)}
-                        className="h-8 w-8 p-0"
-                      >
-                        <Edit className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleDeleteGroup(group)}
-                        className="h-8 w-8 p-0 text-destructive hover:text-destructive"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
+                <GroupRow 
+                  key={group.id} 
+                  group={group}
+                  onEdit={handleEditGroup}
+                  onDelete={handleDeleteGroup}
+                  onViewContent={handleViewContent}
+                  getUserCount={getUserCountByGroup}
+                />
               ))
             )}
           </TableBody>
         </Table>
       </div>
 
-      {/* Modals */}
       <GroupModal
         isOpen={isGroupModalOpen}
         onClose={() => {
@@ -246,6 +306,86 @@ const Grupos: React.FC = () => {
         message={`Tem certeza que deseja excluir o grupo "${deletingGroup?.name}"? Esta ação não poderá ser desfeita e todos os usuários vinculados perderão o acesso aos recursos do grupo.`}
       />
     </div>
+  );
+};
+
+// Separate component for group row to handle async user count
+const GroupRow: React.FC<{
+  group: Group;
+  onEdit: (group: Group) => void;
+  onDelete: (group: Group) => void;
+  onViewContent: (type: 'powerbi' | 'form', url: string, groupName: string) => void;
+  getUserCount: (groupId: string) => Promise<number>;
+}> = ({ group, onEdit, onDelete, onViewContent, getUserCount }) => {
+  const [userCount, setUserCount] = useState<number>(0);
+
+  useEffect(() => {
+    const fetchUserCount = async () => {
+      const count = await getUserCount(group.id);
+      setUserCount(count);
+    };
+    fetchUserCount();
+  }, [group.id, getUserCount]);
+
+  return (
+    <TableRow>
+      <TableCell className="font-medium">{group.name}</TableCell>
+      <TableCell>
+        {group.powerBiUrl ? (
+          <Button 
+            variant="outline" 
+            size="sm"
+            onClick={() => onViewContent('powerbi', group.powerBiUrl!, group.name)}
+            className="flex items-center gap-1"
+          >
+            <Eye className="h-3 w-3" />
+            Ver
+          </Button>
+        ) : (
+          <span className="text-muted-foreground text-sm">Não configurado</span>
+        )}
+      </TableCell>
+      <TableCell>
+        {group.formUrl ? (
+          <Button 
+            variant="outline" 
+            size="sm"
+            onClick={() => onViewContent('form', group.formUrl!, group.name)}
+            className="flex items-center gap-1"
+          >
+            <Eye className="h-3 w-3" />
+            Ver
+          </Button>
+        ) : (
+          <span className="text-muted-foreground text-sm">Não configurado</span>
+        )}
+      </TableCell>
+      <TableCell>
+        <span className="text-sm">
+          {userCount} usuários
+        </span>
+      </TableCell>
+      <TableCell className="text-right">
+        <div className="flex justify-end gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => onEdit(group)}
+            className="h-8 w-8 p-0"
+          >
+            <Edit className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => onDelete(group)}
+            className="h-8 w-8 p-0 text-destructive hover:text-destructive"
+          >
+            <Trash2 className="h-4 w-4" />
+          </Button>
+        </div>
+      </TableCell>
+    </TableRow>
   );
 };
 

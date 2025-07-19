@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -10,17 +11,13 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import UserModal from '@/components/UserModal';
 import DeleteConfirmModal from '@/components/DeleteConfirmModal';
+import { supabase } from '@/integrations/supabase/client';
 
 const Usuarios: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedRole, setSelectedRole] = useState<string>('all');
-  const [users, setUsers] = useState<User[]>([
-    { id: '1', name: 'Admin Principal', email: 'admin@sistema.com', role: 'admin', groupId: null },
-    { id: '2', name: 'João Coordenador', email: 'coord@sistema.com', role: 'coordenador', groupId: '1' },
-    { id: '3', name: 'Maria Usuária', email: 'usuario@sistema.com', role: 'usuario', groupId: '1' },
-    { id: '4', name: 'Pedro Silva', email: 'pedro@sistema.com', role: 'usuario', groupId: '2' },
-    { id: '5', name: 'Ana Santos', email: 'ana@sistema.com', role: 'coordenador', groupId: '2' },
-  ]);
+  const [users, setUsers] = useState<User[]>([]);
+  const [loading, setLoading] = useState(true);
 
   const [userModalOpen, setUserModalOpen] = useState(false);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
@@ -29,6 +26,49 @@ const Usuarios: React.FC = () => {
 
   const { user: currentUser } = useAuth();
   const { toast } = useToast();
+
+  useEffect(() => {
+    fetchUsers();
+  }, []);
+
+  const fetchUsers = async () => {
+    try {
+      setLoading(true);
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Error fetching users:', error);
+        toast({
+          title: "Erro ao carregar usuários",
+          description: "Não foi possível carregar a lista de usuários.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const formattedUsers: User[] = data.map(profile => ({
+        id: profile.id,
+        name: profile.name,
+        email: profile.email,
+        role: profile.role as UserRole,
+        groupId: profile.group_id
+      }));
+
+      setUsers(formattedUsers);
+    } catch (error) {
+      console.error('Error fetching users:', error);
+      toast({
+        title: "Erro ao carregar usuários",
+        description: "Ocorreu um erro inesperado.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleCreateUser = () => {
     setSelectedUser(null);
@@ -41,7 +81,6 @@ const Usuarios: React.FC = () => {
   };
 
   const handleDeleteUser = (user: User) => {
-    // Verificar se o usuário está tentando excluir a si mesmo
     if (currentUser?.id === user.id && currentUser.role === 'admin') {
       toast({
         title: "Ação não permitida",
@@ -55,36 +94,92 @@ const Usuarios: React.FC = () => {
     setDeleteModalOpen(true);
   };
 
-  const handleSaveUser = (userData: Partial<User> & { password?: string }) => {
-    if (selectedUser) {
-      // Editar usuário existente
-      setUsers(prev => prev.map(u => 
-        u.id === selectedUser.id 
-          ? { ...u, ...userData }
-          : u
-      ));
-    } else {
-      // Criar novo usuário
-      const newUser: User = {
-        id: Date.now().toString(),
-        name: userData.name!,
-        email: userData.email!,
-        role: userData.role!,
-        groupId: userData.groupId || null
-      };
-      setUsers(prev => [...prev, newUser]);
+  const handleSaveUser = async (userData: Partial<User> & { password?: string }) => {
+    try {
+      if (selectedUser) {
+        // Update existing user
+        const { error } = await supabase
+          .from('profiles')
+          .update({
+            name: userData.name,
+            email: userData.email,
+            role: userData.role,
+            group_id: userData.groupId
+          })
+          .eq('id', selectedUser.id);
+
+        if (error) {
+          console.error('Error updating user:', error);
+          toast({
+            title: "Erro ao atualizar usuário",
+            description: "Não foi possível atualizar o usuário.",
+            variant: "destructive",
+          });
+          return;
+        }
+
+        toast({
+          title: "Usuário atualizado",
+          description: "As informações do usuário foram atualizadas com sucesso.",
+        });
+      } else {
+        // Create new user - this would need to be handled through Supabase Auth
+        // For now, we'll show a message that this needs to be implemented
+        toast({
+          title: "Funcionalidade em desenvolvimento",
+          description: "A criação de novos usuários será implementada em breve.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      await fetchUsers(); // Refresh the list
+      setUserModalOpen(false);
+      setSelectedUser(null);
+    } catch (error) {
+      console.error('Error saving user:', error);
+      toast({
+        title: "Erro ao salvar usuário",
+        description: "Ocorreu um erro inesperado.",
+        variant: "destructive",
+      });
     }
   };
 
-  const confirmDeleteUser = () => {
-    if (userToDelete) {
-      setUsers(prev => prev.filter(u => u.id !== userToDelete.id));
+  const confirmDeleteUser = async () => {
+    if (!userToDelete) return;
+
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .delete()
+        .eq('id', userToDelete.id);
+
+      if (error) {
+        console.error('Error deleting user:', error);
+        toast({
+          title: "Erro ao excluir usuário",
+          description: "Não foi possível excluir o usuário.",
+          variant: "destructive",
+        });
+        return;
+      }
+
       toast({
         title: "Usuário excluído",
         description: `O usuário ${userToDelete.name} foi excluído com sucesso.`,
       });
+
+      await fetchUsers(); // Refresh the list
       setUserToDelete(null);
       setDeleteModalOpen(false);
+    } catch (error) {
+      console.error('Error deleting user:', error);
+      toast({
+        title: "Erro ao excluir usuário",
+        description: "Ocorreu um erro inesperado.",
+        variant: "destructive",
+      });
     }
   };
 
@@ -111,14 +206,9 @@ const Usuarios: React.FC = () => {
   const getGroupName = (groupId: string | null) => {
     if (!groupId) return '-';
     
-    const groupNames: Record<string, string> = {
-      '1': 'Grupo Norte',
-      '2': 'Grupo Sul',
-      '3': 'Grupo Leste',
-      '4': 'Grupo Oeste'
-    };
-    
-    return groupNames[groupId] || `Grupo ${groupId}`;
+    // This would ideally fetch from the groups table
+    // For now, using a placeholder
+    return `Grupo ${groupId.slice(0, 8)}`;
   };
 
   const filteredUsers = users.filter(user => {
@@ -127,6 +217,19 @@ const Usuarios: React.FC = () => {
     const matchesRole = selectedRole === 'all' || user.role === selectedRole;
     return matchesSearch && matchesRole;
   });
+
+  if (loading) {
+    return (
+      <div className="p-6 space-y-6">
+        <div className="flex justify-between items-center">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900">Gerenciar Usuários</h1>
+            <p className="text-gray-600">Carregando usuários...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-6 space-y-6">
@@ -194,34 +297,42 @@ const Usuarios: React.FC = () => {
                 </tr>
               </thead>
               <tbody>
-                {filteredUsers.map((user) => (
-                  <tr key={user.id} className="border-b hover:bg-gray-50">
-                    <td className="p-3 font-medium">{user.name}</td>
-                    <td className="p-3 text-gray-600">{user.email}</td>
-                    <td className="p-3">{getRoleBadge(user.role)}</td>
-                    <td className="p-3 text-gray-600">
-                      {getGroupName(user.groupId)}
-                    </td>
-                    <td className="p-3">
-                      <div className="flex space-x-2">
-                        <Button 
-                          variant="outline" 
-                          size="sm"
-                          onClick={() => handleEditUser(user)}
-                        >
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                        <Button 
-                          variant="outline" 
-                          size="sm"
-                          onClick={() => handleDeleteUser(user)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
+                {filteredUsers.length === 0 ? (
+                  <tr>
+                    <td colSpan={5} className="text-center py-8 text-gray-500">
+                      {users.length === 0 ? 'Nenhum usuário encontrado.' : 'Nenhum usuário corresponde aos filtros aplicados.'}
                     </td>
                   </tr>
-                ))}
+                ) : (
+                  filteredUsers.map((user) => (
+                    <tr key={user.id} className="border-b hover:bg-gray-50">
+                      <td className="p-3 font-medium">{user.name}</td>
+                      <td className="p-3 text-gray-600">{user.email}</td>
+                      <td className="p-3">{getRoleBadge(user.role)}</td>
+                      <td className="p-3 text-gray-600">
+                        {getGroupName(user.groupId)}
+                      </td>
+                      <td className="p-3">
+                        <div className="flex space-x-2">
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            onClick={() => handleEditUser(user)}
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            onClick={() => handleDeleteUser(user)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>
