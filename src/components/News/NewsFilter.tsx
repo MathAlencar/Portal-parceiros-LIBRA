@@ -1,9 +1,8 @@
-
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Search, Filter, Calendar, AlphabeticalOrder, Tag } from 'lucide-react';
+import { Search, Filter, Calendar, ArrowUpAZ, Tag } from 'lucide-react';
 
 interface NewsFilterProps {
   searchTerm: string;
@@ -28,7 +27,7 @@ const categories = [
 
 const sortOptions = [
   { id: 'recent', label: 'Mais Recentes', icon: Calendar },
-  { id: 'alphabetical', label: 'A-Z', icon: AlphabeticalOrder }
+  { id: 'alphabetical', label: 'A-Z', icon: ArrowUpAZ }
 ];
 
 const NewsFilter: React.FC<NewsFilterProps> = ({

@@ -1,9 +1,8 @@
-
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Search, Filter, Calendar, AlphabeticalOrder, Download, Link } from 'lucide-react';
+import { Search, Filter, Calendar, ArrowUpAZ, Download, Link } from 'lucide-react';
 
 interface MaterialFilterProps {
   searchTerm: string;
@@ -24,7 +23,7 @@ const typeOptions = [
 
 const sortOptions = [
   { id: 'recent', label: 'Mais Recentes', icon: Calendar },
-  { id: 'alphabetical', label: 'A-Z', icon: AlphabeticalOrder }
+  { id: 'alphabetical', label: 'A-Z', icon: ArrowUpAZ }
 ];
 
 const MaterialFilter: React.FC<MaterialFilterProps> = ({
