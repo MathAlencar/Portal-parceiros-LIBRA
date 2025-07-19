@@ -8,17 +8,14 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Material } from '@/types/auth';
 
 const materialSchema = z.object({
   title: z.string().min(1, 'Título é obrigatório'),
-  description: z.string().min(1, 'Descrição é obrigatória'),
-  thumbnailUrl: z.string().url('URL inválida').optional().or(z.literal('')),
-  downloadUrl: z.string().url('URL inválida').optional().or(z.literal(''))
-    .refine((url) => {
-      if (!url) return true;
-      return url.startsWith('https://drive.google.com/');
-    }, 'Link deve ser do Google Drive'),
+  description: z.string().optional(),
+  type: z.enum(['link', 'file'], { required_error: 'Tipo é obrigatório' }),
+  url: z.string().url('URL inválida').optional().or(z.literal('')),
 });
 
 type MaterialFormData = z.infer<typeof materialSchema>;
@@ -41,25 +38,27 @@ const MaterialModal: React.FC<MaterialModalProps> = ({
     defaultValues: {
       title: material?.title || '',
       description: material?.description || '',
-      thumbnailUrl: '',
-      downloadUrl: material?.url || '',
+      type: material?.type || 'link',
+      url: material?.url || '',
     },
   });
+
+  const watchType = form.watch('type');
 
   React.useEffect(() => {
     if (material) {
       form.reset({
         title: material.title,
         description: material.description || '',
-        thumbnailUrl: '',
-        downloadUrl: material.url,
+        type: material.type,
+        url: material.url,
       });
     } else {
       form.reset({
         title: '',
         description: '',
-        thumbnailUrl: '',
-        downloadUrl: '',
+        type: 'link',
+        url: '',
       });
     }
   }, [material, form]);
@@ -114,18 +113,21 @@ const MaterialModal: React.FC<MaterialModalProps> = ({
 
                   <FormField
                     control={form.control}
-                    name="thumbnailUrl"
+                    name="type"
                     render={({ field }) => (
                       <FormItem className="mb-4">
-                        <FormLabel className="text-sm font-medium text-gray-700">Imagem de Capa (opcional)</FormLabel>
-                        <FormControl>
-                          <Input 
-                            {...field} 
-                            placeholder="https://images.unsplash.com/..."
-                            type="url"
-                            className="h-11 rounded-lg border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
-                          />
-                        </FormControl>
+                        <FormLabel className="text-sm font-medium text-gray-700">Tipo *</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value}>
+                          <FormControl>
+                            <SelectTrigger className="h-11 rounded-lg border-gray-200 focus:border-blue-500">
+                              <SelectValue placeholder="Selecione o tipo" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="link">Link Externo</SelectItem>
+                            <SelectItem value="file">Arquivo/Documento</SelectItem>
+                          </SelectContent>
+                        </Select>
                         <FormMessage />
                       </FormItem>
                     )}
@@ -133,21 +135,30 @@ const MaterialModal: React.FC<MaterialModalProps> = ({
 
                   <FormField
                     control={form.control}
-                    name="downloadUrl"
+                    name="url"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel className="text-sm font-medium text-gray-700">Link de Download (opcional)</FormLabel>
+                        <FormLabel className="text-sm font-medium text-gray-700">
+                          {watchType === 'link' ? 'URL Externa' : 'Link do Arquivo'}
+                        </FormLabel>
                         <FormControl>
                           <Input 
                             {...field} 
-                            placeholder="https://drive.google.com/file/d/..."
+                            placeholder={
+                              watchType === 'link' 
+                                ? "https://exemplo.com" 
+                                : "https://drive.google.com/file/d/..."
+                            }
                             type="url"
                             className="h-11 rounded-lg border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
                           />
                         </FormControl>
                         <FormMessage />
                         <p className="text-xs text-gray-500 mt-1">
-                          Link deve ser do Google Drive para funcionar corretamente
+                          {watchType === 'link' 
+                            ? 'Link para conteúdo externo (site, vídeo, etc.)'
+                            : 'Link do Google Drive ou outro serviço de armazenamento'
+                          }
                         </p>
                       </FormItem>
                     )}
@@ -165,7 +176,7 @@ const MaterialModal: React.FC<MaterialModalProps> = ({
                     name="description"
                     render={({ field }) => (
                       <FormItem className="h-full">
-                        <FormLabel className="text-sm font-medium text-gray-700">Descrição *</FormLabel>
+                        <FormLabel className="text-sm font-medium text-gray-700">Descrição</FormLabel>
                         <FormControl>
                           <Textarea 
                             {...field} 

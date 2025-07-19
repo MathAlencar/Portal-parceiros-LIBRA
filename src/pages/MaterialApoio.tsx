@@ -66,7 +66,7 @@ const MaterialApoio: React.FC = () => {
       const formattedMaterials: MaterialWithDetails[] = data.map(material => ({
         id: material.id,
         title: material.title,
-        type: material.type,
+        type: (material.type === 'link' || material.type === 'file') ? material.type : 'file', // Type assertion with fallback
         url: material.url,
         description: material.description || '',
         createdAt: material.created_at,
@@ -189,7 +189,7 @@ const MaterialApoio: React.FC = () => {
             title: data.title,
             description: data.description,
             url: data.downloadUrl || data.url,
-            type: data.downloadUrl ? 'file' : 'link'
+            type: data.type || (data.downloadUrl ? 'file' : 'link')
           })
           .eq('id', selectedMaterial.id);
 
@@ -215,7 +215,7 @@ const MaterialApoio: React.FC = () => {
             title: data.title,
             description: data.description,
             url: data.downloadUrl || data.url,
-            type: data.downloadUrl ? 'file' : 'link'
+            type: data.type || (data.downloadUrl ? 'file' : 'link')
           });
 
         if (error) {

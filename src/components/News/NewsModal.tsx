@@ -15,6 +15,7 @@ const newsSchema = z.object({
   category: z.string().min(1, "Categoria é obrigatória"),
   imageUrl: z.string().url("URL da imagem deve ser válida").optional().or(z.literal("")),
   content: z.string().min(1, "Conteúdo é obrigatório"),
+  excerpt: z.string().optional(),
 });
 
 type NewsFormData = z.infer<typeof newsSchema>;
@@ -43,6 +44,7 @@ const NewsModal: React.FC<NewsModalProps> = ({ isOpen, onClose, onSave, editingN
       category: '',
       imageUrl: '',
       content: '',
+      excerpt: '',
     },
   });
 
@@ -53,6 +55,7 @@ const NewsModal: React.FC<NewsModalProps> = ({ isOpen, onClose, onSave, editingN
         category: editingNews.category || '',
         imageUrl: editingNews.imageUrl || '',
         content: editingNews.content || '',
+        excerpt: editingNews.excerpt || '',
       });
     } else {
       form.reset({
@@ -60,11 +63,16 @@ const NewsModal: React.FC<NewsModalProps> = ({ isOpen, onClose, onSave, editingN
         category: '',
         imageUrl: '',
         content: '',
+        excerpt: '',
       });
     }
   }, [editingNews, form, isOpen]);
 
   const onSubmit = (data: NewsFormData) => {
+    // Generate excerpt if not provided
+    if (!data.excerpt && data.content) {
+      data.excerpt = data.content.substring(0, 150) + (data.content.length > 150 ? '...' : '');
+    }
     onSave(data);
     form.reset();
     onClose();
@@ -142,12 +150,30 @@ const NewsModal: React.FC<NewsModalProps> = ({ isOpen, onClose, onSave, editingN
                     control={form.control}
                     name="imageUrl"
                     render={({ field }) => (
-                      <FormItem>
+                      <FormItem className="mb-4">
                         <FormLabel className="text-sm font-medium text-gray-700">URL da Imagem (opcional)</FormLabel>
                         <FormControl>
                           <Input 
                             placeholder="https://exemplo.com/imagem.jpg" 
                             className="h-11 rounded-lg border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
+                            {...field} 
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="excerpt"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-sm font-medium text-gray-700">Resumo (opcional)</FormLabel>
+                        <FormControl>
+                          <Textarea 
+                            placeholder="Resumo breve da notícia (será gerado automaticamente se não fornecido)" 
+                            className="min-h-[100px] rounded-lg border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
                             {...field} 
                           />
                         </FormControl>
