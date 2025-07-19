@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -99,9 +100,9 @@ const MaterialApoio: React.FC = () => {
     }
 
     if (typeFilter === 'with-pdf') {
-      filtered = filtered.filter(material => material.downloadUrl);
+      filtered = filtered.filter(material => material.type === 'file');
     } else if (typeFilter === 'with-link') {
-      filtered = filtered.filter(material => material.url && !material.downloadUrl);
+      filtered = filtered.filter(material => material.type === 'link');
     }
 
     if (sortBy === 'recent') {
@@ -116,9 +117,9 @@ const MaterialApoio: React.FC = () => {
   const appliedFilters = useMemo(() => {
     const filters = [];
     if (typeFilter === 'with-pdf') {
-      filters.push('Tipo = Com PDF para Download');
+      filters.push('Tipo = Arquivo');
     } else if (typeFilter === 'with-link') {
-      filters.push('Tipo = Somente com Link Externo');
+      filters.push('Tipo = Link Externo');
     }
     if (sortBy === 'recent') {
       filters.push('Ordenado por: Mais recentes');
@@ -159,6 +160,7 @@ const MaterialApoio: React.FC = () => {
   };
 
   const handleCreateMaterial = () => {
+    console.log('Creating new material - Admin user:', isAdmin);
     setSelectedMaterial(null);
     setIsModalOpen(true);
   };
@@ -305,9 +307,9 @@ const MaterialApoio: React.FC = () => {
             <Button variant="outline" onClick={() => setViewMode('cards')}>
               Visualização Cards
             </Button>
-            <Button onClick={handleCreateMaterial}>
+            <Button onClick={handleCreateMaterial} className="bg-green-600 hover:bg-green-700">
               <Plus className="h-4 w-4 mr-2" />
-              Novo Material
+              Adicionar Material de Apoio
             </Button>
           </div>
         </div>
@@ -350,9 +352,9 @@ const MaterialApoio: React.FC = () => {
             <Button variant="outline" onClick={() => setViewMode('table')}>
               Visualização Tabela
             </Button>
-            <Button onClick={handleCreateMaterial}>
+            <Button onClick={handleCreateMaterial} className="bg-green-600 hover:bg-green-700">
               <Plus className="h-4 w-4 mr-2" />
-              Novo Material
+              Adicionar Material de Apoio
             </Button>
           </div>
         )}
@@ -407,14 +409,14 @@ const MaterialApoio: React.FC = () => {
                 </div>
 
                 <div className="space-y-2">
-                  {material.downloadUrl && (
+                  {material.url && (
                     <Button 
-                      onClick={() => handleDownload(material.downloadUrl!)}
+                      onClick={() => handleDownload(material.url)}
                       className="w-full"
                       variant="default"
                     >
                       <Download className="h-4 w-4 mr-2" />
-                      Baixar PDF
+                      {material.type === 'file' ? 'Baixar Arquivo' : 'Acessar Link'}
                     </Button>
                   )}
 
@@ -473,7 +475,7 @@ const MaterialApoio: React.FC = () => {
                 : 'Tente ajustar os filtros ou limpar a busca para ver mais resultados'}
             </p>
             {isAdmin && materials.length === 0 && (
-              <Button onClick={handleCreateMaterial}>
+              <Button onClick={handleCreateMaterial} className="bg-green-600 hover:bg-green-700">
                 <Plus className="h-4 w-4 mr-2" />
                 Adicionar Primeiro Material
               </Button>

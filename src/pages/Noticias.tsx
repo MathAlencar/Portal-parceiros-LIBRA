@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -141,6 +142,7 @@ const Noticias: React.FC = () => {
   };
 
   const handleCreateNews = () => {
+    console.log('Creating new news - Admin user:', isAdmin);
     setEditingNews(null);
     setNewsModalOpen(true);
   };
@@ -335,9 +337,9 @@ const Noticias: React.FC = () => {
           </p>
         </div>
         {isAdmin && (
-          <Button onClick={handleCreateNews}>
+          <Button onClick={handleCreateNews} className="bg-blue-600 hover:bg-blue-700">
             <Plus className="h-4 w-4 mr-2" />
-            Nova Notícia
+            Criar Notícia
           </Button>
         )}
       </div>
@@ -372,11 +374,17 @@ const Noticias: React.FC = () => {
                   <h3 className="text-lg font-medium text-gray-900 mb-2">
                     Nenhuma notícia encontrada
                   </h3>
-                  <p className="text-gray-600">
+                  <p className="text-gray-600 mb-4">
                     {news.length === 0 
                       ? 'Nenhuma notícia foi publicada ainda.'
                       : 'Tente ajustar os filtros ou limpar a busca para ver mais resultados'}
                   </p>
+                  {news.length === 0 && (
+                    <Button onClick={handleCreateNews} className="bg-blue-600 hover:bg-blue-700">
+                      <Plus className="h-4 w-4 mr-2" />
+                      Criar Primeira Notícia
+                    </Button>
+                  )}
                 </CardContent>
               </Card>
             )}
@@ -388,9 +396,9 @@ const Noticias: React.FC = () => {
                 <h2 className="text-xl font-semibold">Gerenciar Notícias</h2>
                 <p className="text-gray-600">Crie, edite e exclua notícias do sistema</p>
               </div>
-              <Button onClick={handleCreateNews}>
+              <Button onClick={handleCreateNews} className="bg-blue-600 hover:bg-blue-700">
                 <Plus className="h-4 w-4 mr-2" />
-                Nova Notícia
+                Criar Notícia
               </Button>
             </div>
 
