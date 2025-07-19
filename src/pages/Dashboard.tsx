@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -437,7 +438,7 @@ const Dashboard: React.FC = () => {
               </CardContent>
             </Card>
           </div>
-        ) : (
+        ) : userGroup ? (
           <Card className="shadow-md">
             <CardContent className="p-6">
               <div className="flex items-start space-x-3">
@@ -447,17 +448,43 @@ const Dashboard: React.FC = () => {
                     📊 Dashboard não configurado
                   </h3>
                   <p className="text-gray-700 leading-relaxed">
-                    {userGroup ? (
-                      `O grupo "${userGroup.name}" ainda não possui um link do Power BI configurado. Entre em contato com o administrador para configurar o dashboard.`
-                    ) : (
-                      'Você não está vinculado a nenhum grupo ou o grupo não possui dashboard configurado. Entre em contato com o administrador.'
-                    )}
+                    O grupo "{userGroup.name}" ainda não possui um link do Power BI configurado. Entre em contato com o administrador para configurar o dashboard.
                   </p>
                 </div>
               </div>
             </CardContent>
           </Card>
-        )}
+        ) : null}
+
+        {userGroup && userGroup.formUrl ? (
+          <div className="w-full">
+            <Card className="shadow-lg">
+              <CardHeader className="pb-4">
+                <CardTitle className="flex items-center space-x-2">
+                  <FileText className="h-6 w-6 text-green-600" />
+                  <span>Formulário do Grupo - {userGroup.name}</span>
+                </CardTitle>
+                <CardDescription>
+                  Formulário específico configurado para o seu grupo
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="p-0">
+                <div className="w-full bg-white rounded-lg overflow-hidden border">
+                  <iframe
+                    src={userGroup.formUrl}
+                    width="100%"
+                    height="600"
+                    style={{ minHeight: '600px' }}
+                    frameBorder="0"
+                    allowFullScreen
+                    title={`Formulário - ${userGroup.name}`}
+                    className="rounded-lg"
+                  />
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        ) : null}
 
         <Card className="shadow-md">
           <CardContent className="p-6">
@@ -468,11 +495,15 @@ const Dashboard: React.FC = () => {
                   📊 Sobre este Dashboard
                 </h3>
                 <p className="text-gray-700 leading-relaxed">
-                  Este dashboard apresenta uma visão analítica dos dados do seu grupo em tempo real. 
-                  Os dados são atualizados automaticamente com base nos formulários enviados e refletem 
-                  métricas de performance, produtividade e tendências. Use os filtros do Power BI para 
-                  explorar os dados conforme sua necessidade e obter insights valiosos para a gestão 
-                  do seu grupo.
+                  {userGroup ? (
+                    `Este dashboard apresenta uma visão analítica dos dados do seu grupo "${userGroup.name}" em tempo real. 
+                    Os dados são atualizados automaticamente com base nos formulários enviados e refletem 
+                    métricas de performance, produtividade e tendências. Use os filtros do Power BI para 
+                    explorar os dados conforme sua necessidade e obter insights valiosos para a gestão 
+                    do seu grupo.`
+                  ) : (
+                    'Você não está vinculado a nenhum grupo. Entre em contato com o administrador para ser adicionado a um grupo e ter acesso aos dashboards e formulários específicos.'
+                  )}
                 </p>
               </div>
             </div>
