@@ -1,5 +1,4 @@
-
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -9,6 +8,7 @@ import { Material } from '@/types/auth';
 import { useAuth } from '@/contexts/AuthContext';
 import MaterialModal from '@/components/Materials/MaterialModal';
 import MaterialTable from '@/components/Materials/MaterialTable';
+import MaterialFilter from '@/components/Materials/MaterialFilter';
 import DeleteConfirmModal from '@/components/DeleteConfirmModal';
 
 interface MaterialWithDetails extends Material {
@@ -28,6 +28,11 @@ const MaterialApoio: React.FC = () => {
   const [selectedMaterial, setSelectedMaterial] = useState<MaterialWithDetails | null>(null);
   const [materialToDelete, setMaterialToDelete] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'cards' | 'table'>('cards');
+
+  // Filter states
+  const [searchTerm, setSearchTerm] = useState('');
+  const [sortBy, setSortBy] = useState('recent');
+  const [typeFilter, setTypeFilter] = useState('all');
 
   // Mock data for materials
   const [mockMaterials, setMockMaterials] = useState<MaterialWithDetails[]>([
@@ -67,6 +72,51 @@ const MaterialApoio: React.FC = () => {
       downloadUrl: 'https://drive.google.com/file/d/example3'
     }
   ]);
+
+  // Filter and sort logic
+  const filteredAndSortedMaterials = useMemo(() => {
+    let filtered = [...mockMaterials];
+
+    // Apply search filter
+    if (searchTerm) {
+      filtered = filtered.filter(material => 
+        material.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        material.description.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+    }
+
+    // Apply type filter
+    if (typeFilter === 'with-pdf') {
+      filtered = filtered.filter(material => material.downloadUrl);
+    } else if (typeFilter === 'with-link') {
+      filtered = filtered.filter(material => material.url && !material.downloadUrl);
+    }
+
+    // Apply sorting
+    if (sortBy === 'recent') {
+      filtered.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    } else if (sortBy === 'alphabetical') {
+      filtered.sort((a, b) => a.title.localeCompare(b.title));
+    }
+
+    return filtered;
+  }, [mockMaterials, searchTerm, typeFilter, sortBy]);
+
+  // Generate applied filters text
+  const appliedFilters = useMemo(() => {
+    const filters = [];
+    if (typeFilter === 'with-pdf') {
+      filters.push('Tipo = Com PDF para Download');
+    } else if (typeFilter === 'with-link') {
+      filters.push('Tipo = Somente com Link Externo');
+    }
+    if (sortBy === 'recent') {
+      filters.push('Ordenado por: Mais recentes');
+    } else if (sortBy === 'alphabetical') {
+      filters.push('Ordenado por: A-Z');
+    }
+    return filters;
+  }, [typeFilter, sortBy]);
 
   const getTypeIcon = (type: string) => {
     switch (type) {
@@ -225,9 +275,21 @@ const MaterialApoio: React.FC = () => {
         )}
       </div>
 
+      {/* Filters */}
+      <MaterialFilter
+        searchTerm={searchTerm}
+        onSearchChange={setSearchTerm}
+        sortBy={sortBy}
+        onSortChange={setSortBy}
+        typeFilter={typeFilter}
+        onTypeChange={setTypeFilter}
+        totalResults={filteredAndSortedMaterials.length}
+        appliedFilters={appliedFilters}
+      />
+
       {/* Materials Grid */}
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-        {mockMaterials.map((material) => {
+        {filteredAndSortedMaterials.map((material) => {
           const TypeIcon = getTypeIcon(material.type);
           
           return (
@@ -313,21 +375,23 @@ const MaterialApoio: React.FC = () => {
         })}
       </div>
 
-      {mockMaterials.length === 0 && (
+      {filteredAndSortedMaterials.length === 0 && (
         <Card>
           <CardContent className="text-center py-12">
             <div className="text-gray-400 mb-4">
               <FileText className="h-12 w-12 mx-auto" />
             </div>
             <h3 className="text-lg font-medium text-gray-900 mb-2">
-              Nenhum material disponível
+              Nenhum material encontrado
             </h3>
             <p className="text-gray-600 mb-4">
-              {isAdmin 
-                ? 'Comece adicionando o primeiro material de apoio'
-                : 'Novos materiais aparecerão aqui quando disponíveis'}
+              {mockMaterials.length === 0 
+                ? (isAdmin 
+                    ? 'Comece adicionando o primeiro material de apoio'
+                    : 'Novos materiais aparecerão aqui quando disponíveis')
+                : 'Tente ajustar os filtros ou limpar a busca para ver mais resultados'}
             </p>
-            {isAdmin && (
+            {isAdmin && mockMaterials.length === 0 && (
               <Button onClick={handleCreateMaterial}>
                 <Plus className="h-4 w-4 mr-2" />
                 Adicionar Primeiro Material

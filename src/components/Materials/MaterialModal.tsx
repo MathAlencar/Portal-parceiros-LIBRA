@@ -76,96 +76,124 @@ const MaterialModal: React.FC<MaterialModalProps> = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>
+      <DialogContent className="min-w-[900px] max-w-[90vw] max-h-[95vh] overflow-y-auto rounded-xl border-0 shadow-2xl">
+        <DialogHeader className="px-8 pt-8 pb-2">
+          <DialogTitle className="text-2xl font-bold text-gray-900 leading-tight">
             {material ? 'Editar Material' : 'Novo Material'}
           </DialogTitle>
+          <p className="text-sm text-gray-600 mt-2">
+            Preencha os campos abaixo para {material ? 'atualizar' : 'criar'} o material de apoio
+          </p>
         </DialogHeader>
 
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* Left Column */}
-              <div className="space-y-4">
-                <FormField
-                  control={form.control}
-                  name="title"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Título do Material *</FormLabel>
-                      <FormControl>
-                        <Input {...field} placeholder="Ex: Guia do Parceiro" />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+          <form onSubmit={form.handleSubmit(handleSubmit)} className="px-8 pb-8">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+              {/* Left Column - Basic Info */}
+              <div className="lg:col-span-1 space-y-6">
+                <div className="bg-gray-50 rounded-lg p-6 border">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Informações Básicas</h3>
+                  
+                  <FormField
+                    control={form.control}
+                    name="title"
+                    render={({ field }) => (
+                      <FormItem className="mb-4">
+                        <FormLabel className="text-sm font-medium text-gray-700">Título do Material *</FormLabel>
+                        <FormControl>
+                          <Input 
+                            {...field} 
+                            placeholder="Ex: Guia do Parceiro" 
+                            className="h-11 rounded-lg border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
 
-                <FormField
-                  control={form.control}
-                  name="thumbnailUrl"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Imagem de Capa (opcional)</FormLabel>
-                      <FormControl>
-                        <Input 
-                          {...field} 
-                          placeholder="https://images.unsplash.com/..."
-                          type="url"
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                  <FormField
+                    control={form.control}
+                    name="thumbnailUrl"
+                    render={({ field }) => (
+                      <FormItem className="mb-4">
+                        <FormLabel className="text-sm font-medium text-gray-700">Imagem de Capa (opcional)</FormLabel>
+                        <FormControl>
+                          <Input 
+                            {...field} 
+                            placeholder="https://images.unsplash.com/..."
+                            type="url"
+                            className="h-11 rounded-lg border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
 
-                <FormField
-                  control={form.control}
-                  name="downloadUrl"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Link de Download (opcional)</FormLabel>
-                      <FormControl>
-                        <Input 
-                          {...field} 
-                          placeholder="https://drive.google.com/file/d/..."
-                          type="url"
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                  <FormField
+                    control={form.control}
+                    name="downloadUrl"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-sm font-medium text-gray-700">Link de Download (opcional)</FormLabel>
+                        <FormControl>
+                          <Input 
+                            {...field} 
+                            placeholder="https://drive.google.com/file/d/..."
+                            type="url"
+                            className="h-11 rounded-lg border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                        <p className="text-xs text-gray-500 mt-1">
+                          Link deve ser do Google Drive para funcionar corretamente
+                        </p>
+                      </FormItem>
+                    )}
+                  />
+                </div>
               </div>
 
               {/* Right Column - Description */}
-              <div className="space-y-4">
-                <FormField
-                  control={form.control}
-                  name="description"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Descrição *</FormLabel>
-                      <FormControl>
-                        <Textarea 
-                          {...field} 
-                          placeholder="Resumo breve do material..."
-                          className="min-h-[200px] resize-y"
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+              <div className="lg:col-span-2">
+                <div className="bg-gray-50 rounded-lg p-6 border h-full">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Descrição do Material</h3>
+                  
+                  <FormField
+                    control={form.control}
+                    name="description"
+                    render={({ field }) => (
+                      <FormItem className="h-full">
+                        <FormLabel className="text-sm font-medium text-gray-700">Descrição *</FormLabel>
+                        <FormControl>
+                          <Textarea 
+                            {...field} 
+                            placeholder="Descreva detalhadamente o conteúdo do material, seu propósito e como ele pode ajudar os usuários. Seja claro e informativo..."
+                            className="min-h-[400px] resize-y rounded-lg border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-sm leading-relaxed"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
               </div>
             </div>
 
-            <div className="flex justify-end space-x-2 pt-6">
-              <Button type="button" variant="outline" onClick={handleClose}>
+            <div className="flex justify-end space-x-3 pt-8 border-t mt-8">
+              <Button 
+                type="button" 
+                variant="outline" 
+                onClick={handleClose}
+                className="px-6 py-3 rounded-lg border-gray-300 hover:bg-gray-50"
+              >
                 Cancelar
               </Button>
-              <Button type="submit">
+              <Button 
+                type="submit"
+                className="px-6 py-3 rounded-lg bg-blue-600 hover:bg-blue-700 text-white"
+              >
                 {material ? 'Salvar Alterações' : 'Criar Material'}
               </Button>
             </div>

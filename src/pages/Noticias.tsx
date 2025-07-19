@@ -1,5 +1,4 @@
-
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -10,6 +9,7 @@ import { News } from '@/types/auth';
 import { useAuth } from '@/contexts/AuthContext';
 import NewsModal from '@/components/News/NewsModal';
 import NewsTable from '@/components/News/NewsTable';
+import NewsFilter from '@/components/News/NewsFilter';
 import DeleteConfirmModal from '@/components/DeleteConfirmModal';
 
 interface NewsWithCategory extends News {
@@ -22,11 +22,15 @@ const Noticias: React.FC = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const isAdmin = user?.role === 'admin';
-  const [selectedCategory, setSelectedCategory] = useState<string>('todas');
   const [newsModalOpen, setNewsModalOpen] = useState(false);
   const [editingNews, setEditingNews] = useState<NewsWithCategory | null>(null);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [newsToDelete, setNewsToDelete] = useState<NewsWithCategory | null>(null);
+
+  // Filter states
+  const [searchTerm, setSearchTerm] = useState('');
+  const [sortBy, setSortBy] = useState('recent');
+  const [categoryFilter, setCategoryFilter] = useState('todas');
 
   // Mock data with categories and images
   const [mockNews, setMockNews] = useState<NewsWithCategory[]>([
@@ -82,14 +86,47 @@ const Noticias: React.FC = () => {
     { id: 'eventos', label: 'Eventos' }
   ];
 
-  const filteredNews = selectedCategory === 'todas' 
-    ? mockNews 
-    : mockNews.filter(news => news.category === selectedCategory);
+  // Filter and sort logic
+  const filteredAndSortedNews = useMemo(() => {
+    let filtered = [...mockNews];
 
-  // Sort news by date (newest first)
-  const sortedNews = [...mockNews].sort((a, b) => 
-    new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-  );
+    // Apply search filter
+    if (searchTerm) {
+      filtered = filtered.filter(news => 
+        news.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        news.content.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+    }
+
+    // Apply category filter
+    if (categoryFilter !== 'todas') {
+      filtered = filtered.filter(news => news.category === categoryFilter);
+    }
+
+    // Apply sorting
+    if (sortBy === 'recent') {
+      filtered.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    } else if (sortBy === 'alphabetical') {
+      filtered.sort((a, b) => a.title.localeCompare(b.title));
+    }
+
+    return filtered;
+  }, [mockNews, searchTerm, categoryFilter, sortBy]);
+
+  // Generate applied filters text
+  const appliedFilters = useMemo(() => {
+    const filters = [];
+    if (categoryFilter !== 'todas') {
+      const category = categories.find(cat => cat.id === categoryFilter);
+      filters.push(`Categoria = ${category?.label}`);
+    }
+    if (sortBy === 'recent') {
+      filters.push('Ordenado por: Mais recentes');
+    } else if (sortBy === 'alphabetical') {
+      filters.push('Ordenado por: A-Z');
+    }
+    return filters;
+  }, [categoryFilter, sortBy, categories]);
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('pt-BR');
@@ -147,6 +184,57 @@ const Noticias: React.FC = () => {
     }
   };
 
+  const NewsGrid = ({ news }: { news: NewsWithCategory[] }) => (
+    <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+      {news.map((newsItem) => (
+        <Card key={newsItem.id} className="overflow-hidden hover:shadow-lg transition-shadow cursor-pointer group">
+          {newsItem.imageUrl && (
+            <div className="h-48 overflow-hidden">
+              <img 
+                src={newsItem.imageUrl} 
+                alt={newsItem.title}
+                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
+              />
+            </div>
+          )}
+          <CardHeader className="pb-3">
+            <div className="flex justify-between items-start mb-2">
+              <Badge variant="secondary" className="mb-2">
+                {categories.find(cat => cat.id === newsItem.category)?.label}
+              </Badge>
+            </div>
+            <CardTitle className="text-lg leading-tight line-clamp-2">{newsItem.title}</CardTitle>
+            <div className="flex items-center space-x-4 text-sm text-gray-500">
+              <div className="flex items-center space-x-1">
+                <Calendar className="h-4 w-4" />
+                <span>{formatDate(newsItem.createdAt)}</span>
+              </div>
+              <div className="flex items-center space-x-1">
+                <User className="h-4 w-4" />
+                <span>Admin</span>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent className="pt-0">
+            <p className="text-gray-700 leading-relaxed mb-4 line-clamp-3">
+              {newsItem.excerpt}
+            </p>
+            
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => handleReadMore(newsItem.id)}
+              className="w-full group-hover:bg-primary group-hover:text-primary-foreground transition-colors"
+            >
+              Ler mais
+              <ArrowRight className="h-4 w-4 ml-2" />
+            </Button>
+          </CardContent>
+        </Card>
+      ))}
+    </div>
+  );
+
   return (
     <div className="p-6 space-y-6">
       <div className="flex justify-between items-center">
@@ -166,72 +254,21 @@ const Noticias: React.FC = () => {
           </TabsList>
 
           <TabsContent value="visualizar" className="space-y-6">
-            {/* Categories Navigation */}
-            <div className="flex flex-wrap gap-2">
-              {categories.map((category) => (
-                <Button
-                  key={category.id}
-                  variant={selectedCategory === category.id ? "default" : "outline"}
-                  onClick={() => setSelectedCategory(category.id)}
-                  className="mb-2"
-                >
-                  {category.label}
-                </Button>
-              ))}
-            </div>
+            <NewsFilter
+              searchTerm={searchTerm}
+              onSearchChange={setSearchTerm}
+              sortBy={sortBy}
+              onSortChange={setSortBy}
+              categoryFilter={categoryFilter}
+              onCategoryChange={setCategoryFilter}
+              totalResults={filteredAndSortedNews.length}
+              appliedFilters={appliedFilters}
+            />
 
-            {/* News Grid */}
-            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-              {filteredNews.map((news) => (
-                <Card key={news.id} className="overflow-hidden hover:shadow-lg transition-shadow cursor-pointer group">
-                  {news.imageUrl && (
-                    <div className="h-48 overflow-hidden">
-                      <img 
-                        src={news.imageUrl} 
-                        alt={news.title}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
-                      />
-                    </div>
-                  )}
-                  <CardHeader className="pb-3">
-                    <div className="flex justify-between items-start mb-2">
-                      <Badge variant="secondary" className="mb-2">
-                        {categories.find(cat => cat.id === news.category)?.label}
-                      </Badge>
-                    </div>
-                    <CardTitle className="text-lg leading-tight line-clamp-2">{news.title}</CardTitle>
-                    <div className="flex items-center space-x-4 text-sm text-gray-500">
-                      <div className="flex items-center space-x-1">
-                        <Calendar className="h-4 w-4" />
-                        <span>{formatDate(news.createdAt)}</span>
-                      </div>
-                      <div className="flex items-center space-x-1">
-                        <User className="h-4 w-4" />
-                        <span>Admin</span>
-                      </div>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="pt-0">
-                    <p className="text-gray-700 leading-relaxed mb-4 line-clamp-3">
-                      {news.excerpt}
-                    </p>
-                    
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleReadMore(news.id)}
-                      className="w-full group-hover:bg-primary group-hover:text-primary-foreground transition-colors"
-                    >
-                      Ler mais
-                      <ArrowRight className="h-4 w-4 ml-2" />
-                    </Button>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
+            <NewsGrid news={filteredAndSortedNews} />
 
             {/* Empty state for filtered results */}
-            {filteredNews.length === 0 && (
+            {filteredAndSortedNews.length === 0 && (
               <Card>
                 <CardContent className="text-center py-12">
                   <div className="text-gray-400 mb-4">
@@ -241,9 +278,7 @@ const Noticias: React.FC = () => {
                     Nenhuma notícia encontrada
                   </h3>
                   <p className="text-gray-600">
-                    {selectedCategory === 'todas' 
-                      ? 'Novas notícias aparecerão aqui quando disponíveis'
-                      : `Nenhuma notícia encontrada na categoria "${categories.find(cat => cat.id === selectedCategory)?.label}"`}
+                    Tente ajustar os filtros ou limpar a busca para ver mais resultados
                   </p>
                 </CardContent>
               </Card>
@@ -263,7 +298,7 @@ const Noticias: React.FC = () => {
             </div>
 
             <NewsTable 
-              news={sortedNews}
+              news={mockNews.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())}
               onEdit={handleEditNews}
               onDelete={handleDeleteNews}
             />
@@ -271,72 +306,21 @@ const Noticias: React.FC = () => {
         </Tabs>
       ) : (
         <>
-          {/* Categories Navigation for regular users */}
-          <div className="flex flex-wrap gap-2">
-            {categories.map((category) => (
-              <Button
-                key={category.id}
-                variant={selectedCategory === category.id ? "default" : "outline"}
-                onClick={() => setSelectedCategory(category.id)}
-                className="mb-2"
-              >
-                {category.label}
-              </Button>
-            ))}
-          </div>
+          <NewsFilter
+            searchTerm={searchTerm}
+            onSearchChange={setSearchTerm}
+            sortBy={sortBy}
+            onSortChange={setSortBy}
+            categoryFilter={categoryFilter}
+            onCategoryChange={setCategoryFilter}
+            totalResults={filteredAndSortedNews.length}
+            appliedFilters={appliedFilters}
+          />
 
-          {/* News Grid for regular users */}
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-            {filteredNews.map((news) => (
-              <Card key={news.id} className="overflow-hidden hover:shadow-lg transition-shadow cursor-pointer group">
-                {news.imageUrl && (
-                  <div className="h-48 overflow-hidden">
-                    <img 
-                      src={news.imageUrl} 
-                      alt={news.title}
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
-                    />
-                  </div>
-                )}
-                <CardHeader className="pb-3">
-                  <div className="flex justify-between items-start mb-2">
-                    <Badge variant="secondary" className="mb-2">
-                      {categories.find(cat => cat.id === news.category)?.label}
-                    </Badge>
-                  </div>
-                  <CardTitle className="text-lg leading-tight line-clamp-2">{news.title}</CardTitle>
-                  <div className="flex items-center space-x-4 text-sm text-gray-500">
-                    <div className="flex items-center space-x-1">
-                      <Calendar className="h-4 w-4" />
-                      <span>{formatDate(news.createdAt)}</span>
-                    </div>
-                    <div className="flex items-center space-x-1">
-                      <User className="h-4 w-4" />
-                      <span>Admin</span>
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent className="pt-0">
-                  <p className="text-gray-700 leading-relaxed mb-4 line-clamp-3">
-                    {news.excerpt}
-                  </p>
-                  
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleReadMore(news.id)}
-                    className="w-full group-hover:bg-primary group-hover:text-primary-foreground transition-colors"
-                  >
-                    Ler mais
-                    <ArrowRight className="h-4 w-4 ml-2" />
-                  </Button>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
+          <NewsGrid news={filteredAndSortedNews} />
 
           {/* Empty state for regular users */}
-          {filteredNews.length === 0 && (
+          {filteredAndSortedNews.length === 0 && (
             <Card>
               <CardContent className="text-center py-12">
                 <div className="text-gray-400 mb-4">
@@ -346,9 +330,7 @@ const Noticias: React.FC = () => {
                   Nenhuma notícia encontrada
                 </h3>
                 <p className="text-gray-600">
-                  {selectedCategory === 'todas' 
-                    ? 'Novas notícias aparecerão aqui quando disponíveis'
-                    : `Nenhuma notícia encontrada na categoria "${categories.find(cat => cat.id === selectedCategory)?.label}"`}
+                  Tente ajustar os filtros ou limpar a busca para ver mais resultados
                 </p>
               </CardContent>
             </Card>
