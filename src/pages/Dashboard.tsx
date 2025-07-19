@@ -456,36 +456,6 @@ const Dashboard: React.FC = () => {
           </Card>
         ) : null}
 
-        {userGroup && userGroup.formUrl ? (
-          <div className="w-full">
-            <Card className="shadow-lg">
-              <CardHeader className="pb-4">
-                <CardTitle className="flex items-center space-x-2">
-                  <FileText className="h-6 w-6 text-green-600" />
-                  <span>Formulário do Grupo - {userGroup.name}</span>
-                </CardTitle>
-                <CardDescription>
-                  Formulário específico configurado para o seu grupo
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="p-0">
-                <div className="w-full bg-white rounded-lg overflow-hidden border">
-                  <iframe
-                    src={userGroup.formUrl}
-                    width="100%"
-                    height="600"
-                    style={{ minHeight: '600px' }}
-                    frameBorder="0"
-                    allowFullScreen
-                    title={`Formulário - ${userGroup.name}`}
-                    className="rounded-lg"
-                  />
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        ) : null}
-
         <Card className="shadow-md">
           <CardContent className="p-6">
             <div className="flex items-start space-x-3">
