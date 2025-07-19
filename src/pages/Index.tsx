@@ -17,14 +17,14 @@ import NewsDetail from '@/components/News/NewsDetail';
 import MaterialDetail from '@/components/Materials/MaterialDetail';
 
 const Index = () => {
-  const { isAuthenticated, user } = useAuth();
+  const { isAuthenticated, profile } = useAuth();
 
   if (!isAuthenticated) {
     return <LoginForm />;
   }
 
   // Layout para administradores (usando o novo Layout com sidebar)
-  if (user?.role === 'admin') {
+  if (profile?.role === 'admin') {
     return (
       <Layout>
         <Routes>

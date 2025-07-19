@@ -11,7 +11,7 @@ import {
 import { useAuth } from '@/contexts/AuthContext';
 
 const TopNavigation: React.FC = () => {
-  const { user } = useAuth();
+  const { profile } = useAuth();
 
   const getMenuItems = () => {
     const baseItems = [
@@ -22,7 +22,7 @@ const TopNavigation: React.FC = () => {
       { path: '/simulador', icon: Calculator, label: 'Simulador' }
     ];
 
-    if (user?.role === 'coordenador') {
+    if (profile?.role === 'coordenador') {
       return [
         ...baseItems,
         { path: '/cadastrar-usuario', icon: UserPlus, label: 'Cadastrar Usuário' }
