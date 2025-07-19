@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -6,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Users, FileText, BookOpen, Calculator, TrendingUp, Activity, BarChart3, Settings } from 'lucide-react';
 
 const Dashboard: React.FC = () => {
-  const { user } = useAuth();
+  const { profile } = useAuth();
   const navigate = useNavigate();
 
   // Mock data com segmentação de usuários
@@ -181,7 +182,7 @@ const Dashboard: React.FC = () => {
         {/* Header Section */}
         <div className="mb-6">
           <h1 className="text-3xl font-bold text-gray-900">
-            Dashboard - {user?.name}
+            Dashboard - {profile?.name}
           </h1>
           <p className="text-gray-600 mt-2">
             Visualize os dados e métricas do seu grupo em tempo real
@@ -243,7 +244,7 @@ const Dashboard: React.FC = () => {
 
   return (
     <>
-      {user?.role === 'admin' ? <AdminDashboard /> : <UserDashboard />}
+      {profile?.role === 'admin' ? <AdminDashboard /> : <UserDashboard />}
     </>
   );
 };

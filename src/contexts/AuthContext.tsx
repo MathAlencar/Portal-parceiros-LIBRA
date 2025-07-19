@@ -41,7 +41,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setUser(session?.user ?? null);
         
         if (session?.user) {
-          // Fetch user profile
+          // Fetch user profile with setTimeout to prevent recursion
           setTimeout(async () => {
             try {
               const { data: profileData, error } = await supabase

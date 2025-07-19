@@ -26,7 +26,7 @@ import {
 } from '@/components/ui/sidebar';
 
 const AppSidebar: React.FC = () => {
-  const { user, logout } = useAuth();
+  const { profile, signOut } = useAuth();
   const { state } = useSidebar();
   const isCollapsed = state === 'collapsed';
 
@@ -35,7 +35,7 @@ const AppSidebar: React.FC = () => {
       { path: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' }
     ];
 
-    if (user?.role === 'admin') {
+    if (profile?.role === 'admin') {
       return [
         ...baseItems,
         { path: '/usuarios', icon: Users, label: 'Usuários' },
@@ -46,7 +46,7 @@ const AppSidebar: React.FC = () => {
       ];
     }
 
-    if (user?.role === 'coordenador') {
+    if (profile?.role === 'coordenador') {
       return [
         ...baseItems,
         { path: '/formulario', icon: FileText, label: 'Formulário' },
@@ -81,15 +81,15 @@ const AppSidebar: React.FC = () => {
           {!isCollapsed && (
             <div className="flex flex-col">
               <span className="text-sm font-semibold">SGP Sistema</span>
-              <span className="text-xs text-muted-foreground">{user?.name}</span>
+              <span className="text-xs text-muted-foreground">{profile?.name}</span>
             </div>
           )}
         </div>
         {!isCollapsed && (
           <div className="mt-2">
             <span className="inline-flex items-center rounded-full bg-primary/10 px-2 py-1 text-xs font-medium text-primary">
-              {user?.role === 'admin' ? 'Administrador' : 
-               user?.role === 'coordenador' ? 'Coordenador' : 'Usuário'}
+              {profile?.role === 'admin' ? 'Administrador' : 
+               profile?.role === 'coordenador' ? 'Coordenador' : 'Usuário'}
             </span>
           </div>
         )}
@@ -130,7 +130,7 @@ const AppSidebar: React.FC = () => {
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton 
-              onClick={logout}
+              onClick={signOut}
               tooltip={isCollapsed ? "Sair" : undefined}
               className="w-full justify-start text-destructive hover:bg-destructive/10 hover:text-destructive"
             >
