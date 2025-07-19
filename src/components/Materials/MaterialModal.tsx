@@ -75,136 +75,110 @@ const MaterialModal: React.FC<MaterialModalProps> = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="min-w-[900px] max-w-[90vw] max-h-[95vh] overflow-y-auto rounded-xl border-0 shadow-2xl">
-        <DialogHeader className="px-8 pt-8 pb-2">
-          <DialogTitle className="text-2xl font-bold text-gray-900 leading-tight">
+      <DialogContent className="max-w-4xl w-[95vw] max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="text-2xl font-bold">
             {material ? 'Editar Material' : 'Novo Material'}
           </DialogTitle>
-          <p className="text-sm text-gray-600 mt-2">
-            Preencha os campos abaixo para {material ? 'atualizar' : 'criar'} o material de apoio
-          </p>
         </DialogHeader>
 
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(handleSubmit)} className="px-8 pb-8">
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-              {/* Left Column - Basic Info */}
-              <div className="lg:col-span-1 space-y-6">
-                <div className="bg-gray-50 rounded-lg p-6 border">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Informações Básicas</h3>
-                  
-                  <FormField
-                    control={form.control}
-                    name="title"
-                    render={({ field }) => (
-                      <FormItem className="mb-4">
-                        <FormLabel className="text-sm font-medium text-gray-700">Título do Material *</FormLabel>
-                        <FormControl>
-                          <Input 
-                            {...field} 
-                            placeholder="Ex: Guia do Parceiro" 
-                            className="h-11 rounded-lg border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+          <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-4">
+                <FormField
+                  control={form.control}
+                  name="title"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Título *</FormLabel>
+                      <FormControl>
+                        <Input {...field} placeholder="Digite o título do material" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
 
-                  <FormField
-                    control={form.control}
-                    name="type"
-                    render={({ field }) => (
-                      <FormItem className="mb-4">
-                        <FormLabel className="text-sm font-medium text-gray-700">Tipo *</FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value}>
-                          <FormControl>
-                            <SelectTrigger className="h-11 rounded-lg border-gray-200 focus:border-blue-500">
-                              <SelectValue placeholder="Selecione o tipo" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            <SelectItem value="link">Link Externo</SelectItem>
-                            <SelectItem value="file">Arquivo/Documento</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="url"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="text-sm font-medium text-gray-700">
-                          {watchType === 'link' ? 'URL Externa' : 'Link do Arquivo'}
-                        </FormLabel>
+                <FormField
+                  control={form.control}
+                  name="type"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Tipo *</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value}>
                         <FormControl>
-                          <Input 
-                            {...field} 
-                            placeholder={
-                              watchType === 'link' 
-                                ? "https://exemplo.com" 
-                                : "https://drive.google.com/file/d/..."
-                            }
-                            type="url"
-                            className="h-11 rounded-lg border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
-                          />
+                          <SelectTrigger>
+                            <SelectValue placeholder="Selecione o tipo" />
+                          </SelectTrigger>
                         </FormControl>
-                        <FormMessage />
-                        <p className="text-xs text-gray-500 mt-1">
-                          {watchType === 'link' 
-                            ? 'Link para conteúdo externo (site, vídeo, etc.)'
-                            : 'Link do Google Drive ou outro serviço de armazenamento'
+                        <SelectContent>
+                          <SelectItem value="link">Link Externo</SelectItem>
+                          <SelectItem value="file">Arquivo</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="url"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>
+                        {watchType === 'link' ? 'URL Externa *' : 'Link do Arquivo *'}
+                      </FormLabel>
+                      <FormControl>
+                        <Input 
+                          {...field} 
+                          placeholder={
+                            watchType === 'link' 
+                              ? "https://exemplo.com" 
+                              : "https://drive.google.com/file/d/..."
                           }
-                        </p>
-                      </FormItem>
-                    )}
-                  />
-                </div>
+                          type="url"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                      <p className="text-sm text-gray-500">
+                        {watchType === 'link' 
+                          ? 'Link para conteúdo externo (site, vídeo, etc.)'
+                          : 'Link do Google Drive ou outro serviço de armazenamento'
+                        }
+                      </p>
+                    </FormItem>
+                  )}
+                />
               </div>
 
-              {/* Right Column - Description */}
-              <div className="lg:col-span-2">
-                <div className="bg-gray-50 rounded-lg p-6 border h-full">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Descrição do Material</h3>
-                  
-                  <FormField
-                    control={form.control}
-                    name="description"
-                    render={({ field }) => (
-                      <FormItem className="h-full">
-                        <FormLabel className="text-sm font-medium text-gray-700">Descrição</FormLabel>
-                        <FormControl>
-                          <Textarea 
-                            {...field} 
-                            placeholder="Descreva detalhadamente o conteúdo do material, seu propósito e como ele pode ajudar os usuários. Seja claro e informativo..."
-                            className="min-h-[400px] resize-y rounded-lg border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-sm leading-relaxed"
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
+              <div>
+                <FormField
+                  control={form.control}
+                  name="description"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Descrição</FormLabel>
+                      <FormControl>
+                        <Textarea 
+                          {...field} 
+                          placeholder="Descreva o material..."
+                          className="min-h-[200px]"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
               </div>
             </div>
 
-            <div className="flex justify-end space-x-3 pt-8 border-t mt-8">
-              <Button 
-                type="button" 
-                variant="outline" 
-                onClick={handleClose}
-                className="px-6 py-3 rounded-lg border-gray-300 hover:bg-gray-50"
-              >
+            <div className="flex justify-end space-x-3 pt-6 border-t">
+              <Button type="button" variant="outline" onClick={handleClose}>
                 Cancelar
               </Button>
-              <Button 
-                type="submit"
-                className="px-6 py-3 rounded-lg bg-blue-600 hover:bg-blue-700 text-white"
-              >
+              <Button type="submit">
                 {material ? 'Salvar Alterações' : 'Criar Material'}
               </Button>
             </div>
