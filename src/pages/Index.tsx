@@ -12,6 +12,7 @@ import Noticias from './Noticias';
 import Simulador from './Simulador';
 import Formulario from './Formulario';
 import MaterialApoio from './MaterialApoio';
+import Grupos from './Grupos';
 import NewsDetail from '@/components/News/NewsDetail';
 import MaterialDetail from '@/components/Materials/MaterialDetail';
 
@@ -35,12 +36,7 @@ const Index = () => {
           <Route path="/simulador" element={<Simulador />} />
           <Route path="/materiais" element={<MaterialApoio />} />
           <Route path="/materiais/:id" element={<MaterialDetail />} />
-          <Route path="/grupos" element={
-            <div className="p-6">
-              <h1 className="text-2xl font-bold mb-4">Gerenciar Grupos</h1>
-              <p className="text-gray-600">Funcionalidade em desenvolvimento...</p>
-            </div>
-          } />
+          <Route path="/grupos" element={<Grupos />} />
           <Route path="/simulador-config" element={
             <div className="p-6">
               <h1 className="text-2xl font-bold mb-4">Configuração do Simulador</h1>
