@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
 
@@ -13,6 +14,7 @@ const LoginForm: React.FC = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
+  const [role, setRole] = useState('usuario');
   const [isLoading, setIsLoading] = useState(false);
   const { signIn, signUp } = useAuth();
 
@@ -72,7 +74,7 @@ const LoginForm: React.FC = () => {
 
     setIsLoading(true);
     try {
-      const { error } = await signUp(email, password, name);
+      const { error } = await signUp(email, password, name, role);
       if (error) {
         toast({
           title: "Erro no cadastro",
@@ -192,6 +194,19 @@ const LoginForm: React.FC = () => {
                     required
                     minLength={6}
                   />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="signup-role">Tipo de usuário</Label>
+                  <Select value={role} onValueChange={setRole}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione o tipo de usuário" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="usuario">Usuário Comum</SelectItem>
+                      <SelectItem value="coordenador">Coordenador de Grupos</SelectItem>
+                      <SelectItem value="admin">Administrador</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
                 <Button 
                   type="submit" 
