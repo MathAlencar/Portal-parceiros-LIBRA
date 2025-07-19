@@ -44,11 +44,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           // Fetch user profile with setTimeout to prevent recursion
           setTimeout(async () => {
             try {
+              // Try to fetch profile, but handle case where table doesn't exist
               const { data: profileData, error } = await supabase
-                .from('profiles')
-                .select('*')
-                .eq('id', session.user.id)
-                .single();
+                .rpc('get_current_user_role')
+                .then(() => {
+                  // If function exists, try to get profile
+                  return supabase
+                    .from('profiles')
+                    .select('*')
+                    .eq('id', session.user.id)
+                    .single();
+                })
+                .catch(() => {
+                  // If function or table doesn't exist, return null
+                  return { data: null, error: null };
+                });
               
               if (error) {
                 console.error('Error fetching profile:', error);
