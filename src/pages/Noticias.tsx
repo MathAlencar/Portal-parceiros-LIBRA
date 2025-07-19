@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -96,11 +95,9 @@ const Noticias: React.FC = () => {
     }
   };
 
-  // Filter and sort logic
   const filteredAndSortedNews = useMemo(() => {
     let filtered = [...news];
 
-    // Apply search filter
     if (searchTerm) {
       filtered = filtered.filter(newsItem => 
         newsItem.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -108,12 +105,10 @@ const Noticias: React.FC = () => {
       );
     }
 
-    // Apply category filter
     if (categoryFilter !== 'todas') {
       filtered = filtered.filter(newsItem => newsItem.category === categoryFilter);
     }
 
-    // Apply sorting
     if (sortBy === 'recent') {
       filtered.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
     } else if (sortBy === 'alphabetical') {
@@ -123,7 +118,6 @@ const Noticias: React.FC = () => {
     return filtered;
   }, [news, searchTerm, categoryFilter, sortBy]);
 
-  // Generate applied filters text
   const appliedFilters = useMemo(() => {
     const filters = [];
     if (categoryFilter !== 'todas') {
@@ -185,7 +179,7 @@ const Noticias: React.FC = () => {
         description: "A notícia foi excluída com sucesso.",
       });
 
-      await fetchNews(); // Refresh the list
+      await fetchNews();
       setDeleteModalOpen(false);
       setNewsToDelete(null);
     } catch (error) {
@@ -201,7 +195,6 @@ const Noticias: React.FC = () => {
   const handleSaveNews = async (data: any) => {
     try {
       if (editingNews) {
-        // Edit existing news
         const { error } = await supabase
           .from('news')
           .update({
@@ -209,7 +202,7 @@ const Noticias: React.FC = () => {
             content: data.content,
             category: data.category,
             image_url: data.imageUrl,
-            excerpt: data.content.substring(0, 150) + (data.content.length > 150 ? '...' : '')
+            excerpt: data.excerpt || data.content.substring(0, 150) + (data.content.length > 150 ? '...' : '')
           })
           .eq('id', editingNews.id);
 
@@ -228,7 +221,6 @@ const Noticias: React.FC = () => {
           description: "A notícia foi atualizada com sucesso.",
         });
       } else {
-        // Create new news
         const { error } = await supabase
           .from('news')
           .insert({
@@ -236,7 +228,7 @@ const Noticias: React.FC = () => {
             content: data.content,
             category: data.category,
             image_url: data.imageUrl,
-            excerpt: data.content.substring(0, 150) + (data.content.length > 150 ? '...' : ''),
+            excerpt: data.excerpt || data.content.substring(0, 150) + (data.content.length > 150 ? '...' : ''),
             author_id: user?.id || 'unknown'
           });
 
@@ -256,7 +248,7 @@ const Noticias: React.FC = () => {
         });
       }
 
-      await fetchNews(); // Refresh the list
+      await fetchNews();
       setNewsModalOpen(false);
       setEditingNews(null);
     } catch (error) {
@@ -342,6 +334,12 @@ const Noticias: React.FC = () => {
             {isAdmin ? 'Gerencie as notícias do sistema' : 'Fique por dentro das últimas atualizações'}
           </p>
         </div>
+        {isAdmin && (
+          <Button onClick={handleCreateNews}>
+            <Plus className="h-4 w-4 mr-2" />
+            Nova Notícia
+          </Button>
+        )}
       </div>
 
       {isAdmin ? (

@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -66,12 +65,12 @@ const MaterialApoio: React.FC = () => {
       const formattedMaterials: MaterialWithDetails[] = data.map(material => ({
         id: material.id,
         title: material.title,
-        type: (material.type === 'link' || material.type === 'file') ? material.type : 'file', // Type assertion with fallback
+        type: (material.type === 'link' || material.type === 'file') ? material.type : 'file',
         url: material.url,
         description: material.description || '',
         createdAt: material.created_at,
-        fileSize: 'N/A', // This would need to be calculated or stored
-        downloadCount: 0, // This would need to be tracked separately
+        fileSize: 'N/A',
+        downloadCount: 0,
         thumbnailUrl: 'https://images.unsplash.com/photo-1498050108023-c5249f4df085?w=300',
         downloadUrl: material.url || undefined
       }));
@@ -89,11 +88,9 @@ const MaterialApoio: React.FC = () => {
     }
   };
 
-  // Filter and sort logic
   const filteredAndSortedMaterials = useMemo(() => {
     let filtered = [...materials];
 
-    // Apply search filter
     if (searchTerm) {
       filtered = filtered.filter(material => 
         material.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -101,14 +98,12 @@ const MaterialApoio: React.FC = () => {
       );
     }
 
-    // Apply type filter
     if (typeFilter === 'with-pdf') {
       filtered = filtered.filter(material => material.downloadUrl);
     } else if (typeFilter === 'with-link') {
       filtered = filtered.filter(material => material.url && !material.downloadUrl);
     }
 
-    // Apply sorting
     if (sortBy === 'recent') {
       filtered.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
     } else if (sortBy === 'alphabetical') {
@@ -118,7 +113,6 @@ const MaterialApoio: React.FC = () => {
     return filtered;
   }, [materials, searchTerm, typeFilter, sortBy]);
 
-  // Generate applied filters text
   const appliedFilters = useMemo(() => {
     const filters = [];
     if (typeFilter === 'with-pdf') {
@@ -182,14 +176,13 @@ const MaterialApoio: React.FC = () => {
   const handleSaveMaterial = async (data: any) => {
     try {
       if (selectedMaterial) {
-        // Edit existing material
         const { error } = await supabase
           .from('materials')
           .update({
             title: data.title,
             description: data.description,
-            url: data.downloadUrl || data.url,
-            type: data.type || (data.downloadUrl ? 'file' : 'link')
+            url: data.url,
+            type: data.type
           })
           .eq('id', selectedMaterial.id);
 
@@ -208,14 +201,13 @@ const MaterialApoio: React.FC = () => {
           description: "O material foi atualizado com sucesso.",
         });
       } else {
-        // Create new material
         const { error } = await supabase
           .from('materials')
           .insert({
             title: data.title,
             description: data.description,
-            url: data.downloadUrl || data.url,
-            type: data.type || (data.downloadUrl ? 'file' : 'link')
+            url: data.url,
+            type: data.type
           });
 
         if (error) {
@@ -234,7 +226,7 @@ const MaterialApoio: React.FC = () => {
         });
       }
 
-      await fetchMaterials(); // Refresh the list
+      await fetchMaterials();
       setIsModalOpen(false);
       setSelectedMaterial(null);
     } catch (error) {
@@ -271,7 +263,7 @@ const MaterialApoio: React.FC = () => {
         description: "O material foi excluído com sucesso.",
       });
 
-      await fetchMaterials(); // Refresh the list
+      await fetchMaterials();
       setMaterialToDelete(null);
       setIsDeleteModalOpen(false);
     } catch (error) {
