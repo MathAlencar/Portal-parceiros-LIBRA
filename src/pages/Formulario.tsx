@@ -49,6 +49,16 @@ const initialGarantia = {
   dividaIPTU: '',
 };
 
+// Definições iniciais
+const GARANTIDORES_STORAGE_KEY = 'ploomes_garantidores_dados';
+const initialGarantidor = {
+  estadoCivil: '',
+  nome: '',
+  cpf: '',
+  cnpj: '',
+  profissao: '',
+};
+
 const Formulario: React.FC = () => {
   const [etapa, setEtapa] = useState(0);
   const [quantidade, setQuantidade] = useState<number | null>(null);
@@ -62,6 +72,13 @@ const Formulario: React.FC = () => {
 
   // Estado dos dados da garantia
   const [garantia, setGarantia] = useState({ ...initialGarantia });
+
+  // Estado dos dados dos garantidores
+  const [garantidores, setGarantidores] = useState([{ ...initialGarantidor }]);
+  const [showGarantidorModal, setShowGarantidorModal] = useState(false);
+  const [showQtdGarantidores, setShowQtdGarantidores] = useState(false);
+  const [showGarantidores, setShowGarantidores] = useState(false);
+  const [qtdGarantidores, setQtdGarantidores] = useState(1);
 
   const { options, loading, error } = usePloomesOptions(31829);
 
@@ -119,6 +136,31 @@ const Formulario: React.FC = () => {
     localStorage.setItem(GARANTIA_STORAGE_KEY, JSON.stringify(garantia));
   }, [garantia]);
 
+  // Carregar garantidores do localStorage
+  useEffect(() => {
+    const saved = localStorage.getItem(GARANTIDORES_STORAGE_KEY);
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) setGarantidores(parsed);
+      } catch {}
+    }
+  }, []);
+  useEffect(() => {
+    localStorage.setItem(GARANTIDORES_STORAGE_KEY, JSON.stringify(garantidores));
+  }, [garantidores]);
+
+  // Lógica para mostrar etapa garantidores
+  useEffect(() => {
+    if (garantia.garantiaPertenceTomador === 'Imóvel de terceiro') {
+      setShowGarantidores(true);
+    } else {
+      setShowGarantidores(false);
+      setShowQtdGarantidores(false);
+      setShowGarantidorModal(false);
+    }
+  }, [garantia.garantiaPertenceTomador]);
+
   const handleSelect = (opt: PloomesOption) => {
     setQuantidade(Number(opt.Name));
     setQuantidadeId(opt.Id);
@@ -157,6 +199,7 @@ const Formulario: React.FC = () => {
     const savedTomadores = localStorage.getItem(TOMADORES_STORAGE_KEY);
     const savedGarantia = localStorage.getItem(GARANTIA_STORAGE_KEY);
     const savedEmprestimo= localStorage.getItem(EMPRESTIMO_STORAGE_KEY);
+    const savedGarantidores = localStorage.getItem(GARANTIDORES_STORAGE_KEY);
     let qtd = 0;
     if (savedQtd) {
       try {
@@ -169,10 +212,12 @@ const Formulario: React.FC = () => {
         const parsed = JSON.parse(savedTomadores);
         const parsedEmprestimo = JSON.parse(savedEmprestimo);
         const parsedGarantia = JSON.parse(savedGarantia);
+        const parsedGarantidores = JSON.parse(savedGarantidores);
         console.log('Quantidade:', qtd);
         console.log('Tomadores:', parsed);
         console.log('Emprestimo:', parsedEmprestimo);
         console.log('Garantia:', parsedGarantia);
+        console.log('Garantidores:', parsedGarantidores);
       } catch (err) {
         console.log('Erro ao ler dados dos tomadores:', err);
       }
@@ -199,55 +244,57 @@ const Formulario: React.FC = () => {
     </div>
   );
 
+  // Sidebar dinâmica
+  const etapasSidebar = showGarantidores
+    ? [...etapas, 'Garantidores']
+    : etapas;
+
   const renderSidebar = () => (
     <aside className="w-64 bg-white rounded-2xl shadow-lg p-6 space-y-8">
       <nav className="space-y-6">
-        {etapas.map((label, idx) => {
+        {etapasSidebar.map((label, idx) => {
           // Lógica para destacar a etapa correta
           let isActive = false;
-          if (idx === 0) {
-            isActive = etapa > 0 && etapa <= (quantidade || 0);
-          } else if (idx === 1) {
-            isActive = etapa === (quantidade || 0) + 1;
-          } else if (idx === 2) {
-            isActive = etapa > (quantidade || 0) + 1;
-          }
-          // Lógica para habilitar/desabilitar clique
           let isEnabled = false;
           if (idx === 0) {
-            isEnabled = etapa > 0 && etapa <= (quantidade || 0);
+            isActive = (etapa === 0) || (etapa > 0 && etapa <= (quantidade || 0));
+            isEnabled = etapa >= 0;
           } else if (idx === 1) {
+            isActive = etapa === (quantidade || 0) + 1;
             isEnabled = etapa === (quantidade || 0) + 1;
           } else if (idx === 2) {
-            isEnabled = etapa > (quantidade || 0) + 1;
+            isActive = etapa === (quantidade || 0) + 2;
+            isEnabled = etapa === (quantidade || 0) + 2;
+          } else if (showGarantidores && idx === 3) {
+            isActive = (showGarantidores && showQtdGarantidores && etapa === (quantidade || 0) + 3) || (etapa >= (quantidade || 0) + 4 && etapa < (quantidade || 0) + 4 + qtdGarantidores);
+            isEnabled = (showGarantidores && showQtdGarantidores && etapa === (quantidade || 0) + 3) || (etapa >= (quantidade || 0) + 4 && etapa < (quantidade || 0) + 4 + qtdGarantidores);
           }
           return (
-            <Fragment key={idx}>
+            <Fragment key={label}>
               <button
-                className={`flex items-center space-x-4 w-full text-left focus:outline-none ${!isEnabled ? 'pointer-events-none opacity-60' : ''}`}
+                className={`flex items-center w-full space-x-3 px-2 py-2 rounded-lg transition font-semibold text-left ${
+                  isActive
+                    ? 'bg-indigo-100 text-blue-900'
+                    : isEnabled
+                      ? 'bg-white text-gray-700 hover:bg-gray-100'
+                      : 'bg-gray-100 text-gray-400 hover:bg-gray-200'}`}
+                disabled={!isEnabled}
                 onClick={() => {
                   if (!isEnabled) return;
                   if (idx === 0) setEtapa(1);
                   else if (idx === 1) setEtapa((quantidade || 0) + 1);
                   else if (idx === 2) setEtapa((quantidade || 0) + 2);
+                  else if (showGarantidores && idx === 3) setEtapa((quantidade || 0) + 4);
                 }}
               >
-                <div
-                  className={`flex items-center justify-center w-10 h-10 rounded-full transition transform
-                    ${isActive
-                      ? 'bg-indigo-500 text-white scale-110'
-                      : 'bg-gray-100 text-gray-400 hover:bg-gray-200'}`}
-                >
-                  {idx === 0 ? '👤' : idx === 1 ? '💰' : '🏠'}
+                <div className={`w-8 h-8 flex items-center justify-center rounded-full border-2 ${isActive ? 'border-blue-800 bg-blue-800 text-white' : 'border-gray-300 bg-white'}`}>
+                  {idx === 0 ? '👤' : idx === 1 ? '💰' : idx === 2 ? '🏠' : '🛡️'}
                 </div>
-                <span
-                  className={`font-medium transition-colors
-                    ${isActive ? 'text-gray-800' : 'text-gray-500'}`}
-                >
+                <span className="ml-2">
                   {label}
                 </span>
               </button>
-              {idx < etapas.length - 1 && <hr className="border-gray-200" />}
+              {idx < etapasSidebar.length - 1 && <hr className="border-gray-200" />}
             </Fragment>
           );
         })}
@@ -612,7 +659,13 @@ const Formulario: React.FC = () => {
           </button>
           <button
             className="flex-1 py-2 font-medium rounded-full bg-blue-700 text-white hover:bg-blue-800 transition transform hover:scale-105 ml-4"
-            onClick={() => alert('Fluxo finalizado!')}
+            onClick={() => {
+              if (garantia.garantiaPertenceTomador === 'Imóvel de terceiro') {
+                setShowGarantidorModal(true);
+              } else {
+                alert('Fluxo finalizado!');
+              }
+            }}
           >
             Finalizar Cadastro
           </button>
@@ -621,9 +674,179 @@ const Formulario: React.FC = () => {
     );
   };
 
-  // Ajustar renderização principal para incluir etapa de garantia
+  // Modal de aviso para garantidores
+  const renderGarantidorModal = () => (
+    <div className="fixed z-50 inset-0 flex items-center justify-center">
+      <div className="fixed inset-0 bg-black opacity-30" />
+      <div className="bg-white rounded-xl shadow-xl p-8 max-w-md mx-auto z-50 flex flex-col items-center relative">
+        <div className="text-blue-600 text-5xl mb-4">i</div>
+        <h2 className="text-xl font-bold mb-2">Atenção!</h2>
+        <p className="text-gray-700 mb-6 text-center">Como o imóvel é de terceiros, é necessário cadastrar os garantidores da operação.</p>
+        <div className="flex w-full justify-between mt-2">
+          <button
+            className="flex-1 py-2 font-medium rounded-full bg-gray-200 text-gray-700 hover:bg-gray-300 transition transform hover:scale-105 mr-4"
+            onClick={() => {
+              setShowGarantidorModal(false);
+              setEtapa((quantidade || 0) + 1);
+            }}
+          >
+            Voltar
+          </button>
+          <button
+            className="flex-1 py-2 font-medium rounded-full bg-blue-700 text-white hover:bg-blue-800 transition transform hover:scale-105"
+            onClick={() => {
+              setShowGarantidorModal(false);
+              setShowQtdGarantidores(true);
+              setEtapa((quantidade || 0) + 3);
+            }}
+          >
+            Entendi
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+
+  // Etapa para escolher quantidade de garantidores
+  const renderQtdGarantidores = () => (
+    <section className="bg-white rounded-2xl shadow-lg p-8 w-full max-w-md space-y-6 flex flex-col items-center">
+      <h2 className="text-2xl font-semibold text-gray-800 mb-4">1. Quantidade de Garantidores</h2>
+      <div className="w-full flex flex-col items-center">
+        <label className="block mb-2 font-medium">Selecione a quantidade de garantidores</label>
+        <select
+          className="border rounded px-4 py-2 w-40 text-center"
+          value={qtdGarantidores}
+          onChange={e => {
+            const qtd = Number(e.target.value);
+            setQtdGarantidores(qtd);
+            setGarantidores(Array(qtd).fill(null).map(() => ({ ...initialGarantidor })));
+          }}
+        >
+          {[1, 2, 3, 4].map(n => (
+            <option key={n} value={n}>{n}</option>
+          ))}
+        </select>
+      </div>
+      <button
+        className="w-full py-3 font-semibold rounded-full bg-indigo-600 text-white hover:bg-indigo-700 transition transform hover:scale-105 disabled:opacity-50 mt-6"
+        onClick={() => {
+          setShowQtdGarantidores(false);
+          setEtapa((quantidade || 0) + 4);
+        }}
+      >
+        Continuar
+      </button>
+    </section>
+  );
+
+  // Formulário de garantidores
+  const renderGarantidores = () => {
+    // O índice do garantidor atual é etapa - ((quantidade || 0) + 4)
+    const idx = etapa - ((quantidade || 0) + 4);
+    const garantidor = garantidores[idx] || { ...initialGarantidor };
+    return (
+      <section className="bg-white rounded-2xl shadow-lg p-8 w-full max-w-2xl space-y-6 flex flex-col items-center justify-center">
+        <h2 className="text-2xl font-semibold text-gray-800 mb-4">2. Garantidor {idx + 1}</h2>
+        <div className="w-full bg-blue-50 border border-blue-200 rounded-xl p-6 mb-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+            <InputText
+              inputName="Estado Civil"
+              termo={garantidor.estadoCivil}
+              onSetName={v => {
+                setGarantidores(prev => {
+                  const novo = [...prev];
+                  novo[idx] = { ...novo[idx], estadoCivil: v };
+                  return novo;
+                });
+              }}
+              placeholder="Selecione o estado civil"
+              typeInput="Text"
+            />
+            <InputText
+              inputName="Nome"
+              termo={garantidor.nome}
+              onSetName={v => {
+                setGarantidores(prev => {
+                  const novo = [...prev];
+                  novo[idx] = { ...novo[idx], nome: v };
+                  return novo;
+                });
+              }}
+              placeholder="Digite o nome"
+              typeInput="Text"
+            />
+            <InputText
+              inputName="CPF"
+              termo={garantidor.cpf}
+              onSetName={v => {
+                setGarantidores(prev => {
+                  const novo = [...prev];
+                  novo[idx] = { ...novo[idx], cpf: v };
+                  return novo;
+                });
+              }}
+              placeholder="Digite o CPF"
+              typeInput="Cpf"
+            />
+            <InputText
+              inputName="CNPJ"
+              termo={garantidor.cnpj}
+              onSetName={v => {
+                setGarantidores(prev => {
+                  const novo = [...prev];
+                  novo[idx] = { ...novo[idx], cnpj: v };
+                  return novo;
+                });
+              }}
+              placeholder="Digite o CNPJ"
+              typeInput="Cnpj"
+            />
+            <InputText
+              inputName="Profissão"
+              termo={garantidor.profissao}
+              onSetName={v => {
+                setGarantidores(prev => {
+                  const novo = [...prev];
+                  novo[idx] = { ...novo[idx], profissao: v };
+                  return novo;
+                });
+              }}
+              placeholder="Digite o nome do garantidor"
+              typeInput="Text"
+            />
+          </div>
+        </div>
+        <div className="flex w-full justify-between mt-2">
+          <button
+            className="flex-1 py-2 font-medium rounded-full bg-gray-200 text-gray-700 hover:bg-gray-300 transition transform hover:scale-105"
+            onClick={() => {
+              if (idx > 0) setEtapa(etapa - 1);
+              else setEtapa((quantidade || 0) + 2);
+            }}
+          >
+            Voltar
+          </button>
+          <button
+            className="flex-1 py-2 font-medium rounded-full bg-blue-700 text-white hover:bg-blue-800 transition transform hover:scale-105 ml-4"
+            onClick={() => {
+              if (idx + 1 < qtdGarantidores) {
+                setEtapa(etapa + 1);
+              } else {
+                alert('Cadastro finalizado!');
+              }
+            }}
+          >
+            {idx + 1 < qtdGarantidores ? 'Próximo Garantidor' : 'Finalizar Cadastro'}
+          </button>
+        </div>
+      </section>
+    );
+  };
+
+  // Ajustar renderização principal para incluir fluxo correto
   return (
     <>
+      {showGarantidorModal && renderGarantidorModal()}
       {renderBanner()}
       <main className="min-h-screen bg-gradient-to-r from-purple-100 to-indigo-100 flex items-start justify-center py-16">
         <div className="flex space-x-12 max-w-7xl w-full px-4">
@@ -637,7 +860,11 @@ const Formulario: React.FC = () => {
                   ? renderEmprestimo()
                   : etapa === (quantidade || 0) + 2
                     ? renderGarantia()
-                    : null}
+                    : showGarantidores && showQtdGarantidores && etapa === (quantidade || 0) + 3
+                      ? renderQtdGarantidores()
+                      : showGarantidores && etapa >= (quantidade || 0) + 4 && etapa < (quantidade || 0) + 4 + qtdGarantidores
+                        ? renderGarantidores()
+                        : null}
           </div>
         </div>
         {/* Botão de debug fixo no canto inferior direito */}
