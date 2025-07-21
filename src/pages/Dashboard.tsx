@@ -54,7 +54,7 @@ const Dashboard: React.FC = () => {
       setLoading(true);
       
       if (profile?.group_id) {
-        console.log('Dashboard: Fetching group data for user group:', profile.group_id);
+        // console.log('Dashboard: Fetching group data for user group:', profile.group_id);
         
         const { data: groupData, error } = await supabase
           .from('groups')
@@ -73,11 +73,11 @@ const Dashboard: React.FC = () => {
             createdAt: groupData.created_at
           };
           
-          console.log('Dashboard: User group data loaded:', formattedGroup);
+          // console.log('Dashboard: User group data loaded:', formattedGroup);
           setUserGroup(formattedGroup);
         }
       } else {
-        console.log('Dashboard: User has no group assigned');
+        // console.log('Dashboard: User has no group assigned');
         setUserGroup(null);
       }
     } catch (error) {
@@ -395,60 +395,66 @@ const Dashboard: React.FC = () => {
   );
 
   const UserDashboard = () => (
-    <div className="min-h-screen bg-gray-50 p-4">
-      <div className="max-w-7xl mx-auto space-y-6">
-        <div className="mb-6">
-          <h1 className="text-3xl font-bold text-gray-900">
-            Dashboard - {profile?.name}
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
+      <div className="container mx-auto px-6 py-8 space-y-8">
+        {/* Menu Toggle for Mobile */}
+        <div className="flex justify-between items-center">
+          <h1 className="text-3xl font-bold text-blue-700">
+            Dashboard - {userGroup?.name || 'Sem Grupo'}
           </h1>
-          <p className="text-gray-600 mt-2">
-            {userGroup ? (
-              <>Grupo: <span className="font-semibold">{userGroup.name}</span> - Visualize os dados e métricas do seu grupo em tempo real</>
-            ) : (
-              'Você não está vinculado a nenhum grupo. Entre em contato com o administrador.'
-            )}
-          </p>
         </div>
 
+        <section className="bg-white shadow-lg rounded-2xl p-6">
+          {userGroup ? (
+            <>
+              <p className="text-gray-700">
+                Grupo: <span className="font-semibold text-gray-900">{userGroup.name}</span>
+              </p>
+              <p className="text-gray-600 mt-2">
+                Visualize os dados e métricas do seu grupo em tempo real.
+              </p>
+            </>
+          ) : (
+            <p className="text-gray-600">
+              Você não está vinculado a nenhum grupo. Entre em contato com o administrador.
+            </p>
+          )}
+        </section>
+
         {userGroup && userGroup.powerBiUrl ? (
-          <div className="w-full">
-            <Card className="shadow-lg">
-              <CardHeader className="pb-4">
-                <CardTitle className="flex items-center space-x-2">
-                  <TrendingUp className="h-6 w-6 text-blue-600" />
-                  <span>Analytics do Grupo - {userGroup.name}</span>
-                </CardTitle>
-                <CardDescription>
-                  Dashboard Power BI configurado especificamente para o seu grupo
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="p-0">
-                <div className="w-full bg-white rounded-lg overflow-hidden border">
-                  <iframe
-                    src={userGroup.powerBiUrl}
-                    width="100%"
-                    height="800"
-                    style={{ minHeight: '800px' }}
-                    frameBorder="0"
-                    allowFullScreen
-                    title={`Power BI Dashboard - ${userGroup.name}`}
-                    className="rounded-lg"
-                  />
-                </div>
-              </CardContent>
-            </Card>
-          </div>
+          <Card className="shadow-xl rounded-2xl">
+            <CardHeader className="pb-4">
+              <CardTitle className="flex items-center space-x-2 text-blue-700">
+                <TrendingUp className="h-6 w-6" />
+                <span>Analytics do Grupo</span>
+              </CardTitle>
+              <CardDescription>
+                Dashboard Power BI configurado especificamente para o seu grupo.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="p-0 bg-white rounded-b-2xl overflow-hidden border-t">
+              <iframe
+                src={userGroup.powerBiUrl}
+                width="100%"
+                height="700"
+                frameBorder="0"
+                allowFullScreen
+                title={`Power BI - ${userGroup.name}`}
+                className="rounded-b-2xl"
+              />
+            </CardContent>
+          </Card>
         ) : userGroup ? (
-          <Card className="shadow-md">
-            <CardContent className="p-6">
-              <div className="flex items-start space-x-3">
-                <BarChart3 className="h-5 w-5 text-orange-600 mt-0.5 flex-shrink-0" />
+          <Card className="shadow-md rounded-2xl">
+            <CardContent className="p-6 bg-white">
+              <div className="flex items-start space-x-4">
+                <BarChart3 className="h-5 w-5 text-orange-500 mt-1 flex-shrink-0" />
                 <div>
-                  <h3 className="text-lg font-semibold text-gray-900 mb-3">
+                  <h3 className="text-xl font-semibold text-gray-900 mb-2">
                     📊 Dashboard não configurado
                   </h3>
-                  <p className="text-gray-700 leading-relaxed">
-                    O grupo "{userGroup.name}" ainda não possui um link do Power BI configurado. Entre em contato com o administrador para configurar o dashboard.
+                  <p className="text-gray-700">
+                    O grupo <span className="font-medium">"{userGroup.name}"</span> ainda não possui um link do Power BI configurado. Entre em contato com o administrador.
                   </p>
                 </div>
               </div>
@@ -456,21 +462,17 @@ const Dashboard: React.FC = () => {
           </Card>
         ) : null}
 
-        <Card className="shadow-md">
-          <CardContent className="p-6">
-            <div className="flex items-start space-x-3">
-              <BarChart3 className="h-5 w-5 text-green-600 mt-0.5 flex-shrink-0" />
+        <Card className="shadow-md rounded-2xl">
+          <CardContent className="p-6 bg-white">
+            <div className="flex items-start space-x-4">
+              <BarChart3 className="h-5 w-5 text-green-600 mt-1 flex-shrink-0" />
               <div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-3">
+                <h3 className="text-xl font-semibold text-gray-900 mb-2">
                   📊 Sobre este Dashboard
                 </h3>
                 <p className="text-gray-700 leading-relaxed">
                   {userGroup ? (
-                    `Este dashboard apresenta uma visão analítica dos dados do seu grupo "${userGroup.name}" em tempo real. 
-                    Os dados são atualizados automaticamente com base nos formulários enviados e refletem 
-                    métricas de performance, produtividade e tendências. Use os filtros do Power BI para 
-                    explorar os dados conforme sua necessidade e obter insights valiosos para a gestão 
-                    do seu grupo.`
+                    `Este dashboard apresenta uma visão analítica dos dados do seu grupo ${userGroup.name} em tempo real. Os dados são atualizados automaticamente com base nos formulários enviados e refletem métricas de performance, produtividade e tendências. Use os filtros do Power BI para explorar os dados conforme sua necessidade e obter insights valiosos para a gestão do seu grupo.`
                   ) : (
                     'Você não está vinculado a nenhum grupo. Entre em contato com o administrador para ser adicionado a um grupo e ter acesso aos dashboards e formulários específicos.'
                   )}

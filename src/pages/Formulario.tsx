@@ -69,7 +69,9 @@ const Formulario: React.FC = () => {
       <div className="max-w-7xl mx-auto space-y-6">
         {/* Header Section */}
         <div className="mb-6">
-          <h1 className="text-3xl font-bold text-gray-900">Formulário do Grupo</h1>
+          <h1 className="text-3xl font-bold text-gray-900">
+            Formulário de cadastro - {userGroup?.name}
+          </h1>
           <p className="text-gray-600 mt-2">
             {userGroup ? (
               <>Grupo: <span className="font-semibold">{userGroup.name}</span> - Complete o formulário específico do seu grupo</>
@@ -86,7 +88,7 @@ const Formulario: React.FC = () => {
               <CardHeader className="pb-4">
                 <CardTitle className="flex items-center space-x-2">
                   <FileText className="h-6 w-6 text-blue-600" />
-                  <span>Formulário de Avaliação</span>
+                  <span>Formulário</span>
                 </CardTitle>
                 <CardDescription>
                   Formulário configurado especificamente para o seu grupo - {userGroup.name}
