@@ -19,6 +19,36 @@ const initialTomador = {
   data: '',
 };
 
+const EMPRESTIMO_STORAGE_KEY = 'ploomes_emprestimo_dados';
+const initialEmprestimo = {
+  amortizacao: '',
+  carencia: '',
+  valorSolicitado: '',
+  rendaTotal: '',
+  prazoSolicitado: '',
+  jurosSolicitado: '',
+  comentarios: '',
+  motivo: '',
+};
+
+const GARANTIA_STORAGE_KEY = 'ploomes_garantia_dados';
+const initialGarantia = {
+  garantiaPertenceTomador: '',
+  valorGarantia: '',
+  cidadeGarantia: '',
+  ruralUrbano: '',
+  enderecoGarantia: '',
+  unidadeFederativa: '',
+  situacaoGarantia: '',
+  escritura: '',
+  nomeMatrícula: '',
+  processoInventario: '',
+  penhora: '',
+  penhoraAtiva: '',
+  dividaCondominio: '',
+  dividaIPTU: '',
+};
+
 const Formulario: React.FC = () => {
   const [etapa, setEtapa] = useState(0);
   const [quantidade, setQuantidade] = useState<number | null>(null);
@@ -26,6 +56,12 @@ const Formulario: React.FC = () => {
   const [tomadores, setTomadores] = useState(
     Array(4).fill(null).map(() => ({ ...initialTomador }))
   );
+
+  // Estado dos dados do empréstimo
+  const [emprestimo, setEmprestimo] = useState({ ...initialEmprestimo });
+
+  // Estado dos dados da garantia
+  const [garantia, setGarantia] = useState({ ...initialGarantia });
 
   const { options, loading, error } = usePloomesOptions(31829);
 
@@ -50,6 +86,38 @@ const Formulario: React.FC = () => {
   useEffect(() => {
     localStorage.setItem(TOMADORES_STORAGE_KEY, JSON.stringify(tomadores));
   }, [tomadores]);
+
+  // Carregar dados do empréstimo do localStorage ao iniciar
+  useEffect(() => {
+    const savedEmprestimo = localStorage.getItem(EMPRESTIMO_STORAGE_KEY);
+    if (savedEmprestimo) {
+      try {
+        const parsed = JSON.parse(savedEmprestimo);
+        setEmprestimo({ ...initialEmprestimo, ...parsed });
+      } catch {}
+    }
+  }, []);
+
+  // Salvar dados do empréstimo no localStorage sempre que mudarem
+  useEffect(() => {
+    localStorage.setItem(EMPRESTIMO_STORAGE_KEY, JSON.stringify(emprestimo));
+  }, [emprestimo]);
+
+  // Carregar dados da garantia do localStorage ao iniciar
+  useEffect(() => {
+    const savedGarantia = localStorage.getItem(GARANTIA_STORAGE_KEY);
+    if (savedGarantia) {
+      try {
+        const parsed = JSON.parse(savedGarantia);
+        setGarantia({ ...initialGarantia, ...parsed });
+      } catch {}
+    }
+  }, []);
+
+  // Salvar dados da garantia no localStorage sempre que mudarem
+  useEffect(() => {
+    localStorage.setItem(GARANTIA_STORAGE_KEY, JSON.stringify(garantia));
+  }, [garantia]);
 
   const handleSelect = (opt: PloomesOption) => {
     setQuantidade(Number(opt.Name));
@@ -87,6 +155,8 @@ const Formulario: React.FC = () => {
   const handleDebug = () => {
     const savedQtd = localStorage.getItem(LOCAL_STORAGE_KEY);
     const savedTomadores = localStorage.getItem(TOMADORES_STORAGE_KEY);
+    const savedGarantia = localStorage.getItem(GARANTIA_STORAGE_KEY);
+    const savedEmprestimo= localStorage.getItem(EMPRESTIMO_STORAGE_KEY);
     let qtd = 0;
     if (savedQtd) {
       try {
@@ -97,8 +167,12 @@ const Formulario: React.FC = () => {
     if (savedTomadores) {
       try {
         const parsed = JSON.parse(savedTomadores);
+        const parsedEmprestimo = JSON.parse(savedEmprestimo);
+        const parsedGarantia = JSON.parse(savedGarantia);
         console.log('Quantidade:', qtd);
         console.log('Tomadores:', parsed);
+        console.log('Emprestimo:', parsedEmprestimo);
+        console.log('Garantia:', parsedGarantia);
       } catch (err) {
         console.log('Erro ao ler dados dos tomadores:', err);
       }
@@ -204,7 +278,7 @@ const Formulario: React.FC = () => {
       return <LoadingStep msg="Carregando opções de quantidade de tomadores..." />;
     }
     return (
-      <section className="bg-white rounded-2xl shadow-lg p-8 w-full max-w-9xl space-y-6 flex flex-col items-center">
+      <section className="bg-white rounded-2xl shadow-lg p-8 w-full max-w-2xl space-y-6 flex flex-col items-center">
         <h2 className="text-2xl font-semibold text-gray-800">
           1. Quantidade de Tomadores
         </h2>
@@ -259,7 +333,7 @@ const Formulario: React.FC = () => {
       return <LoadingStep msg={`Agora iremos cadastrar o Tomador ${etapa}...`} />;
     }
     return (
-      <section className="bg-white rounded-2xl shadow-lg p-8 w-full max-w-9xl space-y-6 flex flex-col items-center">
+      <section className="bg-white rounded-2xl shadow-lg p-8 w-full max-w-2xl space-y-6 flex flex-col items-center">
         <h2 className="text-2xl font-semibold text-gray-800">
           Cadastro do Tomador {etapa} de {quantidade}
         </h2>
@@ -313,16 +387,77 @@ const Formulario: React.FC = () => {
     );
   };
 
-  // Renderização da etapa de empréstimo (formulário vazio)
+  // Renderização da etapa de empréstimo (formulário preenchível)
   const renderEmprestimo = () => {
     if (showLoading) {
       return <LoadingStep msg="Agora iremos cadastrar o Empréstimo..." />;
     }
     return (
       <section className="bg-white rounded-2xl shadow-lg p-8 w-full max-w-2xl space-y-6 flex flex-col items-center justify-center">
-        <h2 className="text-2xl font-semibold text-gray-800 mb-4">2. Empréstimo</h2>
-        <div className="w-full h-40 flex items-center justify-center border-2 border-dashed border-indigo-200 rounded-lg">
-          <span className="text-gray-400">Formulário de Empréstimo (vazio)</span>
+        <h2 className="text-2xl font-semibold text-gray-800 mb-4">2. Informações do empréstimo</h2>
+        <div className="w-full bg-blue-50 border border-blue-200 rounded-xl p-6 mb-4">
+          <h3 className="font-bold text-blue-900 mb-4">Informações do Empréstimo</h3>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+            <InputText
+              inputName="Amortização Escolhida"
+              termo={emprestimo.amortizacao}
+              onSetName={v => setEmprestimo(e => ({ ...e, amortizacao: v }))}
+              placeholder="Selecione entre PRICE e SAC"
+              typeInput="Text"
+            />
+            <InputText
+              inputName="Carência"
+              termo={emprestimo.carencia}
+              onSetName={v => setEmprestimo(e => ({ ...e, carencia: v }))}
+              placeholder="Selecione Carência Solicitada"
+              typeInput="Text"
+            />
+            <InputText
+              inputName="Valor Solicitado"
+              termo={emprestimo.valorSolicitado}
+              onSetName={v => setEmprestimo(e => ({ ...e, valorSolicitado: v }))}
+              placeholder="Informe o Valor Solicitado (R$)"
+              typeInput="Money"
+            />
+            <InputText
+              inputName="Renda Total"
+              termo={emprestimo.rendaTotal}
+              onSetName={v => setEmprestimo(e => ({ ...e, rendaTotal: v }))}
+              placeholder="Informe a Renda Total (R$)"
+              typeInput="Money"
+            />
+            <InputText
+              inputName="Prazo Solicitado"
+              termo={emprestimo.prazoSolicitado}
+              onSetName={v => setEmprestimo(e => ({ ...e, prazoSolicitado: v }))}
+              placeholder="Digite o prazo solicitado"
+              typeInput="Text"
+            />
+            <InputText
+              inputName="Juros Solicitado"
+              termo={emprestimo.jurosSolicitado}
+              onSetName={v => setEmprestimo(e => ({ ...e, jurosSolicitado: v }))}
+              placeholder="Juros da operação"
+              typeInput="Juros"
+            />
+          </div>
+          <h3 className="font-bold text-blue-900 mb-2 mt-6">Motivo e Comentários</h3>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <InputText
+              inputName="Comentários"
+              termo={emprestimo.comentarios}
+              onSetName={v => setEmprestimo(e => ({ ...e, comentarios: v }))}
+              placeholder="Comentários sobre o motivo"
+              typeInput="Text"
+            />
+            <InputText
+              inputName="Motivo do Empréstimo"
+              termo={emprestimo.motivo}
+              onSetName={v => setEmprestimo(e => ({ ...e, motivo: v }))}
+              placeholder="Selecione o Motivo do Empréstimo"
+              typeInput="Text"
+            />
+          </div>
         </div>
         <div className="flex w-full justify-between mt-2">
           <button
@@ -335,23 +470,138 @@ const Formulario: React.FC = () => {
             className="flex-1 py-2 font-medium rounded-full bg-indigo-600 text-white hover:bg-indigo-700 transition transform hover:scale-105 ml-4"
             onClick={() => setEtapa((quantidade || 0) + 2)}
           >
-            Próximo
+            Próxima Etapa
           </button>
         </div>
       </section>
     );
   };
 
-  // Renderização da etapa de garantia (formulário vazio)
+  // Renderização da etapa de garantia (formulário preenchível)
   const renderGarantia = () => {
     if (showLoading) {
       return <LoadingStep msg="Agora iremos cadastrar a Garantia..." />;
     }
     return (
       <section className="bg-white rounded-2xl shadow-lg p-8 w-full max-w-2xl space-y-6 flex flex-col items-center justify-center">
-        <h2 className="text-2xl font-semibold text-gray-800 mb-4">3. Garantia</h2>
-        <div className="w-full h-40 flex items-center justify-center border-2 border-dashed border-green-200 rounded-lg">
-          <span className="text-gray-400">Formulário de Garantia (vazio)</span>
+        <h2 className="text-2xl font-semibold text-gray-800 mb-4">3. Condições de Garantia</h2>
+        <div className="w-full bg-blue-50 border border-blue-200 rounded-xl p-6 mb-4">
+          <h3 className="font-bold text-blue-900 mb-4">Dados Básicos da Garantia</h3>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+            <InputText
+              inputName="Garantia pertence ao tomador?"
+              termo={garantia.garantiaPertenceTomador}
+              onSetName={v => setGarantia(e => ({ ...e, garantiaPertenceTomador: v }))}
+              placeholder="Selecione Sim ou Não"
+              typeInput="Text"
+            />
+            <InputText
+              inputName="Valor da Garantia"
+              termo={garantia.valorGarantia}
+              onSetName={v => setGarantia(e => ({ ...e, valorGarantia: v }))}
+              placeholder="Digite o valor da garantia (R$)"
+              typeInput="Money"
+            />
+          </div>
+          <h3 className="font-bold text-blue-900 mb-2 mt-6">Localização</h3>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+            <InputText
+              inputName="Cidade da garantia"
+              termo={garantia.cidadeGarantia}
+              onSetName={v => setGarantia(e => ({ ...e, cidadeGarantia: v }))}
+              placeholder="Selecione a cidade"
+              typeInput="Text"
+            />
+            <InputText
+              inputName="Selecione Rural ou Urbano"
+              termo={garantia.ruralUrbano}
+              onSetName={v => setGarantia(e => ({ ...e, ruralUrbano: v }))}
+              placeholder="Selecione Rural ou Urbano"
+              typeInput="Text"
+            />
+            <InputText
+              inputName="Endereço da Garantia"
+              termo={garantia.enderecoGarantia}
+              onSetName={v => setGarantia(e => ({ ...e, enderecoGarantia: v }))}
+              placeholder="Digite o endereço"
+              typeInput="Text"
+            />
+            <InputText
+              inputName="Unidade Federativa"
+              termo={garantia.unidadeFederativa}
+              onSetName={v => setGarantia(e => ({ ...e, unidadeFederativa: v }))}
+              placeholder="Selecione a unidade federativa"
+              typeInput="Text"
+            />
+          </div>
+          <h3 className="font-bold text-blue-900 mb-2 mt-6">Situação da Garantia</h3>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+            <InputText
+              inputName="Garantia quitada?"
+              termo={garantia.situacaoGarantia}
+              onSetName={v => setGarantia(e => ({ ...e, situacaoGarantia: v }))}
+              placeholder="Selecione Sim ou Não"
+              typeInput="Text"
+            />
+          </div>
+          <h3 className="font-bold text-blue-900 mb-2 mt-6">Documentação</h3>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+            <InputText
+              inputName="Escritura individual?"
+              termo={garantia.escritura}
+              onSetName={v => setGarantia(e => ({ ...e, escritura: v }))}
+              placeholder="Selecione Sim ou Não"
+              typeInput="Text"
+            />
+            <InputText
+              inputName="Nome está na matrícula?"
+              termo={garantia.nomeMatrícula}
+              onSetName={v => setGarantia(e => ({ ...e, nomeMatrícula: v }))}
+              placeholder="Selecione Sim ou Não"
+              typeInput="Text"
+            />
+          </div>
+          <h3 className="font-bold text-blue-900 mb-2 mt-6">Situações Especiais</h3>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+            <InputText
+              inputName="Processo de inventário?"
+              termo={garantia.processoInventario}
+              onSetName={v => setGarantia(e => ({ ...e, processoInventario: v }))}
+              placeholder="Selecione Sim ou Não"
+              typeInput="Text"
+            />
+            <InputText
+              inputName="Penhora?"
+              termo={garantia.penhora}
+              onSetName={v => setGarantia(e => ({ ...e, penhora: v }))}
+              placeholder="Selecione Sim ou Não"
+              typeInput="Text"
+            />
+            <InputText
+              inputName="Penhora ativa?"
+              termo={garantia.penhoraAtiva}
+              onSetName={v => setGarantia(e => ({ ...e, penhoraAtiva: v }))}
+              placeholder="Selecione Sim ou Não"
+              typeInput="Text"
+            />
+          </div>
+          <h3 className="font-bold text-blue-900 mb-2 mt-6">Dívidas</h3>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <InputText
+              inputName="Dívida de condomínio"
+              termo={garantia.dividaCondominio}
+              onSetName={v => setGarantia(e => ({ ...e, dividaCondominio: v }))}
+              placeholder="Selecione Sim ou Não"
+              typeInput="Text"
+            />
+            <InputText
+              inputName="Dívida de IPTU"
+              termo={garantia.dividaIPTU}
+              onSetName={v => setGarantia(e => ({ ...e, dividaIPTU: v }))}
+              placeholder="Selecione Sim ou Não"
+              typeInput="Text"
+            />
+          </div>
         </div>
         <div className="flex w-full justify-between mt-2">
           <button
@@ -361,10 +611,10 @@ const Formulario: React.FC = () => {
             Voltar
           </button>
           <button
-            className="flex-1 py-2 font-medium rounded-full bg-green-600 text-white hover:bg-green-700 transition transform hover:scale-105 ml-4"
+            className="flex-1 py-2 font-medium rounded-full bg-blue-700 text-white hover:bg-blue-800 transition transform hover:scale-105 ml-4"
             onClick={() => alert('Fluxo finalizado!')}
           >
-            Finalizar
+            Finalizar Cadastro
           </button>
         </div>
       </section>

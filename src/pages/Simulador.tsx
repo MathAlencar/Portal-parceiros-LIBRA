@@ -5,7 +5,7 @@ import { Wrench, Calendar, Code } from 'lucide-react';
 
 const Simulador: React.FC = () => {
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-6 space-y-6 mx-auto max--7xl">
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Simulador</h1>

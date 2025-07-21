@@ -297,7 +297,7 @@ const MaterialApoio: React.FC = () => {
   }
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-6 space-y-6 mx-auto max-w-7xl">
       {/* Header com botão de criação para admins */}
       <div className="flex justify-between items-center">
         <div>
