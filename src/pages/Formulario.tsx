@@ -17,6 +17,18 @@ const initialTomador = {
   money: '',
   cep: '',
   data: '',
+  // Novos campos para o formulário completo:
+  estadoCivil: '',
+  tipoPessoa: '',
+  dataNascimento: '',
+  email: '',
+  qualificacaoProfissional: '',
+  profissao: '',
+  rendaFormal: '',
+  comprovacaoRendaFormal: '',
+  rendaInformal: '',
+  comprovacaoRendaInformal: '',
+  rendaTotalInformada: '',
 };
 
 const EMPRESTIMO_STORAGE_KEY = 'ploomes_emprestimo_dados';
@@ -372,64 +384,196 @@ const Formulario: React.FC = () => {
     </div>
   );
 
-  // Renderização do formulário de cada tomador
+  // Formulário de cadastro de tomador
   const renderCadastroTomador = () => {
     const idx = etapa - 1;
-    const tomador = tomadores[idx];
-    if (showLoading) {
-      return <LoadingStep msg={`Agora iremos cadastrar o Tomador ${etapa}...`} />;
-    }
+    const tomador = tomadores[idx] || { ...initialTomador };
+    const isPessoaFisica = tomador.tipoPessoa === 'Pessoa Física';
     return (
-      <section className="bg-white rounded-2xl shadow-lg p-8 w-full max-w-2xl space-y-6 flex flex-col items-center">
-        <h2 className="text-2xl font-semibold text-gray-800">
-          Cadastro do Tomador {etapa} de {quantidade}
-        </h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full">
-          {(
-            [
-              ['nome', 'Nome'],
-              ['cpf', 'CPF'],
-              ['cnpj', 'CNPJ'],
-              ['telefone', 'Telefone'],
-              ['endereco', 'Endereço'],
-              ['juros', 'Juros'],
-              ['money', 'Valor'],
-              ['cep', 'CEP'],
-              ['data', 'Data'],
-            ] as const
-          ).map(([campo, label]) => (
-            <InputText
-              key={campo}
-              inputName={label}
-              termo={tomador[campo]}
-              onSetName={v => updateTomador(idx, campo, v)}
-              placeholder={`Digite ${label.toLowerCase()}`}
-              typeInput={campo === 'cpf' ? 'Cpf' : campo === 'cnpj' ? 'Cnpj' : 
-                campo === 'cep' ? 'Cep' : campo === 'data' ? 'Data' : 'Text'}
-            />
-          ))}
-        </div>
-        <div className="flex justify-between space-x-4 w-full">
-          <button
-            className="flex-1 py-2 font-medium rounded-full bg-gray-200 text-gray-700 \
-              hover:bg-gray-300 transition transform hover:scale-105"
-            onClick={handleVoltar}
-          >
-            Voltar
-          </button>
-          <button
-            className={`flex-1 py-2 font-medium rounded-full transition transform hover:scale-105 \
-              ${etapa < (quantidade || 0)
-                ? 'bg-indigo-600 text-white hover:bg-indigo-700'
-                : 'bg-green-600 text-white hover:bg-green-700'}`}
-            onClick={() => {
-              if (etapa < (quantidade || 0)) handleContinuar();
-              else setEtapa((quantidade || 0) + 1); // Avança para empréstimo
-            }}
-          >
-            {etapa < (quantidade || 0) ? 'Próximo' : 'Avançar para Empréstimo'}
-          </button>
-        </div>
+      <section className="bg-white rounded-2xl shadow-lg p-8 w-full max-w-2xl flex flex-col items-center justify-center">
+        <h2 className="text-lg font-bold text-blue-900 mb-4">Tomador {idx + 1}</h2>
+        <form className="w-full space-y-6">
+          {/* Dados Pessoais */}
+          <fieldset className="border border-blue-200 rounded-xl p-4 mb-2">
+            <legend className="text-blue-900 font-semibold px-2">Dados Pessoais</legend>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-2">
+              <InputText
+                inputName="Estado Civil"
+                termo={tomador.estadoCivil}
+                onSetName={v => setTomadores(prev => { const novo = [...prev]; novo[idx] = { ...novo[idx], estadoCivil: v }; return novo; })}
+                placeholder="Selecione o estado civil"
+                typeInput="Text"
+              />
+              <InputText
+                inputName="Tipo Pessoa - Tomador 1"
+                termo={tomador.tipoPessoa}
+                onSetName={v => setTomadores(prev => { const novo = [...prev]; novo[idx] = { ...novo[idx], tipoPessoa: v }; return novo; })}
+                placeholder="Pessoa Física ou Jurídica"
+                typeInput="Text"
+              />
+              <InputText
+                inputName="Nome"
+                termo={tomador.nome}
+                onSetName={v => setTomadores(prev => { const novo = [...prev]; novo[idx] = { ...novo[idx], nome: v }; return novo; })}
+                placeholder="Digite o nome"
+                typeInput="Text"
+              />
+              <InputText
+                inputName="Data de Nascimento"
+                termo={tomador.dataNascimento}
+                onSetName={v => setTomadores(prev => { const novo = [...prev]; novo[idx] = { ...novo[idx], dataNascimento: v }; return novo; })}
+                placeholder="dd/mm/aaaa"
+                typeInput="Date"
+              />
+            </div>
+          </fieldset>
+
+          {/* Documentação */}
+          <fieldset className="border-t border-blue-200 pt-4 mb-2">
+            <legend className="text-blue-900 font-semibold px-2">Documentação</legend>
+            <div className="grid grid-cols-1 gap-4 mt-2">
+              {isPessoaFisica ? (
+                <InputText
+                  inputName="CPF"
+                  termo={tomador.cpf}
+                  onSetName={v => setTomadores(prev => { const novo = [...prev]; novo[idx] = { ...novo[idx], cpf: v }; return novo; })}
+                  placeholder="Digite seu CPF"
+                  typeInput="Cpf"
+                />
+              ) : (
+                <InputText
+                  inputName="CNPJ"
+                  termo={tomador.cnpj}
+                  onSetName={v => setTomadores(prev => { const novo = [...prev]; novo[idx] = { ...novo[idx], cnpj: v }; return novo; })}
+                  placeholder="Digite seu CNPJ"
+                  typeInput="Cnpj"
+                />
+              )}
+            </div>
+          </fieldset>
+
+          {/* Contato */}
+          <fieldset className="border-t border-blue-200 pt-4 mb-2">
+            <legend className="text-blue-900 font-semibold px-2">Contato</legend>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-2">
+              <InputText
+                inputName="Email"
+                termo={tomador.email}
+                onSetName={v => setTomadores(prev => { const novo = [...prev]; novo[idx] = { ...novo[idx], email: v }; return novo; })}
+                placeholder="Digite seu email"
+                typeInput="Text"
+              />
+              <InputText
+                inputName="Telefone"
+                termo={tomador.telefone}
+                onSetName={v => setTomadores(prev => { const novo = [...prev]; novo[idx] = { ...novo[idx], telefone: v }; return novo; })}
+                placeholder="Digite seu telefone"
+                typeInput="Phone"
+              />
+            </div>
+          </fieldset>
+
+          {/* Endereço */}
+          <fieldset className="border-t border-blue-200 pt-4 mb-2">
+            <legend className="text-blue-900 font-semibold px-2">Endereço</legend>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-2">
+              <InputText
+                inputName="CEP"
+                termo={tomador.cep}
+                onSetName={v => setTomadores(prev => { const novo = [...prev]; novo[idx] = { ...novo[idx], cep: v }; return novo; })}
+                placeholder="Digite o CEP"
+                typeInput="Cep"
+              />
+              <InputText
+                inputName="Endereço"
+                termo={tomador.endereco}
+                onSetName={v => setTomadores(prev => { const novo = [...prev]; novo[idx] = { ...novo[idx], endereco: v }; return novo; })}
+                placeholder="Digite o endereço"
+                typeInput="Text"
+              />
+            </div>
+          </fieldset>
+
+          {/* Profissional */}
+          <fieldset className="border-t border-blue-200 pt-4 mb-2">
+            <legend className="text-blue-900 font-semibold px-2">Profissional</legend>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-2">
+              <InputText
+                inputName="Profissão"
+                termo={tomador.profissao}
+                onSetName={v => setTomadores(prev => { const novo = [...prev]; novo[idx] = { ...novo[idx], profissao: v }; return novo; })}
+                placeholder="Digite a profissão"
+                typeInput="Text"
+              />
+              <InputText
+                inputName="Qualificação Profissional"
+                termo={tomador.qualificacaoProfissional}
+                onSetName={v => setTomadores(prev => { const novo = [...prev]; novo[idx] = { ...novo[idx], qualificacaoProfissional: v }; return novo; })}
+                placeholder="Digite a qualificação"
+                typeInput="Text"
+              />
+            </div>
+          </fieldset>
+
+          {/* Renda */}
+          <fieldset className="border-t border-blue-200 pt-4 mb-2">
+            <legend className="text-blue-900 font-semibold px-2">Renda</legend>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-2">
+              <InputText
+                inputName="Renda Formal"
+                termo={tomador.rendaFormal}
+                onSetName={v => setTomadores(prev => { const novo = [...prev]; novo[idx] = { ...novo[idx], rendaFormal: v }; return novo; })}
+                placeholder="Renda formal"
+                typeInput="Money"
+              />
+              <InputText
+                inputName="Comprovação de Renda Formal"
+                termo={tomador.comprovacaoRendaFormal}
+                onSetName={v => setTomadores(prev => { const novo = [...prev]; novo[idx] = { ...novo[idx], comprovacaoRendaFormal: v }; return novo; })}
+                placeholder="Comprovação de renda formal"
+                typeInput="Text"
+              />
+              <InputText
+                inputName="Renda Informal"
+                termo={tomador.rendaInformal}
+                onSetName={v => setTomadores(prev => { const novo = [...prev]; novo[idx] = { ...novo[idx], rendaInformal: v }; return novo; })}
+                placeholder="Renda informal"
+                typeInput="Money"
+              />
+              <InputText
+                inputName="Comprovação de Renda Informal"
+                termo={tomador.comprovacaoRendaInformal}
+                onSetName={v => setTomadores(prev => { const novo = [...prev]; novo[idx] = { ...novo[idx], comprovacaoRendaInformal: v }; return novo; })}
+                placeholder="Comprovação de renda informal"
+                typeInput="Text"
+              />
+              <InputText
+                inputName="Renda Total Informada"
+                termo={tomador.rendaTotalInformada}
+                onSetName={v => setTomadores(prev => { const novo = [...prev]; novo[idx] = { ...novo[idx], rendaTotalInformada: v }; return novo; })}
+                placeholder="Renda total"
+                typeInput="Money"
+              />
+            </div>
+          </fieldset>
+
+          <div className="flex w-full justify-between mt-6">
+            <button
+              className="py-2 px-6 font-medium rounded-full bg-gray-200 text-gray-700 hover:bg-gray-300 transition"
+              type="button"
+              onClick={() => setEtapa(etapa - 1)}
+            >
+              Voltar
+            </button>
+            <button
+              className="py-2 px-6 font-medium rounded-full bg-blue-700 text-white hover:bg-blue-800 transition ml-4"
+              type="button"
+              onClick={() => setEtapa(etapa + 1)}
+            >
+              Próxima Etapa
+            </button>
+          </div>
+        </form>
       </section>
     );
   };

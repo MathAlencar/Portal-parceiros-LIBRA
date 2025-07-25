@@ -100,7 +100,7 @@ const Header: React.FC<HeaderProps> = ({ onMenuToggle }) => {
 
 
   const UserHeader = () => (
-    <header className="bg-white text-black shadow-md">
+    <header className="bg-blue text-black shadow-md">
       <div className="container mx-auto flex items-center justify-between px-8 py-5">
         <img
           src="https://www.libracredito.com.br/images/site/logo-libra-credito.png"
@@ -108,7 +108,7 @@ const Header: React.FC<HeaderProps> = ({ onMenuToggle }) => {
           className="h-10"
         />
 
-    <nav className="bg-white">
+    <nav>
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex justify-center">
               <div className="flex space-x-8">
