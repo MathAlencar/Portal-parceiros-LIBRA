@@ -1,34 +1,56 @@
 import React from 'react';
-import { PloomesOption } from '@/hooks/usePloomesOptions';
+import Select from 'react-select';
 
 interface SelectInputProps {
-  options: PloomesOption[];
-  onChange?: (option: PloomesOption) => void;
-  value?: number | null;
+  options: { Id: number | string; Name: string }[];
+  value?: string | number;
+  onChange?: (option: any) => void;
+  label?: string;
+  placeholder?: string;
 }
 
-const LOCAL_STORAGE_KEY = 'ploomes_selected_option';
-
-export const SelectInput: React.FC<SelectInputProps> = ({ options, onChange, value }) => {
-  const handleChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const selectedId = Number(e.target.value);
-    const selectedOption = options.find(opt => opt.Id === selectedId);
-    if (selectedOption) {
-      // Salva no localStorage
-      localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify({
-        Id: selectedOption.Id,
-        Name: selectedOption.Name
-      }));
-      if (onChange) onChange(selectedOption);
-    }
-  };
+export const SelectInput: React.FC<SelectInputProps> = ({
+  options,
+  value,
+  onChange,
+  label,
+  placeholder
+}) => {
+  // Transforma as opções para o formato do react-select
+  const selectOptions = options.map(opt => ({ value: String(opt.Id), label: opt.Name }));
+  const selectedOption = selectOptions.find(opt => String(opt.value) === String(value));
 
   return (
-    <select className="border rounded px-3 py-2" value={value ?? ''} onChange={handleChange}>
-      <option value="">Selecione uma opção</option>
-      {options.map(opt => (
-        <option key={opt.Id} value={opt.Id}>{opt.Name}</option>
-      ))}
-    </select>
+    <div className="flex flex-col w-full">
+      {label && (
+        <label className="mb-1 text-sm font-medium text-blue-900">{label}</label>
+      )}
+      <Select
+        options={selectOptions}
+        value={selectedOption || null}
+        onChange={selected => {
+          if (selected && onChange) {
+            onChange({ Id: selected.value, Name: selected.label });
+          } else if (onChange) {
+            onChange({ Id: '', Name: '' });
+          }
+        }}
+        placeholder={placeholder || 'Selecione uma opção'}
+        styles={{
+          menu: (provided) => ({
+            ...provided,
+            maxHeight: 1050,
+            minWidth: '100%', // Garante que o menu tenha pelo menos a largura do select
+          }),
+          option: (provided) => ({
+            ...provided,
+            whiteSpace: 'normal',
+            wordBreak: 'break-word',
+            maxWidth: 400, // Aumenta a largura máxima para melhor leitura
+          }),
+        }}
+        isClearable
+      />
+    </div>
   );
 }; 

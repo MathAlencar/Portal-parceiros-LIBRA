@@ -175,7 +175,7 @@ export const InputText: React.FC<InputTextProps> = ({
           )}
         </>
       )}
-      {typeInput === 'telefone' && (
+      {typeInput === 'Phone' && (
         <input
           autoComplete="off"
           placeholder={placeholder}
@@ -253,7 +253,7 @@ export const InputText: React.FC<InputTextProps> = ({
           id={id}
         />
       )}
-      {typeInput === 'Data' && (
+      {typeInput === 'Date' && (
         <input
           placeholder={placeholder}
           onChange={e => onSetName(e.target.value)}

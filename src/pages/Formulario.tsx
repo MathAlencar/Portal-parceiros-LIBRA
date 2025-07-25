@@ -1,7 +1,9 @@
 import React, { useState, useEffect, Fragment } from 'react';
-import { usePloomesOptions, PloomesOption } from '@/hooks/usePloomesOptions';
+import { usePloomesOptions } from '@/hooks/usePloomesOptions';
+import { TOMADORES_OPTIONS_IDS } from '@/hooks/ploomesOptionsIds';
 import { SelectInput } from '@/components/FormMVP/SelectInput';
 import { InputText } from '@/components/FormInputs/InputText';
+import { QUANTIDADE_TOMADORES_OPTIONS_ID } from '@/hooks/ploomesOptionsIds';
 
 const LOCAL_STORAGE_KEY = 'ploomes_selected_tomadores';
 const TOMADORES_STORAGE_KEY = 'ploomes_tomadores_dados';
@@ -16,12 +18,10 @@ const initialTomador = {
   juros: '',
   money: '',
   cep: '',
-  data: '',
-  // Novos campos para o formulário completo:
-  estadoCivil: '',
-  tipoPessoa: '',
   dataNascimento: '',
   email: '',
+  estadoCivil: { id: '', name: '' },
+  tipoPessoa: '',
   qualificacaoProfissional: '',
   profissao: '',
   rendaFormal: '',
@@ -29,6 +29,8 @@ const initialTomador = {
   rendaInformal: '',
   comprovacaoRendaInformal: '',
   rendaTotalInformada: '',
+  quantidadeSociosPJ: '',
+  ramoPJ: '',
 };
 
 const EMPRESTIMO_STORAGE_KEY = 'ploomes_emprestimo_dados';
@@ -64,7 +66,7 @@ const initialGarantia = {
 // Definições iniciais
 const GARANTIDORES_STORAGE_KEY = 'ploomes_garantidores_dados';
 const initialGarantidor = {
-  estadoCivil: '',
+  estadoCivil: { id: '', name: '' },
   nome: '',
   cpf: '',
   cnpj: '',
@@ -92,7 +94,21 @@ const Formulario: React.FC = () => {
   const [showGarantidores, setShowGarantidores] = useState(false);
   const [qtdGarantidores, setQtdGarantidores] = useState(1);
 
-  const { options, loading, error } = usePloomesOptions(31829);
+  const { options, loading, error } = usePloomesOptions(QUANTIDADE_TOMADORES_OPTIONS_ID);
+  // const estadoCivilOptions = usePloomesOptions(ESTADO_CIVIL_OPTIONS_ID);
+  // const tipoPessoaOptions = usePloomesOptions(TIPO_PESSOA_OPTIONS_ID);
+  // const qualificacaoProfissaoOptions = usePloomesOptions(QUALIFICACAO_PROFISSAO_OPTIONS_ID);
+  // const comprovacaoRendaFormalOptions = usePloomesOptions(COMPROVACAO_RENDA_FORMAL_OPTIONS_ID);
+  // const comprovacaoRendaInformalOptions = usePloomesOptions(COMPROVACAO_RENDA_INFORMAL_OPTIONS_ID);
+  // const quantidadeSociosOptions = usePloomesOptions(QUANTIDADE_SOCIOS_OPTIONS_ID);
+
+  // Hooks de opções para todos os tomadores (sempre na mesma ordem)
+  const estadoCivilOptionsArr = TOMADORES_OPTIONS_IDS.map(ids => usePloomesOptions(ids.estadoCivil));
+  const tipoPessoaOptionsArr = TOMADORES_OPTIONS_IDS.map(ids => usePloomesOptions(ids.tipoPessoa));
+  const qualificacaoProfissaoOptionsArr = TOMADORES_OPTIONS_IDS.map(ids => usePloomesOptions(ids.qualificacaoProfissao));
+  const comprovacaoRendaFormalOptionsArr = TOMADORES_OPTIONS_IDS.map(ids => usePloomesOptions(ids.comprovacaoRendaFormal));
+  const comprovacaoRendaInformalOptionsArr = TOMADORES_OPTIONS_IDS.map(ids => usePloomesOptions(ids.comprovacaoRendaInformal));
+  const quantidadeSociosOptionsArr = TOMADORES_OPTIONS_IDS.map(ids => usePloomesOptions(ids.quantidadeSocios));
 
   useEffect(() => {
     const savedQtd = localStorage.getItem(LOCAL_STORAGE_KEY);
@@ -388,7 +404,16 @@ const Formulario: React.FC = () => {
   const renderCadastroTomador = () => {
     const idx = etapa - 1;
     const tomador = tomadores[idx] || { ...initialTomador };
-    const isPessoaFisica = tomador.tipoPessoa === 'Pessoa Física';
+
+    const estadoCivilOptions = estadoCivilOptionsArr[idx];
+    const tipoPessoaOptions = tipoPessoaOptionsArr[idx];
+    const qualificacaoProfissaoOptions = qualificacaoProfissaoOptionsArr[idx];
+    const comprovacaoRendaFormalOptions = comprovacaoRendaFormalOptionsArr[idx];
+    const comprovacaoRendaInformalOptions = comprovacaoRendaInformalOptionsArr[idx];
+    const quantidadeSociosOptions = quantidadeSociosOptionsArr[idx];
+
+    console.log(idx)
+
     return (
       <section className="bg-white rounded-2xl shadow-lg p-8 w-full max-w-2xl flex flex-col items-center justify-center">
         <h2 className="text-lg font-bold text-blue-900 mb-4">Tomador {idx + 1}</h2>
@@ -397,19 +422,27 @@ const Formulario: React.FC = () => {
           <fieldset className="border border-blue-200 rounded-xl p-4 mb-2">
             <legend className="text-blue-900 font-semibold px-2">Dados Pessoais</legend>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-2">
-              <InputText
-                inputName="Estado Civil"
-                termo={tomador.estadoCivil}
-                onSetName={v => setTomadores(prev => { const novo = [...prev]; novo[idx] = { ...novo[idx], estadoCivil: v }; return novo; })}
+              <SelectInput
+                options={estadoCivilOptions.options}
+                value={tomador.estadoCivil.id ? String(tomador.estadoCivil.id) : undefined}
+                onChange={opt => setTomadores(prev => {
+                  const novo = [...prev];
+                  novo[idx] = { ...novo[idx], estadoCivil: { id: opt.Id, name: opt.Name } };
+                  return novo;
+                })}
+                label="Estado Civil"
                 placeholder="Selecione o estado civil"
-                typeInput="Text"
               />
-              <InputText
-                inputName="Tipo Pessoa - Tomador 1"
-                termo={tomador.tipoPessoa}
-                onSetName={v => setTomadores(prev => { const novo = [...prev]; novo[idx] = { ...novo[idx], tipoPessoa: v }; return novo; })}
+              <SelectInput
+                options={tipoPessoaOptions.options}
+                value={tomador.tipoPessoa.id ? String(tomador.tipoPessoa.id) : undefined}
+                onChange={opt => setTomadores(prev => {
+                  const novo = [...prev];
+                  novo[idx] = { ...novo[idx], tipoPessoa: { id: opt.Id, name: opt.Name } };
+                  return novo;
+                })}
+                label="Tipo Pessoa - Tomador 1"
                 placeholder="Pessoa Física ou Jurídica"
-                typeInput="Text"
               />
               <InputText
                 inputName="Nome"
@@ -431,8 +464,8 @@ const Formulario: React.FC = () => {
           {/* Documentação */}
           <fieldset className="border-t border-blue-200 pt-4 mb-2">
             <legend className="text-blue-900 font-semibold px-2">Documentação</legend>
-            <div className="grid grid-cols-1 gap-4 mt-2">
-              {isPessoaFisica ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-2">
+              {tomador.tipoPessoa?.name?.toLowerCase() === 'pessoa física' ? (
                 <InputText
                   inputName="CPF"
                   termo={tomador.cpf}
@@ -440,14 +473,38 @@ const Formulario: React.FC = () => {
                   placeholder="Digite seu CPF"
                   typeInput="Cpf"
                 />
+              ) : tomador.tipoPessoa?.name?.toLowerCase() === 'pessoa jurídica' ? (
+                <>
+                  <SelectInput
+                    options={quantidadeSociosOptions.options}
+                    value={tomador.quantidadeSociosPJ.id ? String(tomador.quantidadeSociosPJ.id) : undefined}
+                    onChange={opt => setTomadores(prev => {
+                      const novo = [...prev];
+                      novo[idx] = { ...novo[idx], quantidadeSociosPJ: { id: opt.Id, name: opt.Name } };
+                      return novo;
+                    })}
+                    placeholder="Informe a quantidade de sócios"
+                    label="Quantidade de Sócios da PJ"
+                  />
+                  <InputText
+                    inputName="CNPJ"
+                    termo={tomador.cnpj}
+                    onSetName={v => setTomadores(prev => { const novo = [...prev]; novo[idx] = { ...novo[idx], cnpj: v }; return novo; })}
+                    placeholder="Digite seu CNPJ"
+                    typeInput="Cnpj"
+                  />
+                  <InputText
+                    inputName="Digite qual o Ramo da PJ"
+                    termo={tomador.ramoPJ}
+                    onSetName={v => setTomadores(prev => { const novo = [...prev]; novo[idx] = { ...novo[idx], ramoPJ: v }; return novo; })}
+                    placeholder="Informe o ramo da PJ"
+                    typeInput="Text"
+                  />
+                </>
               ) : (
-                <InputText
-                  inputName="CNPJ"
-                  termo={tomador.cnpj}
-                  onSetName={v => setTomadores(prev => { const novo = [...prev]; novo[idx] = { ...novo[idx], cnpj: v }; return novo; })}
-                  placeholder="Digite seu CNPJ"
-                  typeInput="Cnpj"
-                />
+                <div className="bg-blue-50 border border-blue-200 text-blue-900 rounded-lg p-4 text-center">
+                  Selecione o tipo de pessoa (Física ou Jurídica) para exibir os campos de documentação necessários.
+                </div>
               )}
             </div>
           </fieldset>
@@ -505,12 +562,16 @@ const Formulario: React.FC = () => {
                 placeholder="Digite a profissão"
                 typeInput="Text"
               />
-              <InputText
-                inputName="Qualificação Profissional"
-                termo={tomador.qualificacaoProfissional}
-                onSetName={v => setTomadores(prev => { const novo = [...prev]; novo[idx] = { ...novo[idx], qualificacaoProfissional: v }; return novo; })}
+              <SelectInput
+                options={qualificacaoProfissaoOptions.options}
+                value={tomador.qualificacaoProfissional.id ? String(tomador.qualificacaoProfissional.id) : undefined}
+                onChange={opt => setTomadores(prev => {
+                  const novo = [...prev];
+                  novo[idx] = { ...novo[idx], qualificacaoProfissional: { id: opt.Id, name: opt.Name } };
+                  return novo;
+                })}
+                label="Qualificação Profissional"
                 placeholder="Digite a qualificação"
-                typeInput="Text"
               />
             </div>
           </fieldset>
@@ -519,6 +580,17 @@ const Formulario: React.FC = () => {
           <fieldset className="border-t border-blue-200 pt-4 mb-2">
             <legend className="text-blue-900 font-semibold px-2">Renda</legend>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-2">
+              <SelectInput
+                options={comprovacaoRendaFormalOptions.options}
+                value={tomador.comprovacaoRendaFormal.id ? String(tomador.comprovacaoRendaFormal.id) : undefined}
+                onChange={opt => setTomadores(prev => {
+                  const novo = [...prev];
+                  novo[idx] = { ...novo[idx], comprovacaoRendaFormal: { id: opt.Id, name: opt.Name } };
+                  return novo;
+                })}
+                label="Comprovação de renda formal"
+                placeholder="Comprovação de renda formal"
+              />
               <InputText
                 inputName="Renda Formal"
                 termo={tomador.rendaFormal}
@@ -526,12 +598,16 @@ const Formulario: React.FC = () => {
                 placeholder="Renda formal"
                 typeInput="Money"
               />
-              <InputText
-                inputName="Comprovação de Renda Formal"
-                termo={tomador.comprovacaoRendaFormal}
-                onSetName={v => setTomadores(prev => { const novo = [...prev]; novo[idx] = { ...novo[idx], comprovacaoRendaFormal: v }; return novo; })}
-                placeholder="Comprovação de renda formal"
-                typeInput="Text"
+              <SelectInput
+                options={comprovacaoRendaInformalOptions.options}
+                value={tomador.comprovacaoRendaInformal.id ? String(tomador.comprovacaoRendaInformal.id) : undefined}
+                onChange={opt => setTomadores(prev => {
+                  const novo = [...prev];
+                  novo[idx] = { ...novo[idx], comprovacaoRendaInformal: { id: opt.Id, name: opt.Name } };
+                  return novo;
+                })}
+                label="Comprovação de renda informal"
+                placeholder="Comprovação de renda informal"
               />
               <InputText
                 inputName="Renda Informal"
@@ -539,13 +615,6 @@ const Formulario: React.FC = () => {
                 onSetName={v => setTomadores(prev => { const novo = [...prev]; novo[idx] = { ...novo[idx], rendaInformal: v }; return novo; })}
                 placeholder="Renda informal"
                 typeInput="Money"
-              />
-              <InputText
-                inputName="Comprovação de Renda Informal"
-                termo={tomador.comprovacaoRendaInformal}
-                onSetName={v => setTomadores(prev => { const novo = [...prev]; novo[idx] = { ...novo[idx], comprovacaoRendaInformal: v }; return novo; })}
-                placeholder="Comprovação de renda informal"
-                typeInput="Text"
               />
               <InputText
                 inputName="Renda Total Informada"
@@ -893,18 +962,17 @@ const Formulario: React.FC = () => {
         <h2 className="text-2xl font-semibold text-gray-800 mb-4">2. Garantidor {idx + 1}</h2>
         <div className="w-full bg-blue-50 border border-blue-200 rounded-xl p-6 mb-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
-            <InputText
-              inputName="Estado Civil"
-              termo={garantidor.estadoCivil}
-              onSetName={v => {
+            <SelectInput
+              options={options} // Assuming options is available globally or passed as prop
+              value={garantidor.estadoCivil.id ? String(garantidor.estadoCivil.id) : undefined}
+              onChange={opt => {
                 setGarantidores(prev => {
                   const novo = [...prev];
-                  novo[idx] = { ...novo[idx], estadoCivil: v };
+                  novo[idx] = { ...novo[idx], estadoCivil: { id: opt.Id, name: opt.Name } };
                   return novo;
                 });
               }}
               placeholder="Selecione o estado civil"
-              typeInput="Text"
             />
             <InputText
               inputName="Nome"
@@ -1012,12 +1080,23 @@ const Formulario: React.FC = () => {
           </div>
         </div>
         {/* Botão de debug fixo no canto inferior direito */}
-        <button
-          onClick={handleDebug}
-          className="fixed bottom-6 right-6 bg-blue-900 text-white px-6 py-3 rounded-full shadow-xl hover:bg-blue-700 transition z-50 font-bold text-lg tracking-wide"
-        >
-          Debug
-        </button>
+        <div className="fixed bottom-6 right-6 flex flex-col gap-2 z-50">
+          <button
+            onClick={handleDebug}
+            className="bg-blue-900 text-white px-6 py-3 rounded-full shadow-xl hover:bg-blue-700 transition font-bold text-lg tracking-wide"
+          >
+            Debug
+          </button>
+          <button
+            onClick={() => {
+              localStorage.clear();
+              alert('LocalStorage limpo!');
+            }}
+            className="bg-red-600 text-white px-6 py-3 rounded-full shadow-xl hover:bg-red-700 transition font-bold text-lg tracking-wide"
+          >
+            Limpar Dados
+          </button>
+        </div>
       </main>
     </>
   );
