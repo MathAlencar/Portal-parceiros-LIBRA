@@ -7,6 +7,7 @@ interface SelectInputProps {
   onChange?: (option: any) => void;
   label?: string;
   placeholder?: string;
+  error?: string;
 }
 
 export const SelectInput: React.FC<SelectInputProps> = ({
@@ -14,7 +15,8 @@ export const SelectInput: React.FC<SelectInputProps> = ({
   value,
   onChange,
   label,
-  placeholder
+  placeholder,
+  error,
 }) => {
   // Transforma as opções para o formato do react-select
   const selectOptions = options.map(opt => ({ value: String(opt.Id), label: opt.Name }));
@@ -51,6 +53,11 @@ export const SelectInput: React.FC<SelectInputProps> = ({
         }}
         isClearable
       />
+      {error && (
+        <div className="mt-1 text-sm text-red-600 bg-red-50 border border-red-200 rounded px-2 py-1">
+          {error}
+        </div>
+      )}
     </div>
   );
 }; 

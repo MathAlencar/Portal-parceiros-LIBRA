@@ -9,6 +9,7 @@ interface InputTextProps {
   inputName: string;
   hasError?: boolean;
   id?: string;
+  error?: string;
 }
 
 export const InputText: React.FC<InputTextProps> = ({
@@ -19,6 +20,7 @@ export const InputText: React.FC<InputTextProps> = ({
   inputName,
   hasError = false,
   id,
+  error,
 }) => {
   const inputRef = useRef<HTMLInputElement>(null);
   const mapRef = useRef<HTMLDivElement>(null);
@@ -155,6 +157,11 @@ export const InputText: React.FC<InputTextProps> = ({
             id={id}
             autoComplete="off"
           />
+          {error && (
+            <div className="mt-1 text-sm text-red-600 bg-red-50 border border-red-200 rounded px-2 py-1">
+              {error}
+            </div>
+          )}
           {showMapPopup && mapCoordinates && (
             <div
               ref={popupRef}
@@ -187,6 +194,11 @@ export const InputText: React.FC<InputTextProps> = ({
           id={id}
         />
       )}
+      {error && typeInput === 'Phone' && (
+        <div className="mt-1 text-sm text-red-600 bg-red-50 border border-red-200 rounded px-2 py-1">
+          {error}
+        </div>
+      )}
       {typeInput === 'Text' && (
         <input
           placeholder={placeholder}
@@ -197,6 +209,11 @@ export const InputText: React.FC<InputTextProps> = ({
           type="text"
           id={id}
         />
+      )}
+      {error && typeInput === 'Text' && (
+        <div className="mt-1 text-sm text-red-600 bg-red-50 border border-red-200 rounded px-2 py-1">
+          {error}
+        </div>
       )}
       {typeInput === 'Juros' && (
         <input
@@ -209,6 +226,11 @@ export const InputText: React.FC<InputTextProps> = ({
           id={id}
         />
       )}
+      {error && typeInput === 'Juros' && (
+        <div className="mt-1 text-sm text-red-600 bg-red-50 border border-red-200 rounded px-2 py-1">
+          {error}
+        </div>
+      )}
       {typeInput === 'Money' && (
         <input
           placeholder={placeholder}
@@ -219,6 +241,11 @@ export const InputText: React.FC<InputTextProps> = ({
           type="text"
           id={id}
         />
+      )}
+      {error && typeInput === 'Money' && (
+        <div className="mt-1 text-sm text-red-600 bg-red-50 border border-red-200 rounded px-2 py-1">
+          {error}
+        </div>
       )}
       {typeInput === 'Cpf' && (
         <input
@@ -231,6 +258,11 @@ export const InputText: React.FC<InputTextProps> = ({
           id={id}
         />
       )}
+      {error && typeInput === 'Cpf' && (
+        <div className="mt-1 text-sm text-red-600 bg-red-50 border border-red-200 rounded px-2 py-1">
+          {error}
+        </div>
+      )}
       {typeInput === 'Cnpj' && (
         <input
           placeholder={placeholder}
@@ -241,6 +273,11 @@ export const InputText: React.FC<InputTextProps> = ({
           type="text"
           id={id}
         />
+      )}
+      {error && typeInput === 'Cnpj' && (
+        <div className="mt-1 text-sm text-red-600 bg-red-50 border border-red-200 rounded px-2 py-1">
+          {error}
+        </div>
       )}
       {typeInput === 'Cep' && (
         <input
@@ -253,6 +290,11 @@ export const InputText: React.FC<InputTextProps> = ({
           id={id}
         />
       )}
+      {error && typeInput === 'Cep' && (
+        <div className="mt-1 text-sm text-red-600 bg-red-50 border border-red-200 rounded px-2 py-1">
+          {error}
+        </div>
+      )}
       {typeInput === 'Date' && (
         <input
           placeholder={placeholder}
@@ -263,6 +305,11 @@ export const InputText: React.FC<InputTextProps> = ({
           id={id}
           className={`mt-1 w-full px-4 py-2 rounded-lg border ${hasError ? 'border-red-500' : 'border-gray-300'} bg-gray-50 text-gray-900 focus:ring-2 focus:ring-green-400 focus:outline-none`}
         />
+      )}
+      {error && typeInput === 'Date' && (
+        <div className="mt-1 text-sm text-red-600 bg-red-50 border border-red-200 rounded px-2 py-1">
+          {error}
+        </div>
       )}
     </label>
   );

@@ -5,6 +5,91 @@ import { SelectInput } from '@/components/FormMVP/SelectInput';
 import { InputText } from '@/components/FormInputs/InputText';
 import { QUANTIDADE_TOMADORES_OPTIONS_ID } from '@/hooks/ploomesOptionsIds';
 
+// Funções de validação
+const validarCPF = (cpf: string): boolean => {
+  const cpfLimpo = cpf.replace(/[^\d]/g, '');
+  
+  if (cpfLimpo.length !== 11) return false;
+  if (/^(\d)\1{10}$/.test(cpfLimpo)) return false;
+  
+  let soma = 0;
+  for (let i = 0; i < 9; i++) {
+    soma += parseInt(cpfLimpo.charAt(i)) * (10 - i);
+  }
+  let resto = soma % 11;
+  let digito1 = resto < 2 ? 0 : 11 - resto;
+  
+  soma = 0;
+  for (let i = 0; i < 10; i++) {
+    soma += parseInt(cpfLimpo.charAt(i)) * (11 - i);
+  }
+  resto = soma % 11;
+  let digito2 = resto < 2 ? 0 : 11 - resto;
+  
+  return cpfLimpo.charAt(9) === digito1.toString() && cpfLimpo.charAt(10) === digito2.toString();
+};
+
+const validarCNPJ = (cnpj: string): boolean => {
+  const cnpjLimpo = cnpj.replace(/[^\d]/g, '');
+  
+  if (cnpjLimpo.length !== 14) return false;
+  if (/^(\d)\1{13}$/.test(cnpjLimpo)) return false;
+  
+  let soma = 0;
+  let peso = 2;
+  for (let i = 11; i >= 0; i--) {
+    soma += parseInt(cnpjLimpo.charAt(i)) * peso;
+    peso = peso === 9 ? 2 : peso + 1;
+  }
+  let resto = soma % 11;
+  let digito1 = resto < 2 ? 0 : 11 - resto;
+  
+  soma = 0;
+  peso = 2;
+  for (let i = 12; i >= 0; i--) {
+    soma += parseInt(cnpjLimpo.charAt(i)) * peso;
+    peso = peso === 9 ? 2 : peso + 1;
+  }
+  resto = soma % 11;
+  let digito2 = resto < 2 ? 0 : 11 - resto;
+  
+  return cnpjLimpo.charAt(12) === digito1.toString() && cnpjLimpo.charAt(13) === digito2.toString();
+};
+
+const validarEmail = (email: string): boolean => {
+  const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  return regex.test(email);
+};
+
+const validarTelefone = (telefone: string): boolean => {
+  const telefoneLimpo = telefone.replace(/[^\d]/g, '');
+  return telefoneLimpo.length >= 10 && telefoneLimpo.length <= 11;
+};
+
+const validarDataNascimento = (dataNascimento: string): boolean => {
+  if (!dataNascimento) return false;
+  
+  const data = new Date(dataNascimento);
+  const hoje = new Date();
+  const idade = hoje.getFullYear() - data.getFullYear();
+  const mesAtual = hoje.getMonth();
+  const mesNascimento = data.getMonth();
+  
+  if (mesAtual < mesNascimento || (mesAtual === mesNascimento && hoje.getDate() < data.getDate())) {
+    return idade - 1 <= 80;
+  }
+  
+  return idade <= 80;
+};
+
+const validarCampoVazio = (valor: string): boolean => {
+  return valor && valor.trim() !== '' && valor !== 'R$ 0,00' && valor !== 'R$ 0,00' && valor !== 'Selecione uma opção' && valor !== 'Digite o nome' && valor !== 'Digite o email' && valor !== 'Digite o telefone' && valor !== 'Digite o CEP' && valor !== 'Digite o endereço' && valor !== 'Digite a profissão' && valor !== 'Renda formal' && valor !== 'Renda informal' && valor !== 'Renda total';
+};
+
+const validarCampoObjeto = (valor: any): boolean => {
+  return valor && valor.id && valor.id !== '' && valor.name && valor.name !== '';
+};
+
 const LOCAL_STORAGE_KEY = 'ploomes_selected_tomadores';
 const TOMADORES_STORAGE_KEY = 'ploomes_tomadores_dados';
 const etapas = ['Tomadores', 'Empréstimo', 'Garantia'];
@@ -21,15 +106,15 @@ const initialTomador = {
   dataNascimento: '',
   email: '',
   estadoCivil: { id: '', name: '' },
-  tipoPessoa: '',
-  qualificacaoProfissional: '',
+  tipoPessoa: { id: '', name: '' },
+  qualificacaoProfissional: { id: '', name: '' },
   profissao: '',
   rendaFormal: '',
-  comprovacaoRendaFormal: '',
+  comprovacaoRendaFormal: { id: '', name: '' },
   rendaInformal: '',
-  comprovacaoRendaInformal: '',
+  comprovacaoRendaInformal: { id: '', name: '' },
   rendaTotalInformada: '',
-  quantidadeSociosPJ: '',
+  quantidadeSociosPJ: { id: '', name: '' },
   ramoPJ: '',
 };
 
@@ -80,6 +165,16 @@ const Formulario: React.FC = () => {
   const [tomadores, setTomadores] = useState(
     Array(4).fill(null).map(() => ({ ...initialTomador }))
   );
+  const [erros, setErros] = useState<{ [key: string]: string }>({});
+  const [mostrarErro, setMostrarErro] = useState(false);
+
+  const limparErro = (campo: string) => {
+    setErros(prev => {
+      const novosErros = { ...prev };
+      delete novosErros[campo];
+      return novosErros;
+    });
+  };
 
   // Estado dos dados do empréstimo
   const [emprestimo, setEmprestimo] = useState({ ...initialEmprestimo });
@@ -189,39 +284,107 @@ const Formulario: React.FC = () => {
     }
   }, [garantia.garantiaPertenceTomador]);
 
-  const handleSelect = (opt: PloomesOption) => {
-    setQuantidade(Number(opt.Name));
-    setQuantidadeId(opt.Id);
-    localStorage.setItem(
-      LOCAL_STORAGE_KEY,
-      JSON.stringify({ Id: opt.Id, Name: opt.Name })
-    );
+  const validarTomador = (tomador: any): { valido: boolean; erros: { [key: string]: string } } => {
+    const erros: { [key: string]: string } = {};
+    
+    // Validação de campos obrigatórios
+    if (!validarCampoVazio(tomador.nome)) {
+      erros.nome = 'Nome é obrigatório';
+    }
+    
+    if (!validarCampoVazio(tomador.email)) {
+      erros.email = 'Email é obrigatório';
+    } else if (!validarEmail(tomador.email)) {
+      erros.email = 'Email inválido';
+    }
+    
+    if (!validarCampoVazio(tomador.telefone)) {
+      erros.telefone = 'Telefone é obrigatório';
+    } else if (!validarTelefone(tomador.telefone)) {
+      erros.telefone = 'Telefone inválido';
+    }
+    
+    if (!validarCampoVazio(tomador.dataNascimento)) {
+      erros.dataNascimento = 'Data de nascimento é obrigatória';
+    } else if (!validarDataNascimento(tomador.dataNascimento)) {
+      erros.dataNascimento = 'Idade máxima permitida é 80 anos';
+    }
+    
+    if (!validarCampoObjeto(tomador.tipoPessoa)) {
+      erros.tipoPessoa = 'Tipo de pessoa é obrigatório';
+    }
+    
+    // Validação de documento baseada no tipo de pessoa
+    if (tomador.tipoPessoa?.name?.toLowerCase() === 'pessoa física') {
+      if (!validarCampoVazio(tomador.cpf)) {
+        erros.cpf = 'CPF é obrigatório';
+      } else if (!validarCPF(tomador.cpf)) {
+        erros.cpf = 'CPF inválido';
+      }
+    } else if (tomador.tipoPessoa?.name?.toLowerCase() === 'pessoa jurídica') {
+      if (!validarCampoVazio(tomador.cnpj)) {
+        erros.cnpj = 'CNPJ é obrigatório';
+      } else if (!validarCNPJ(tomador.cnpj)) {
+        erros.cnpj = 'CNPJ inválido';
+      }
+    }
+    
+    // Validação de campos de select
+    if (!validarCampoObjeto(tomador.estadoCivil)) {
+      erros.estadoCivil = 'Estado civil é obrigatório';
+    }
+    
+    if (!validarCampoObjeto(tomador.qualificacaoProfissional)) {
+      erros.qualificacaoProfissional = 'Qualificação profissional é obrigatória';
+    }
+    
+    if (!validarCampoObjeto(tomador.comprovacaoRendaFormal)) {
+      erros.comprovacaoRendaFormal = 'Comprovação de renda formal é obrigatória';
+    }
+    
+    if (!validarCampoObjeto(tomador.comprovacaoRendaInformal)) {
+      erros.comprovacaoRendaInformal = 'Comprovação de renda informal é obrigatória';
+    }
+    
+    // Validação de campos adicionais
+    if (!validarCampoVazio(tomador.profissao)) {
+      erros.profissao = 'Profissão é obrigatória';
+    }
+    
+    if (!validarCampoVazio(tomador.cep)) {
+      erros.cep = 'CEP é obrigatório';
+    }
+    
+    if (!validarCampoVazio(tomador.endereco)) {
+      erros.endereco = 'Endereço é obrigatório';
+    }
+    
+    if (!validarCampoVazio(tomador.rendaFormal)) {
+      erros.rendaFormal = 'Renda formal é obrigatória';
+    }
+    
+    if (!validarCampoVazio(tomador.rendaInformal)) {
+      erros.rendaInformal = 'Renda informal é obrigatória';
+    }
+    
+    if (!validarCampoVazio(tomador.rendaTotalInformada)) {
+      erros.rendaTotalInformada = 'Renda total informada é obrigatória';
+    }
+    
+    // Validação de campos específicos para PJ
+    if (tomador.tipoPessoa?.name?.toLowerCase() === 'pessoa jurídica') {
+      if (!validarCampoObjeto(tomador.quantidadeSociosPJ)) {
+        erros.quantidadeSociosPJ = 'Quantidade de sócios é obrigatória';
+      }
+      
+      if (!validarCampoVazio(tomador.ramoPJ)) {
+        erros.ramoPJ = 'Ramo da PJ é obrigatório';
+      }
+    }
+    
+    return { valido: Object.keys(erros).length === 0, erros };
   };
 
-  const handleContinuar = () => {
-    if (etapa === 0 && quantidade) setEtapa(1);
-    else if (etapa > 0 && etapa < (quantidade || 0)) setEtapa(etapa + 1);
-  };
-
-  const handleVoltar = () => {
-    if (etapa > 1) setEtapa(etapa - 1);
-    else if (etapa === 1) setEtapa(0);
-  };
-
-  const updateTomador = (
-    idx: number,
-    campo: keyof typeof initialTomador,
-    valor: string
-  ) => {
-    setTomadores(prev => {
-      const novo = [...prev];
-      novo[idx] = { ...novo[idx], [campo]: valor };
-      localStorage.setItem(TOMADORES_STORAGE_KEY, JSON.stringify(novo));
-      return novo;
-    });
-  };
-
-  // Função para exibir informações do localStorage
   const handleDebug = () => {
     const savedQtd = localStorage.getItem(LOCAL_STORAGE_KEY);
     const savedTomadores = localStorage.getItem(TOMADORES_STORAGE_KEY);
@@ -364,13 +527,16 @@ const Formulario: React.FC = () => {
             <SelectInput
               options={options.filter(o => o.Name !== '0')}
               value={quantidadeId ?? undefined}
-              onChange={handleSelect}
+              onChange={opt => {
+                setQuantidadeId(Number(opt.Id));
+                setQuantidade(Number(opt.Name));
+              }}
             />
           )}
         </div>
         <button
           className="w-full py-3 font-semibold rounded-full bg-indigo-600 text-white hover:bg-indigo-700 transition transform hover:scale-105 disabled:opacity-50"
-          onClick={handleContinuar}
+          onClick={() => setEtapa(1)}
           disabled={!quantidade}
         >
           Continuar
@@ -415,7 +581,7 @@ const Formulario: React.FC = () => {
     console.log(idx)
 
     return (
-      <section className="bg-white rounded-2xl shadow-lg p-8 w-full max-w-2xl flex flex-col items-center justify-center">
+      <section className="bg-white rounded-2xl shadow-lg p-8 w-full max-w-5xl flex flex-col items-center justify-center">
         <h2 className="text-lg font-bold text-blue-900 mb-4">Tomador {idx + 1}</h2>
         <form className="w-full space-y-6">
           {/* Dados Pessoais */}
@@ -425,80 +591,112 @@ const Formulario: React.FC = () => {
               <SelectInput
                 options={estadoCivilOptions.options}
                 value={tomador.estadoCivil.id ? String(tomador.estadoCivil.id) : undefined}
-                onChange={opt => setTomadores(prev => {
-                  const novo = [...prev];
-                  novo[idx] = { ...novo[idx], estadoCivil: { id: opt.Id, name: opt.Name } };
-                  return novo;
-                })}
+                onChange={opt => {
+                  limparErro('estadoCivil');
+                  setTomadores(prev => {
+                    const novo = [...prev];
+                    novo[idx] = { ...novo[idx], estadoCivil: { id: opt.Id, name: opt.Name } };
+                    return novo;
+                  });
+                }}
                 label="Estado Civil"
                 placeholder="Selecione o estado civil"
+                error={erros.estadoCivil}
               />
               <SelectInput
                 options={tipoPessoaOptions.options}
                 value={tomador.tipoPessoa.id ? String(tomador.tipoPessoa.id) : undefined}
-                onChange={opt => setTomadores(prev => {
-                  const novo = [...prev];
-                  novo[idx] = { ...novo[idx], tipoPessoa: { id: opt.Id, name: opt.Name } };
-                  return novo;
-                })}
+                onChange={opt => {
+                  limparErro('tipoPessoa');
+                  setTomadores(prev => {
+                    const novo = [...prev];
+                    novo[idx] = { ...novo[idx], tipoPessoa: { id: opt.Id, name: opt.Name } };
+                    return novo;
+                  });
+                }}
                 label="Tipo Pessoa - Tomador 1"
                 placeholder="Pessoa Física ou Jurídica"
+                error={erros.tipoPessoa}
               />
               <InputText
                 inputName="Nome"
                 termo={tomador.nome}
-                onSetName={v => setTomadores(prev => { const novo = [...prev]; novo[idx] = { ...novo[idx], nome: v }; return novo; })}
+                onSetName={v => {
+                  limparErro('nome');
+                  setTomadores(prev => { const novo = [...prev]; novo[idx] = { ...novo[idx], nome: v }; return novo; });
+                }}
                 placeholder="Digite o nome"
                 typeInput="Text"
+                error={erros.nome}
               />
               <InputText
                 inputName="Data de Nascimento"
                 termo={tomador.dataNascimento}
-                onSetName={v => setTomadores(prev => { const novo = [...prev]; novo[idx] = { ...novo[idx], dataNascimento: v }; return novo; })}
+                onSetName={v => {
+                  limparErro('dataNascimento');
+                  setTomadores(prev => { const novo = [...prev]; novo[idx] = { ...novo[idx], dataNascimento: v }; return novo; });
+                }}
                 placeholder="dd/mm/aaaa"
                 typeInput="Date"
+                error={erros.dataNascimento}
               />
             </div>
           </fieldset>
 
           {/* Documentação */}
-          <fieldset className="border-t border-blue-200 pt-4 mb-2">
+          <fieldset className="border border-blue-200 rounded-xl p-4 mb-4">
             <legend className="text-blue-900 font-semibold px-2">Documentação</legend>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {tomador.tipoPessoa?.name?.toLowerCase() === 'pessoa física' ? (
                 <InputText
                   inputName="CPF"
                   termo={tomador.cpf}
-                  onSetName={v => setTomadores(prev => { const novo = [...prev]; novo[idx] = { ...novo[idx], cpf: v }; return novo; })}
+                  onSetName={v => {
+                    limparErro('cpf');
+                    setTomadores(prev => { const novo = [...prev]; novo[idx] = { ...novo[idx], cpf: v }; return novo; });
+                  }}
                   placeholder="Digite seu CPF"
                   typeInput="Cpf"
+                  error={erros.cpf}
                 />
               ) : tomador.tipoPessoa?.name?.toLowerCase() === 'pessoa jurídica' ? (
                 <>
                   <SelectInput
                     options={quantidadeSociosOptions.options}
                     value={tomador.quantidadeSociosPJ.id ? String(tomador.quantidadeSociosPJ.id) : undefined}
-                    onChange={opt => setTomadores(prev => {
-                      const novo = [...prev];
-                      novo[idx] = { ...novo[idx], quantidadeSociosPJ: { id: opt.Id, name: opt.Name } };
-                      return novo;
-                    })}
+                    onChange={opt => {
+                      limparErro('quantidadeSociosPJ');
+                      setTomadores(prev => {
+                        const novo = [...prev];
+                        novo[idx] = { ...novo[idx], quantidadeSociosPJ: { id: opt.Id, name: opt.Name } };
+                        return novo;
+                      });
+                    }}
                     placeholder="Informe a quantidade de sócios"
                     label="Quantidade de Sócios da PJ"
+                    error={erros.quantidadeSociosPJ}
                   />
                   <InputText
                     inputName="CNPJ"
                     termo={tomador.cnpj}
-                    onSetName={v => setTomadores(prev => { const novo = [...prev]; novo[idx] = { ...novo[idx], cnpj: v }; return novo; })}
+                    onSetName={v => {
+                      limparErro('cnpj');
+                      setTomadores(prev => { const novo = [...prev]; novo[idx] = { ...novo[idx], cnpj: v }; return novo; });
+                    }}
                     placeholder="Digite seu CNPJ"
                     typeInput="Cnpj"
+                    error={erros.cnpj}
                   />
                   <InputText
                     inputName="Digite qual o Ramo da PJ"
                     termo={tomador.ramoPJ}
-                    onSetName={v => setTomadores(prev => { const novo = [...prev]; novo[idx] = { ...novo[idx], ramoPJ: v }; return novo; })}
+                    onSetName={v => {
+                      limparErro('ramoPJ');
+                      setTomadores(prev => { const novo = [...prev]; novo[idx] = { ...novo[idx], ramoPJ: v }; return novo; });
+                    }}
                     placeholder="Informe o ramo da PJ"
                     typeInput="Text"
+                    error={erros.ramoPJ}
                   />
                 </>
               ) : (
@@ -510,118 +708,162 @@ const Formulario: React.FC = () => {
           </fieldset>
 
           {/* Contato */}
-          <fieldset className="border-t border-blue-200 pt-4 mb-2">
+          <fieldset className="border border-blue-200 rounded-xl p-4 mb-4">
             <legend className="text-blue-900 font-semibold px-2">Contato</legend>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <InputText
                 inputName="Email"
                 termo={tomador.email}
-                onSetName={v => setTomadores(prev => { const novo = [...prev]; novo[idx] = { ...novo[idx], email: v }; return novo; })}
+                onSetName={v => {
+                  limparErro('email');
+                  setTomadores(prev => { const novo = [...prev]; novo[idx] = { ...novo[idx], email: v }; return novo; });
+                }}
                 placeholder="Digite seu email"
                 typeInput="Text"
+                error={erros.email}
               />
               <InputText
                 inputName="Telefone"
                 termo={tomador.telefone}
-                onSetName={v => setTomadores(prev => { const novo = [...prev]; novo[idx] = { ...novo[idx], telefone: v }; return novo; })}
+                onSetName={v => {
+                  limparErro('telefone');
+                  setTomadores(prev => { const novo = [...prev]; novo[idx] = { ...novo[idx], telefone: v }; return novo; });
+                }}
                 placeholder="Digite seu telefone"
                 typeInput="Phone"
+                error={erros.telefone}
               />
             </div>
           </fieldset>
 
           {/* Endereço */}
-          <fieldset className="border-t border-blue-200 pt-4 mb-2">
+          <fieldset className="border border-blue-200 rounded-xl p-4 mb-4">
             <legend className="text-blue-900 font-semibold px-2">Endereço</legend>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <InputText
                 inputName="CEP"
                 termo={tomador.cep}
-                onSetName={v => setTomadores(prev => { const novo = [...prev]; novo[idx] = { ...novo[idx], cep: v }; return novo; })}
+                onSetName={v => {
+                  limparErro('cep');
+                  setTomadores(prev => { const novo = [...prev]; novo[idx] = { ...novo[idx], cep: v }; return novo; });
+                }}
                 placeholder="Digite o CEP"
                 typeInput="Cep"
+                error={erros.cep}
               />
               <InputText
                 inputName="Endereço"
                 termo={tomador.endereco}
-                onSetName={v => setTomadores(prev => { const novo = [...prev]; novo[idx] = { ...novo[idx], endereco: v }; return novo; })}
+                onSetName={v => {
+                  limparErro('endereco');
+                  setTomadores(prev => { const novo = [...prev]; novo[idx] = { ...novo[idx], endereco: v }; return novo; });
+                }}
                 placeholder="Digite o endereço"
                 typeInput="Text"
+                error={erros.endereco}
               />
             </div>
           </fieldset>
 
           {/* Profissional */}
-          <fieldset className="border-t border-blue-200 pt-4 mb-2">
+          <fieldset className="border border-blue-200 rounded-xl p-4 mb-4">
             <legend className="text-blue-900 font-semibold px-2">Profissional</legend>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <InputText
                 inputName="Profissão"
                 termo={tomador.profissao}
-                onSetName={v => setTomadores(prev => { const novo = [...prev]; novo[idx] = { ...novo[idx], profissao: v }; return novo; })}
+                onSetName={v => {
+                  limparErro('profissao');
+                  setTomadores(prev => { const novo = [...prev]; novo[idx] = { ...novo[idx], profissao: v }; return novo; });
+                }}
                 placeholder="Digite a profissão"
                 typeInput="Text"
+                error={erros.profissao}
               />
               <SelectInput
                 options={qualificacaoProfissaoOptions.options}
                 value={tomador.qualificacaoProfissional.id ? String(tomador.qualificacaoProfissional.id) : undefined}
-                onChange={opt => setTomadores(prev => {
-                  const novo = [...prev];
-                  novo[idx] = { ...novo[idx], qualificacaoProfissional: { id: opt.Id, name: opt.Name } };
-                  return novo;
-                })}
+                onChange={opt => {
+                  limparErro('qualificacaoProfissional');
+                  setTomadores(prev => {
+                    const novo = [...prev];
+                    novo[idx] = { ...novo[idx], qualificacaoProfissional: { id: opt.Id, name: opt.Name } };
+                    return novo;
+                  });
+                }}
                 label="Qualificação Profissional"
                 placeholder="Digite a qualificação"
+                error={erros.qualificacaoProfissional}
               />
             </div>
           </fieldset>
 
           {/* Renda */}
-          <fieldset className="border-t border-blue-200 pt-4 mb-2">
+          <fieldset className="border border-blue-200 rounded-xl p-4 mb-4">
             <legend className="text-blue-900 font-semibold px-2">Renda</legend>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <SelectInput
                 options={comprovacaoRendaFormalOptions.options}
                 value={tomador.comprovacaoRendaFormal.id ? String(tomador.comprovacaoRendaFormal.id) : undefined}
-                onChange={opt => setTomadores(prev => {
-                  const novo = [...prev];
-                  novo[idx] = { ...novo[idx], comprovacaoRendaFormal: { id: opt.Id, name: opt.Name } };
-                  return novo;
-                })}
+                onChange={opt => {
+                  limparErro('comprovacaoRendaFormal');
+                  setTomadores(prev => {
+                    const novo = [...prev];
+                    novo[idx] = { ...novo[idx], comprovacaoRendaFormal: { id: opt.Id, name: opt.Name } };
+                    return novo;
+                  });
+                }}
                 label="Comprovação de renda formal"
                 placeholder="Comprovação de renda formal"
+                error={erros.comprovacaoRendaFormal}
               />
               <InputText
                 inputName="Renda Formal"
                 termo={tomador.rendaFormal}
-                onSetName={v => setTomadores(prev => { const novo = [...prev]; novo[idx] = { ...novo[idx], rendaFormal: v }; return novo; })}
+                onSetName={v => {
+                  limparErro('rendaFormal');
+                  setTomadores(prev => { const novo = [...prev]; novo[idx] = { ...novo[idx], rendaFormal: v }; return novo; });
+                }}
                 placeholder="Renda formal"
                 typeInput="Money"
+                error={erros.rendaFormal}
               />
               <SelectInput
                 options={comprovacaoRendaInformalOptions.options}
                 value={tomador.comprovacaoRendaInformal.id ? String(tomador.comprovacaoRendaInformal.id) : undefined}
-                onChange={opt => setTomadores(prev => {
-                  const novo = [...prev];
-                  novo[idx] = { ...novo[idx], comprovacaoRendaInformal: { id: opt.Id, name: opt.Name } };
-                  return novo;
-                })}
+                onChange={opt => {
+                  limparErro('comprovacaoRendaInformal');
+                  setTomadores(prev => {
+                    const novo = [...prev];
+                    novo[idx] = { ...novo[idx], comprovacaoRendaInformal: { id: opt.Id, name: opt.Name } };
+                    return novo;
+                  });
+                }}
                 label="Comprovação de renda informal"
                 placeholder="Comprovação de renda informal"
+                error={erros.comprovacaoRendaInformal}
               />
               <InputText
                 inputName="Renda Informal"
                 termo={tomador.rendaInformal}
-                onSetName={v => setTomadores(prev => { const novo = [...prev]; novo[idx] = { ...novo[idx], rendaInformal: v }; return novo; })}
+                onSetName={v => {
+                  limparErro('rendaInformal');
+                  setTomadores(prev => { const novo = [...prev]; novo[idx] = { ...novo[idx], rendaInformal: v }; return novo; });
+                }}
                 placeholder="Renda informal"
                 typeInput="Money"
+                error={erros.rendaInformal}
               />
               <InputText
                 inputName="Renda Total Informada"
                 termo={tomador.rendaTotalInformada}
-                onSetName={v => setTomadores(prev => { const novo = [...prev]; novo[idx] = { ...novo[idx], rendaTotalInformada: v }; return novo; })}
+                onSetName={v => {
+                  limparErro('rendaTotalInformada');
+                  setTomadores(prev => { const novo = [...prev]; novo[idx] = { ...novo[idx], rendaTotalInformada: v }; return novo; });
+                }}
                 placeholder="Renda total"
                 typeInput="Money"
+                error={erros.rendaTotalInformada}
               />
             </div>
           </fieldset>
@@ -630,20 +872,63 @@ const Formulario: React.FC = () => {
             <button
               className="py-2 px-6 font-medium rounded-full bg-gray-200 text-gray-700 hover:bg-gray-300 transition"
               type="button"
-              onClick={() => setEtapa(etapa - 1)}
+              onClick={() => {
+                setErros({});
+                setMostrarErro(false);
+                setEtapa(etapa - 1);
+              }}
             >
               Voltar
             </button>
             <button
               className="py-2 px-6 font-medium rounded-full bg-blue-700 text-white hover:bg-blue-800 transition ml-4"
               type="button"
-              onClick={() => setEtapa(etapa + 1)}
+              onClick={() => {
+                const tomadorAtual = tomadores[etapa - 1] || { ...initialTomador };
+                const validacao = validarTomador(tomadorAtual);
+                
+                if (!validacao.valido) {
+                  setErros(validacao.erros);
+                  setMostrarErro(true);
+                  return;
+                }
+                
+                setErros({});
+                setMostrarErro(false);
+                setEtapa(etapa + 1);
+              }}
             >
               Próxima Etapa
             </button>
           </div>
         </form>
       </section>
+    );
+  };
+
+  const renderModalErro = () => {
+    if (!mostrarErro) return null;
+    
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div className="bg-white rounded-lg p-8 max-w-md w-full mx-4">
+          <div className="flex flex-col items-center text-center">
+            <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mb-4">
+              <span className="text-red-500 text-2xl font-bold">✕</span>
+            </div>
+            <h3 className="text-xl font-bold text-gray-900 mb-2">Oops...</h3>
+            <p className="text-gray-600 mb-6">
+              Por favor, preencha todos os campos obrigatórios do Tomador {etapa}.
+            </p>
+            <button
+              onClick={() => setMostrarErro(false)}
+              className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              Fechar
+            </button>
+          </div>
+        </div>
+      </div>
     );
   };
 
@@ -1079,6 +1364,7 @@ const Formulario: React.FC = () => {
                         : null}
           </div>
         </div>
+        {renderModalErro()}
         {/* Botão de debug fixo no canto inferior direito */}
         <div className="fixed bottom-6 right-6 flex flex-col gap-2 z-50">
           <button
