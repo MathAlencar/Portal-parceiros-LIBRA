@@ -120,14 +120,14 @@ const initialTomador = {
 
 const EMPRESTIMO_STORAGE_KEY = 'ploomes_emprestimo_dados';
 const initialEmprestimo = {
-  amortizacao: '',
-  carencia: '',
+  amortizacao: { id: '', name: '' },
+  carencia: { id: '', name: '' },
+  motivoEmprestimo: { id: '', name: '' },
   valorSolicitado: '',
   rendaTotal: '',
   prazoSolicitado: '',
   jurosSolicitado: '',
   comentarios: '',
-  motivo: '',
 };
 
 const GARANTIA_STORAGE_KEY = 'ploomes_garantia_dados';
@@ -214,6 +214,8 @@ const Formulario: React.FC = () => {
 
   // Estado dos dados do empréstimo
   const [emprestimo, setEmprestimo] = useState({ ...initialEmprestimo });
+  const [errosEmprestimo, setErrosEmprestimo] = useState<{ [key: string]: string }>({});
+  const [mostrarErroEmprestimo, setMostrarErroEmprestimo] = useState(false);
 
   // Estado dos dados da garantia
   const [garantia, setGarantia] = useState({ ...initialGarantia });
@@ -226,6 +228,9 @@ const Formulario: React.FC = () => {
   const [qtdGarantidores, setQtdGarantidores] = useState(1);
 
   const { options, loading, error } = usePloomesOptions(QUANTIDADE_TOMADORES_OPTIONS_ID);
+  const amortizacaoOptions = usePloomesOptions(44254);
+  const carenciaOptions = usePloomesOptions(46299);
+  const motivoEmprestimoOptions = usePloomesOptions(31247);
   // const estadoCivilOptions = usePloomesOptions(ESTADO_CIVIL_OPTIONS_ID);
   // const tipoPessoaOptions = usePloomesOptions(TIPO_PESSOA_OPTIONS_ID);
   // const qualificacaoProfissaoOptions = usePloomesOptions(QUALIFICACAO_PROFISSAO_OPTIONS_ID);
@@ -420,6 +425,43 @@ const Formulario: React.FC = () => {
     }
     
     return { valido: Object.keys(erros).length === 0, erros };
+  };
+
+  const validarEmprestimo = (emp: any): { valido: boolean; erros: { [key: string]: string } } => {
+    const erros: { [key: string]: string } = {};
+    if (!validarCampoObjeto(emp.amortizacao)) {
+      erros.amortizacao = 'Amortização é obrigatória';
+    }
+    if (!validarCampoObjeto(emp.carencia)) {
+      erros.carencia = 'Carência é obrigatória';
+    }
+    if (!validarCampoObjeto(emp.motivoEmprestimo)) {
+      erros.motivoEmprestimo = 'Motivo do Empréstimo é obrigatório';
+    }
+    if (!validarCampoVazio(emp.valorSolicitado)) {
+      erros.valorSolicitado = 'Valor solicitado é obrigatório';
+    }
+    if (!validarCampoVazio(emp.rendaTotal)) {
+      erros.rendaTotal = 'Renda total é obrigatória';
+    }
+    if (!validarCampoVazio(emp.prazoSolicitado)) {
+      erros.prazoSolicitado = 'Prazo solicitado é obrigatório';
+    }
+    if (!validarCampoVazio(emp.jurosSolicitado)) {
+      erros.jurosSolicitado = 'Juros solicitado é obrigatório';
+    }
+    if (!validarCampoVazio(emp.comentarios)) {
+      erros.comentarios = 'Comentários são obrigatórios';
+    }
+    return { valido: Object.keys(erros).length === 0, erros };
+  };
+
+  const limparErroEmprestimo = (campo: string) => {
+    setErrosEmprestimo(prev => {
+      const novos = { ...prev };
+      delete novos[campo];
+      return novos;
+    });
   };
 
   const handleDebug = () => {
@@ -985,92 +1027,165 @@ const Formulario: React.FC = () => {
     );
   };
 
+  const renderModalErroEmprestimo = () => {
+    if (!mostrarErroEmprestimo) return null;
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div className="bg-white rounded-lg p-8 max-w-md w-full mx-4">
+          <div className="flex flex-col items-center text-center">
+            <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mb-4">
+              <span className="text-red-500 text-2xl font-bold">✕</span>
+            </div>
+            <h3 className="text-xl font-bold text-gray-900 mb-2">Oops...</h3>
+            <p className="text-gray-600 mb-6">
+              Por favor, preencha todos os campos obrigatórios do Empréstimo.
+            </p>
+            <button
+              onClick={() => setMostrarErroEmprestimo(false)}
+              className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              Fechar
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   // Renderização da etapa de empréstimo (formulário preenchível)
   const renderEmprestimo = () => {
     if (showLoading) {
       return <LoadingStep msg="Agora iremos cadastrar o Empréstimo..." />;
     }
     return (
-      <section className="bg-white rounded-2xl shadow-lg p-8 w-full max-w-2xl space-y-6 flex flex-col items-center justify-center">
-        <h2 className="text-2xl font-semibold text-gray-800 mb-4">2. Informações do empréstimo</h2>
-        <div className="w-full bg-blue-50 border border-blue-200 rounded-xl p-6 mb-4">
-          <h3 className="font-bold text-blue-900 mb-4">Informações do Empréstimo</h3>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
-            <InputText
-              inputName="Amortização Escolhida"
-              termo={emprestimo.amortizacao}
-              onSetName={v => setEmprestimo(e => ({ ...e, amortizacao: v }))}
-              placeholder="Selecione entre PRICE e SAC"
-              typeInput="Text"
-            />
-            <InputText
-              inputName="Carência"
-              termo={emprestimo.carencia}
-              onSetName={v => setEmprestimo(e => ({ ...e, carencia: v }))}
-              placeholder="Selecione Carência Solicitada"
-              typeInput="Text"
-            />
-            <InputText
-              inputName="Valor Solicitado"
-              termo={emprestimo.valorSolicitado}
-              onSetName={v => setEmprestimo(e => ({ ...e, valorSolicitado: v }))}
-              placeholder="Informe o Valor Solicitado (R$)"
-              typeInput="Money"
-            />
-            <InputText
-              inputName="Renda Total"
-              termo={emprestimo.rendaTotal}
-              onSetName={v => setEmprestimo(e => ({ ...e, rendaTotal: v }))}
-              placeholder="Informe a Renda Total (R$)"
-              typeInput="Money"
-            />
-            <InputText
-              inputName="Prazo Solicitado"
-              termo={emprestimo.prazoSolicitado}
-              onSetName={v => setEmprestimo(e => ({ ...e, prazoSolicitado: v }))}
-              placeholder="Digite o prazo solicitado"
-              typeInput="Text"
-            />
-            <InputText
-              inputName="Juros Solicitado"
-              termo={emprestimo.jurosSolicitado}
-              onSetName={v => setEmprestimo(e => ({ ...e, jurosSolicitado: v }))}
-              placeholder="Juros da operação"
-              typeInput="Juros"
-            />
+      <section className="bg-white rounded-2xl shadow-lg p-8 w-full max-w-5xl flex flex-col items-center justify-center">
+        <form className="w-full space-y-6">
+          <fieldset className="border border-blue-200 rounded-xl p-4 mb-4 bg-blue-50">
+            <legend className="text-blue-900 font-semibold px-2">Informações do Empréstimo</legend>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+              <SelectInput
+                options={amortizacaoOptions.options}
+                value={emprestimo.amortizacao?.id || ''}
+                onChange={opt => {
+                  limparErroEmprestimo('amortizacao');
+                  setEmprestimo(e => ({ ...e, amortizacao: { id: opt.Id, name: opt.Name } }));
+                  localStorage.setItem(EMPRESTIMO_STORAGE_KEY, JSON.stringify({ ...emprestimo, amortizacao: { id: opt.Id, name: opt.Name } }));
+                }}
+                label="Amortização Escolhida"
+                placeholder="Selecione entre PRICE e SAC"
+                error={errosEmprestimo.amortizacao}
+              />
+              <SelectInput
+                options={carenciaOptions.options}
+                value={emprestimo.carencia?.id || ''}
+                onChange={opt => {
+                  limparErroEmprestimo('carencia');
+                  setEmprestimo(e => ({ ...e, carencia: { id: opt.Id, name: opt.Name } }));
+                  localStorage.setItem(EMPRESTIMO_STORAGE_KEY, JSON.stringify({ ...emprestimo, carencia: { id: opt.Id, name: opt.Name } }));
+                }}
+                label="Carência"
+                placeholder="Selecione Carência Solicitada"
+                error={errosEmprestimo.carencia}
+              />
+              <InputText
+                inputName="Valor Solicitado"
+                termo={emprestimo.valorSolicitado}
+                onSetName={v => {
+                  limparErroEmprestimo('valorSolicitado');
+                  setEmprestimo(e => ({ ...e, valorSolicitado: v }));
+                }}
+                placeholder="Informe o Valor Solicitado (R$)"
+                typeInput="Money"
+                error={errosEmprestimo.valorSolicitado}
+              />
+              <InputText
+                inputName="Renda Total"
+                termo={emprestimo.rendaTotal}
+                onSetName={v => {
+                  limparErroEmprestimo('rendaTotal');
+                  setEmprestimo(e => ({ ...e, rendaTotal: v }));
+                }}
+                placeholder="Informe a Renda Total (R$)"
+                typeInput="Money"
+                error={errosEmprestimo.rendaTotal}
+              />
+              <InputText
+                inputName="Prazo Solicitado"
+                termo={emprestimo.prazoSolicitado}
+                onSetName={v => {
+                  limparErroEmprestimo('prazoSolicitado');
+                  setEmprestimo(e => ({ ...e, prazoSolicitado: v }));
+                }}
+                placeholder="Digite o prazo solicitado"
+                typeInput="Text"
+                error={errosEmprestimo.prazoSolicitado}
+              />
+              <InputText
+                inputName="Juros Solicitado"
+                termo={emprestimo.jurosSolicitado}
+                onSetName={v => {
+                  limparErroEmprestimo('jurosSolicitado');
+                  setEmprestimo(e => ({ ...e, jurosSolicitado: v }));
+                }}
+                placeholder="Juros da operação"
+                typeInput="Juros"
+                error={errosEmprestimo.jurosSolicitado}
+              />
+            </div>
+            <h3 className="font-bold text-blue-900 mb-2 mt-6">Motivo e Comentários</h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <InputText
+                inputName="Comentários"
+                termo={emprestimo.comentarios}
+                onSetName={v => {
+                  limparErroEmprestimo('comentarios');
+                  setEmprestimo(e => ({ ...e, comentarios: v }));
+                }}
+                placeholder="Comentários sobre o motivo"
+                typeInput="Text"
+                error={errosEmprestimo.comentarios}
+              />
+              <SelectInput
+                options={motivoEmprestimoOptions.options}
+                value={emprestimo.motivoEmprestimo?.id || ''}
+                onChange={opt => {
+                  limparErroEmprestimo('motivoEmprestimo');
+                  setEmprestimo(e => ({ ...e, motivoEmprestimo: { id: opt.Id, name: opt.Name } }));
+                  localStorage.setItem(EMPRESTIMO_STORAGE_KEY, JSON.stringify({ ...emprestimo, motivoEmprestimo: { id: opt.Id, name: opt.Name } }));
+                }}
+                label="Motivo do Empréstimo"
+                placeholder="Selecione o Motivo do Empréstimo"
+                error={errosEmprestimo.motivoEmprestimo}
+              />
+            </div>
+          </fieldset>
+          <div className="flex w-full justify-between mt-6">
+            <button
+              className="py-2 px-6 font-medium rounded-full bg-gray-200 text-gray-700 hover:bg-gray-300 transition"
+              type="button"
+              onClick={() => setEtapa(etapa - 1)}
+            >
+              Voltar
+            </button>
+            <button
+              className="py-2 px-6 font-medium rounded-full bg-blue-700 text-white hover:bg-blue-800 transition ml-4"
+              type="button"
+              onClick={() => {
+                const validacao = validarEmprestimo(emprestimo);
+                if (!validacao.valido) {
+                  setErrosEmprestimo(validacao.erros);
+                  setMostrarErroEmprestimo(true);
+                  return;
+                }
+                setErrosEmprestimo({});
+                setMostrarErroEmprestimo(false);
+                setEtapa(etapa + 1);
+              }}
+            >
+              Próxima Etapa
+            </button>
           </div>
-          <h3 className="font-bold text-blue-900 mb-2 mt-6">Motivo e Comentários</h3>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <InputText
-              inputName="Comentários"
-              termo={emprestimo.comentarios}
-              onSetName={v => setEmprestimo(e => ({ ...e, comentarios: v }))}
-              placeholder="Comentários sobre o motivo"
-              typeInput="Text"
-            />
-            <InputText
-              inputName="Motivo do Empréstimo"
-              termo={emprestimo.motivo}
-              onSetName={v => setEmprestimo(e => ({ ...e, motivo: v }))}
-              placeholder="Selecione o Motivo do Empréstimo"
-              typeInput="Text"
-            />
-          </div>
-        </div>
-        <div className="flex w-full justify-between mt-2">
-          <button
-            className="flex-1 py-2 font-medium rounded-full bg-gray-200 text-gray-700 hover:bg-gray-300 transition transform hover:scale-105"
-            onClick={() => setEtapa(quantidade || 1)}
-          >
-            Voltar
-          </button>
-          <button
-            className="flex-1 py-2 font-medium rounded-full bg-indigo-600 text-white hover:bg-indigo-700 transition transform hover:scale-105 ml-4"
-            onClick={() => setEtapa((quantidade || 0) + 2)}
-          >
-            Próxima Etapa
-          </button>
-        </div>
+        </form>
       </section>
     );
   };
@@ -1081,7 +1196,7 @@ const Formulario: React.FC = () => {
       return <LoadingStep msg="Agora iremos cadastrar a Garantia..." />;
     }
     return (
-      <section className="bg-white rounded-2xl shadow-lg p-8 w-full max-w-2xl space-y-6 flex flex-col items-center justify-center">
+      <section className="bg-white rounded-2xl shadow-lg p-8 w-full max-w-5xl space-y-6 flex flex-col items-center justify-center">
         <h2 className="text-2xl font-semibold text-gray-800 mb-4">3. Condições de Garantia</h2>
         <div className="w-full bg-blue-50 border border-blue-200 rounded-xl p-6 mb-4">
           <h3 className="font-bold text-blue-900 mb-4">Dados Básicos da Garantia</h3>
@@ -1418,6 +1533,7 @@ const Formulario: React.FC = () => {
           </div>
         </div>
         {renderModalErro()}
+        {renderModalErroEmprestimo()}
         {/* Botão de debug fixo no canto inferior direito */}
         <div className="fixed bottom-6 right-6 flex flex-col gap-2 z-50">
           <button
