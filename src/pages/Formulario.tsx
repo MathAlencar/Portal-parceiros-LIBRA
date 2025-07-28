@@ -819,7 +819,7 @@ const Formulario: React.FC = () => {
 
   const renderBanner = () => (
     <div className="w-full flex justify-center py-8 bg-gradient-to-r from-purple-100 to-indigo-100">
-      <div className="flex items-center max-w-7xl w-full bg-white rounded-3xl shadow-xl p-6 space-x-6">
+      {/* <div className="flex items-center max-w-7xl w-full bg-white rounded-3xl shadow-xl p-6 space-x-6">
         <div className="flex flex-col items-center justify-center p-4 rounded-xl">
           <img src="https://www.libracredito.com.br/images/site/logo-libra-credito.png"></img>
         </div>
@@ -831,7 +831,7 @@ const Formulario: React.FC = () => {
             Preencha os dados em cada etapa para prosseguir com a proposta.
           </p>
         </div>
-      </div>
+      </div> */}
     </div>
   );
 
@@ -962,33 +962,72 @@ const Formulario: React.FC = () => {
       return <LoadingStep msg="Carregando opções de quantidade de tomadores..." />;
     }
     return (
-      <section className="bg-white rounded-2xl shadow-lg p-8 w-full max-w-2xl space-y-6 flex flex-col items-center">
-        <h2 className="text-2xl font-semibold text-gray-800">
-          1. Quantidade de Tomadores
-        </h2>
-        <div>
-          {loading && <p className="text-gray-500">Carregando opções...</p>}
-          {error && <p className="text-red-500">{error}</p>}
+      <section className="bg-white rounded-2xl shadow-xl p-10 w-full max-w-5xl space-y-8 flex flex-col items-center border border-gray-100">
+        {/* Header com ícone */}
+        <div className="text-center space-y-4">
+          <div className="flex items-center justify-center mb-6">
+            <div className="w-20 h-20 bg-gradient-to-br from-indigo-500 to-blue-600 rounded-full flex items-center justify-center mr-4 shadow-lg">
+              <svg className="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+              </svg>
+            </div>
+          </div>
+          <h2 className="text-3xl font-bold text-gray-800 mb-2">
+            1. Quantidade de Tomadores
+          </h2>
+          <p className="text-gray-600 text-lg max-w-md leading-relaxed">
+            Selecione quantos tomadores participarão desta operação de empréstimo
+          </p>
+        </div>
+        
+        {/* Campo de seleção */}
+        <div className="w-full max-w-sm">
+          {loading && (
+            <div className="text-center py-4">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600 mx-auto mb-2"></div>
+              <p className="text-gray-500">Carregando opções...</p>
+            </div>
+          )}
+          {error && (
+            <div className="text-center py-4">
+              <p className="text-red-500 bg-red-50 border border-red-200 rounded-lg px-4 py-2">{error}</p>
+            </div>
+          )}
           {!loading && !error && (
-            <SelectInput
-              options={options.filter(o => o.Name !== '0')}
-              value={quantidadeId ?? undefined}
-              onChange={opt => {
-                setQuantidadeId(Number(opt.Id));
-                setQuantidade(Number(opt.Name));
-                localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify({ Id: opt.Id, Name: opt.Name }));
-                console.log('Quantidade selecionada:', { Id: opt.Id, Name: opt.Name });
-              }}
-            />
+            <div className="space-y-3">
+              <label className="block text-sm font-medium text-gray-700 mb-2 text-center">
+                Quantidade de Tomadores
+              </label>
+              <SelectInput
+                options={options.filter(o => o.Name !== '0')}
+                value={quantidadeId ?? undefined}
+                onChange={opt => {
+                  setQuantidadeId(Number(opt.Id));
+                  setQuantidade(Number(opt.Name));
+                  localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify({ Id: opt.Id, Name: opt.Name }));
+                  console.log('Quantidade selecionada:', { Id: opt.Id, Name: opt.Name });
+                }}
+                placeholder="Selecione a quantidade"
+              />
+            </div>
           )}
         </div>
-        <button
-          className="w-full py-3 font-semibold rounded-full bg-indigo-600 text-white hover:bg-indigo-700 transition transform hover:scale-105 disabled:opacity-50"
-          onClick={() => setEtapa(1)}
-          disabled={!quantidade}
-        >
-          Continuar
-        </button>
+        
+        {/* Botão */}
+        <div className="w-full max-w-sm">
+          <button
+            className="w-full py-4 px-6 font-semibold text-lg rounded-xl bg-gradient-to-r from-indigo-600 to-blue-600 text-white hover:from-indigo-700 hover:to-blue-700 transition-all duration-200 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl"
+            onClick={() => setEtapa(1)}
+            disabled={!quantidade}
+          >
+            <div className="flex items-center justify-center">
+              <span>Continuar</span>
+              <svg className="w-5 h-5 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+              </svg>
+            </div>
+          </button>
+        </div>
       </section>
     );
   };
@@ -1740,7 +1779,7 @@ const Formulario: React.FC = () => {
               <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
                 <div className="flex items-center">
                   <svg className="w-5 h-5 text-yellow-600 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                    <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
                   </svg>
                   <span className="text-yellow-800 font-medium">
                     Atenção: Como a garantia não está quitada, é necessário preencher as informações de financiamento abaixo.
@@ -2263,16 +2302,7 @@ const Formulario: React.FC = () => {
           >
             Limpar Dados
           </button>
-          <button
-            onClick={() => {
-              setMostrarErroGarantidores(false);
-              setErrosGarantidores({});
-              alert('Modal de erro dos garantidores fechado!');
-            }}
-            className="bg-orange-600 text-white px-6 py-3 rounded-full shadow-xl hover:bg-orange-700 transition font-bold text-lg tracking-wide"
-          >
-            Fechar Modal
-          </button>
+          
         </div>
       </main>
     </>
