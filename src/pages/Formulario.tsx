@@ -1,6 +1,6 @@
 import React, { useState, useEffect, Fragment } from 'react';
 import { usePloomesOptions } from '@/hooks/usePloomesOptions';
-import { TOMADORES_OPTIONS_IDS } from '@/hooks/ploomesOptionsIds';
+import { TOMADORES_OPTIONS_IDS, QUANTIDADE_GARANTIDORES_OPTIONS_ID, GARANTIDORES_OPTIONS_IDS } from '@/hooks/ploomesOptionsIds';
 import { SelectInput } from '@/components/FormMVP/SelectInput';
 import { InputText } from '@/components/FormInputs/InputText';
 import { QUANTIDADE_TOMADORES_OPTIONS_ID } from '@/hooks/ploomesOptionsIds';
@@ -153,8 +153,9 @@ const initialGarantia = {
 
 // Definições iniciais
 const GARANTIDORES_STORAGE_KEY = 'ploomes_garantidores_dados';
+const QUANTIDADE_GARANTIDORES_STORAGE_KEY = 'ploomes_selected_garantidores';
 const initialGarantidor = {
-  estadoCivil: { id: '', name: '' },
+  estadoCivil: { Id: '', Name: '' },
   nome: '',
   cpf: '',
   cnpj: '',
@@ -231,17 +232,15 @@ const Formulario: React.FC = () => {
   const [showQtdGarantidores, setShowQtdGarantidores] = useState(false);
   const [showGarantidores, setShowGarantidores] = useState(false);
   const [qtdGarantidores, setQtdGarantidores] = useState(1);
+  const [qtdGarantidoresId, setQtdGarantidoresId] = useState<number | null>(null);
+  const [errosGarantidores, setErrosGarantidores] = useState<{ [key: string]: string }>({});
+  const [mostrarErroGarantidores, setMostrarErroGarantidores] = useState(false);
 
   const { options, loading, error } = usePloomesOptions(QUANTIDADE_TOMADORES_OPTIONS_ID);
+  const { options: quantidadeGarantidoresOptions, loading: loadingGarantidores, error: errorGarantidores } = usePloomesOptions(QUANTIDADE_GARANTIDORES_OPTIONS_ID);
   const amortizacaoOptions = usePloomesOptions(44254);
   const carenciaOptions = usePloomesOptions(46299);
   const motivoEmprestimoOptions = usePloomesOptions(31247);
-  // const estadoCivilOptions = usePloomesOptions(ESTADO_CIVIL_OPTIONS_ID);
-  // const tipoPessoaOptions = usePloomesOptions(TIPO_PESSOA_OPTIONS_ID);
-  // const qualificacaoProfissaoOptions = usePloomesOptions(QUALIFICACAO_PROFISSAO_OPTIONS_ID);
-  // const comprovacaoRendaFormalOptions = usePloomesOptions(COMPROVACAO_RENDA_FORMAL_OPTIONS_ID);
-  // const comprovacaoRendaInformalOptions = usePloomesOptions(COMPROVACAO_RENDA_INFORMAL_OPTIONS_ID);
-  // const quantidadeSociosOptions = usePloomesOptions(QUANTIDADE_SOCIOS_OPTIONS_ID);
 
   // Hooks de opções para todos os tomadores (sempre na mesma ordem)
   const estadoCivilOptionsArr = TOMADORES_OPTIONS_IDS.map(ids => usePloomesOptions(ids.estadoCivil));
@@ -250,6 +249,9 @@ const Formulario: React.FC = () => {
   const comprovacaoRendaFormalOptionsArr = TOMADORES_OPTIONS_IDS.map(ids => usePloomesOptions(ids.comprovacaoRendaFormal));
   const comprovacaoRendaInformalOptionsArr = TOMADORES_OPTIONS_IDS.map(ids => usePloomesOptions(ids.comprovacaoRendaInformal));
   const quantidadeSociosOptionsArr = TOMADORES_OPTIONS_IDS.map(ids => usePloomesOptions(ids.quantidadeSocios));
+
+  // Hooks de opções para garantidores
+  const estadoCivilGarantidoresOptionsArr = GARANTIDORES_OPTIONS_IDS.map(ids => usePloomesOptions(ids.estadoCivil));
 
   // [Após os hooks de empréstimo, adicionar hooks da garantia]
   const pertenceTomadorOptions = usePloomesOptions(31246);
@@ -343,6 +345,51 @@ const Formulario: React.FC = () => {
       setShowGarantidorModal(false);
     }
   }, [garantia.garantiaPertenceTomador]);
+
+  // Carregar quantidade de garantidores do localStorage
+  useEffect(() => {
+    const savedQtdGarantidores = localStorage.getItem(QUANTIDADE_GARANTIDORES_STORAGE_KEY);
+    if (savedQtdGarantidores) {
+      try {
+        const { Id, Name } = JSON.parse(savedQtdGarantidores);
+        setQtdGarantidores(Number(Name));
+        setQtdGarantidoresId(Id);
+        setGarantidores(Array(Number(Name)).fill(null).map(() => ({ ...initialGarantidor })));
+        console.log('Quantidade de garantidores restaurada:', { Id, Name });
+      } catch {}
+    }
+  }, []);
+
+  // Salvar quantidade de garantidores no localStorage
+  useEffect(() => {
+    if (qtdGarantidoresId !== null) {
+      localStorage.setItem(QUANTIDADE_GARANTIDORES_STORAGE_KEY, JSON.stringify({ Id: qtdGarantidoresId, Name: qtdGarantidores }));
+    }
+  }, [qtdGarantidoresId, qtdGarantidores]);
+
+  const limparErroEmprestimo = (campo: string) => {
+    setErrosEmprestimo(prev => {
+      const novo = { ...prev };
+      delete novo[campo];
+      return novo;
+    });
+  };
+
+  const limparErroGarantia = (campo: string) => {
+    setErrosGarantia(prev => {
+      const novo = { ...prev };
+      delete novo[campo];
+      return novo;
+    });
+  };
+
+  const limparErroGarantidores = (campo: string) => {
+    setErrosGarantidores(prev => {
+      const novosErros = { ...prev };
+      delete novosErros[campo];
+      return novosErros;
+    });
+  };
 
   const validarTomador = (tomador: any): { valido: boolean; erros: { [key: string]: string } } => {
     const erros: { [key: string]: string } = {};
@@ -549,20 +596,33 @@ const Formulario: React.FC = () => {
     return { valido: Object.keys(erros).length === 0, erros };
   };
 
-  const limparErroEmprestimo = (campo: string) => {
-    setErrosEmprestimo(prev => {
-      const novo = { ...prev };
-      delete novo[campo];
-      return novo;
-    });
-  };
+  const validarGarantidor = (garantidor: any): { valido: boolean; erros: { [key: string]: string } } => {
+    const erros: { [key: string]: string } = {};
 
-  const limparErroGarantia = (campo: string) => {
-    setErrosGarantia(prev => {
-      const novo = { ...prev };
-      delete novo[campo];
-      return novo;
-    });
+    if (!validarCampoObjeto(garantidor.estadoCivil)) {
+      erros.estadoCivil = 'Estado civil é obrigatório';
+    }
+    if (!validarCampoVazio(garantidor.nome)) {
+      erros.nome = 'Nome é obrigatório';
+    }
+    if (!validarCampoVazio(garantidor.cpf) && !validarCampoVazio(garantidor.cnpj)) {
+      erros.cpf = 'CPF ou CNPJ é obrigatório';
+      erros.cnpj = 'CPF ou CNPJ é obrigatório';
+    }
+    if (validarCampoVazio(garantidor.cpf) && !validarCPF(garantidor.cpf)) {
+      erros.cpf = 'CPF inválido';
+    }
+    if (validarCampoVazio(garantidor.cnpj) && !validarCNPJ(garantidor.cnpj)) {
+      erros.cnpj = 'CNPJ inválido';
+    }
+    if (!validarCampoVazio(garantidor.profissao)) {
+      erros.profissao = 'Profissão é obrigatória';
+    }
+
+    return {
+      valido: Object.keys(erros).length === 0,
+      erros
+    };
   };
 
   const handleDebug = () => {
@@ -1062,7 +1122,12 @@ const Formulario: React.FC = () => {
               onClick={() => {
                 setErros({});
                 setMostrarErro(false);
-                setEtapa(etapa - 1);
+                // Se for o primeiro tomador (etapa 1), volta para seleção de quantidade (etapa 0)
+                if (etapa === 1) {
+                  setEtapa(0);
+                } else {
+                  setEtapa(etapa - 1);
+                }
               }}
             >
               Voltar
@@ -1700,19 +1765,21 @@ const Formulario: React.FC = () => {
       <h2 className="text-2xl font-semibold text-gray-800 mb-4">1. Quantidade de Garantidores</h2>
       <div className="w-full flex flex-col items-center">
         <label className="block mb-2 font-medium">Selecione a quantidade de garantidores</label>
-        <select
-          className="border rounded px-4 py-2 w-40 text-center"
-          value={qtdGarantidores}
-          onChange={e => {
-            const qtd = Number(e.target.value);
-            setQtdGarantidores(qtd);
-            setGarantidores(Array(qtd).fill(null).map(() => ({ ...initialGarantidor })));
+        <SelectInput
+          options={quantidadeGarantidoresOptions}
+          value={qtdGarantidoresId ? String(qtdGarantidoresId) : undefined}
+          onChange={opt => {
+            if (opt) {
+              const qtd = Number(opt.Name);
+              setQtdGarantidores(qtd);
+              setQtdGarantidoresId(opt.Id);
+              setGarantidores(Array(qtd).fill(null).map(() => ({ ...initialGarantidor })));
+              console.log('Quantidade de garantidores selecionada:', { Id: opt.Id, Name: opt.Name });
+            }
           }}
-        >
-          {[1, 2, 3, 4].map(n => (
-            <option key={n} value={n}>{n}</option>
-          ))}
-        </select>
+          label="Quantidade de Garantidores"
+          placeholder="Selecione a quantidade"
+        />
       </div>
       <button
         className="w-full py-3 font-semibold rounded-full bg-indigo-600 text-white hover:bg-indigo-700 transition transform hover:scale-105 disabled:opacity-50 mt-6"
@@ -1720,6 +1787,7 @@ const Formulario: React.FC = () => {
           setShowQtdGarantidores(false);
           setEtapa((quantidade || 0) + 4);
         }}
+        disabled={!qtdGarantidoresId}
       >
         Continuar
       </button>
@@ -1728,106 +1796,170 @@ const Formulario: React.FC = () => {
 
   // Formulário de garantidores
   const renderGarantidores = () => {
+    if (showLoading) {
+      return <LoadingStep msg="Carregando próximo garantidor..." />;
+    }
+    
     // O índice do garantidor atual é etapa - ((quantidade || 0) + 4)
     const idx = etapa - ((quantidade || 0) + 4);
     const garantidor = garantidores[idx] || { ...initialGarantidor };
+    const estadoCivilOptions = estadoCivilGarantidoresOptionsArr[idx];
+
     return (
-      <section className="bg-white rounded-2xl shadow-lg p-8 w-full max-w-2xl space-y-6 flex flex-col items-center justify-center">
-        <h2 className="text-2xl font-semibold text-gray-800 mb-4">2. Garantidor {idx + 1}</h2>
-        <div className="w-full bg-blue-50 border border-blue-200 rounded-xl p-6 mb-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
-            <SelectInput
-              options={options} // Assuming options is available globally or passed as prop
-              value={garantidor.estadoCivil.id ? String(garantidor.estadoCivil.id) : undefined}
-              onChange={opt => {
-                setGarantidores(prev => {
-                  const novo = [...prev];
-                  novo[idx] = { ...novo[idx], estadoCivil: { id: opt.Id, name: opt.Name } };
-                  return novo;
-                });
+      <section className="bg-white rounded-2xl shadow-lg p-8 w-full max-w-5xl flex flex-col items-center justify-center">
+        <h2 className="text-lg font-bold text-blue-900 mb-4">Garantidor {idx + 1}</h2>
+        <form className="w-full space-y-6">
+          {/* Dados Pessoais */}
+          <fieldset className="border border-blue-200 rounded-xl p-4 mb-2">
+            <legend className="text-blue-900 font-semibold px-2">Dados Pessoais</legend>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-2">
+              <SelectInput
+                options={estadoCivilOptions.options}
+                value={garantidor.estadoCivil.Id ? String(garantidor.estadoCivil.Id) : undefined}
+                onChange={opt => {
+                  limparErroGarantidores('estadoCivil');
+                  setGarantidores(prev => {
+                    const novo = [...prev];
+                    novo[idx] = { ...novo[idx], estadoCivil: { Id: opt.Id, Name: opt.Name } };
+                    return novo;
+                  });
+                }}
+                label="Estado Civil"
+                placeholder="Selecione o estado civil"
+                error={errosGarantidores.estadoCivil}
+              />
+              <InputText
+                inputName="Nome"
+                termo={garantidor.nome}
+                onSetName={v => {
+                  limparErroGarantidores('nome');
+                  setGarantidores(prev => { const novo = [...prev]; novo[idx] = { ...novo[idx], nome: v }; return novo; });
+                }}
+                placeholder="Digite o nome"
+                typeInput="Text"
+                error={errosGarantidores.nome}
+              />
+            </div>
+          </fieldset>
+
+          {/* Documentação */}
+          <fieldset className="border border-blue-200 rounded-xl p-4 mb-4">
+            <legend className="text-blue-900 font-semibold px-2">Documentação</legend>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <InputText
+                inputName="CPF"
+                termo={garantidor.cpf}
+                onSetName={v => {
+                  limparErroGarantidores('cpf');
+                  setGarantidores(prev => { const novo = [...prev]; novo[idx] = { ...novo[idx], cpf: v }; return novo; });
+                }}
+                placeholder="Digite o CPF"
+                typeInput="Cpf"
+                error={errosGarantidores.cpf}
+              />
+              <InputText
+                inputName="CNPJ"
+                termo={garantidor.cnpj}
+                onSetName={v => {
+                  limparErroGarantidores('cnpj');
+                  setGarantidores(prev => { const novo = [...prev]; novo[idx] = { ...novo[idx], cnpj: v }; return novo; });
+                }}
+                placeholder="Digite o CNPJ"
+                typeInput="Cnpj"
+                error={errosGarantidores.cnpj}
+              />
+            </div>
+          </fieldset>
+
+          {/* Profissional */}
+          <fieldset className="border border-blue-200 rounded-xl p-4 mb-4">
+            <legend className="text-blue-900 font-semibold px-2">Profissional</legend>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <InputText
+                inputName="Profissão"
+                termo={garantidor.profissao}
+                onSetName={v => {
+                  limparErroGarantidores('profissao');
+                  setGarantidores(prev => { const novo = [...prev]; novo[idx] = { ...novo[idx], profissao: v }; return novo; });
+                }}
+                placeholder="Digite a profissão"
+                typeInput="Text"
+                error={errosGarantidores.profissao}
+              />
+            </div>
+          </fieldset>
+
+          <div className="flex w-full justify-between mt-6">
+            <button
+              className="py-2 px-6 font-medium rounded-full bg-gray-200 text-gray-700 hover:bg-gray-300 transition"
+              type="button"
+              onClick={() => {
+                setErrosGarantidores({});
+                setMostrarErroGarantidores(false);
+                // Se for o primeiro garantidor (idx === 0), volta para quantidade de garantidores
+                if (idx === 0) {
+                  setShowQtdGarantidores(true);
+                  setEtapa((quantidade || 0) + 3); // Etapa de quantidade de garantidores
+                } else {
+                  setEtapa(etapa - 1);
+                }
               }}
-              placeholder="Selecione o estado civil"
-            />
-            <InputText
-              inputName="Nome"
-              termo={garantidor.nome}
-              onSetName={v => {
-                setGarantidores(prev => {
-                  const novo = [...prev];
-                  novo[idx] = { ...novo[idx], nome: v };
-                  return novo;
-                });
+            >
+              Voltar
+            </button>
+            <button
+              className="py-2 px-6 font-medium rounded-full bg-blue-700 text-white hover:bg-blue-800 transition ml-4"
+              type="button"
+              onClick={() => {
+                const garantidorAtual = garantidores[idx] || { ...initialGarantidor };
+                const validacao = validarGarantidor(garantidorAtual);
+                
+                if (!validacao.valido) {
+                  setErrosGarantidores(validacao.erros);
+                  setMostrarErroGarantidores(true);
+                  return;
+                }
+                setErrosGarantidores({});
+                setMostrarErroGarantidores(false);
+                
+                // Se a próxima etapa ainda for um garantidor, mostrar loading
+                if (idx + 1 < qtdGarantidores) {
+                  setShowLoading(true);
+                  setTimeout(() => {
+                    setShowLoading(false);
+                    setEtapa(etapa + 1);
+                  }, 500);
+                } else {
+                  // Finalizar cadastro
+                  console.log('Formulário finalizado com sucesso!');
+                }
               }}
-              placeholder="Digite o nome"
-              typeInput="Text"
-            />
-            <InputText
-              inputName="CPF"
-              termo={garantidor.cpf}
-              onSetName={v => {
-                setGarantidores(prev => {
-                  const novo = [...prev];
-                  novo[idx] = { ...novo[idx], cpf: v };
-                  return novo;
-                });
-              }}
-              placeholder="Digite o CPF"
-              typeInput="Cpf"
-            />
-            <InputText
-              inputName="CNPJ"
-              termo={garantidor.cnpj}
-              onSetName={v => {
-                setGarantidores(prev => {
-                  const novo = [...prev];
-                  novo[idx] = { ...novo[idx], cnpj: v };
-                  return novo;
-                });
-              }}
-              placeholder="Digite o CNPJ"
-              typeInput="Cnpj"
-            />
-            <InputText
-              inputName="Profissão"
-              termo={garantidor.profissao}
-              onSetName={v => {
-                setGarantidores(prev => {
-                  const novo = [...prev];
-                  novo[idx] = { ...novo[idx], profissao: v };
-                  return novo;
-                });
-              }}
-              placeholder="Digite o nome do garantidor"
-              typeInput="Text"
-            />
+            >
+              {idx + 1 < qtdGarantidores ? 'Próximo Garantidor' : 'Finalizar Cadastro'}
+            </button>
           </div>
-        </div>
-        <div className="flex w-full justify-between mt-2">
-          <button
-            className="flex-1 py-2 font-medium rounded-full bg-gray-200 text-gray-700 hover:bg-gray-300 transition transform hover:scale-105"
-            onClick={() => {
-              if (idx > 0) setEtapa(etapa - 1);
-              else setEtapa((quantidade || 0) + 2);
-            }}
-          >
-            Voltar
-          </button>
-          <button
-            className="flex-1 py-2 font-medium rounded-full bg-blue-700 text-white hover:bg-blue-800 transition transform hover:scale-105 ml-4"
-            onClick={() => {
-              if (idx + 1 < qtdGarantidores) {
-                setEtapa(etapa + 1);
-              } else {
-                alert('Cadastro finalizado!');
-              }
-            }}
-          >
-            {idx + 1 < qtdGarantidores ? 'Próximo Garantidor' : 'Finalizar Cadastro'}
-          </button>
-        </div>
+        </form>
       </section>
     );
   };
+
+  // Modal de erro para garantidores
+  const renderModalErroGarantidores = () => (
+    <div className="fixed z-50 inset-0 flex items-center justify-center">
+      <div className="fixed inset-0 bg-black opacity-30" />
+      <div className="bg-white rounded-xl shadow-xl p-8 max-w-md mx-auto z-50 flex flex-col items-center relative">
+        <div className="text-red-600 text-5xl mb-4">⚠️</div>
+        <h2 className="text-xl font-bold mb-2">Atenção!</h2>
+        <p className="text-gray-700 mb-6 text-center">Existem campos obrigatórios não preenchidos ou com dados inválidos. Verifique os campos destacados em vermelho.</p>
+        <button
+          className="w-full py-3 font-semibold rounded-full bg-blue-700 text-white hover:bg-blue-800 transition transform hover:scale-105"
+          onClick={() => setMostrarErroGarantidores(false)}
+        >
+          Entendi
+        </button>
+      </div>
+    </div>
+  );
 
   // Ajustar renderização principal para incluir fluxo correto
   return (
@@ -1853,9 +1985,10 @@ const Formulario: React.FC = () => {
                         : null}
           </div>
         </div>
-        {renderModalErro()}
-        {renderModalErroEmprestimo()}
-        {renderModalErroGarantia()}
+        {mostrarErro && renderModalErro()}
+        {mostrarErroEmprestimo && renderModalErroEmprestimo()}
+        {mostrarErroGarantia && renderModalErroGarantia()}
+        {mostrarErroGarantidores && renderModalErroGarantidores()}
         {/* Botão de debug fixo no canto inferior direito */}
         <div className="fixed bottom-6 right-6 flex flex-col gap-2 z-50">
           <button
@@ -1872,6 +2005,16 @@ const Formulario: React.FC = () => {
             className="bg-red-600 text-white px-6 py-3 rounded-full shadow-xl hover:bg-red-700 transition font-bold text-lg tracking-wide"
           >
             Limpar Dados
+          </button>
+          <button
+            onClick={() => {
+              setMostrarErroGarantidores(false);
+              setErrosGarantidores({});
+              alert('Modal de erro dos garantidores fechado!');
+            }}
+            className="bg-orange-600 text-white px-6 py-3 rounded-full shadow-xl hover:bg-orange-700 transition font-bold text-lg tracking-wide"
+          >
+            Fechar Modal
           </button>
         </div>
       </main>

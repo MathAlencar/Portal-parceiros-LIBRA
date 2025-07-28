@@ -67,3 +67,22 @@ export const TOMADORES_OPTIONS_IDS = [
     quantidadeSocios: 47711,
   },
 ];
+
+// IDs para quantidade de garantidores
+export const QUANTIDADE_GARANTIDORES_OPTIONS_ID = 31829;
+
+// IDs para garantidores
+export const GARANTIDORES_OPTIONS_IDS = [
+  {
+    estadoCivil: 39359,
+  },
+  {
+    estadoCivil: 39364,
+  },
+  {
+    estadoCivil: 39392,
+  },
+  {
+    estadoCivil: 39395,
+  },
+];
