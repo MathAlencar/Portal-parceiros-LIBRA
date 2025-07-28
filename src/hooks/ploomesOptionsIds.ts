@@ -1,6 +1,6 @@
 // Códigos de opções Ploomes centralizados
 
-export const QUANTIDADE_TOMADORES_OPTIONS_ID = 31829;
+export const QUANTIDADE_TOMADORES_OPTIONS_ID = 31471;
 
 // export const ESTADO_CIVIL_OPTIONS_ID = 39344;
 // export const TIPO_PESSOA_OPTIONS_ID = 47689;

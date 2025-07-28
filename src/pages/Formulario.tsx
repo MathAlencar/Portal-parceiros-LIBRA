@@ -159,6 +159,42 @@ const initialGarantidor = {
 };
 
 const Formulario: React.FC = () => {
+  // Debug: mostrar dados do localStorage ao montar o componente
+  useEffect(() => {
+    const savedQtd = localStorage.getItem('ploomes_selected_tomadores');
+    const savedTomadores = localStorage.getItem('ploomes_tomadores_dados');
+    const savedEmprestimo = localStorage.getItem('ploomes_emprestimo_dados');
+    const savedGarantia = localStorage.getItem('ploomes_garantia_dados');
+    const savedGarantidores = localStorage.getItem('ploomes_garantidores_dados');
+    
+    console.log('savedQtd:', savedQtd);
+    console.log('savedTomadores:', savedTomadores);
+    console.log('savedEmprestimo:', savedEmprestimo);
+    console.log('savedGarantia:', savedGarantia);
+    console.log('savedGarantidores:', savedGarantidores);
+
+    if (savedQtd) {
+      const { Id, Name } = JSON.parse(savedQtd);
+      console.log('Quantidade selecionada:', { Id, Name });
+    }
+    if (savedTomadores) {
+      const parsed = JSON.parse(savedTomadores);
+      console.log('Tomadores:', parsed);
+    }
+    if (savedEmprestimo) {
+      const parsedEmprestimo = JSON.parse(savedEmprestimo);
+      console.log('Emprestimo:', parsedEmprestimo);
+    }
+    if (savedGarantia) {
+      const parsedGarantia = JSON.parse(savedGarantia);
+      console.log('Garantia:', parsedGarantia);
+    }
+    if (savedGarantidores) {
+      const parsedGarantidores = JSON.parse(savedGarantidores);
+      console.log('Garantidores:', parsedGarantidores);
+    }
+  }, []);
+
   const [etapa, setEtapa] = useState(0);
   const [quantidade, setQuantidade] = useState<number | null>(null);
   const [quantidadeId, setQuantidadeId] = useState<number | null>(null);
@@ -212,6 +248,7 @@ const Formulario: React.FC = () => {
         const { Id, Name } = JSON.parse(savedQtd);
         setQuantidade(Name ? Number(Name) : null);
         setQuantidadeId(Id ?? null);
+        console.log('Quantidade restaurada do localStorage:', { Id, Name });
       } catch {}
     }
     const savedTomadores = localStorage.getItem(TOMADORES_STORAGE_KEY);
@@ -400,11 +437,13 @@ const Formulario: React.FC = () => {
     }
     if (savedTomadores) {
       try {
+        const savedQtd = localStorage.getItem(LOCAL_STORAGE_KEY);
         const parsed = JSON.parse(savedTomadores);
         const parsedEmprestimo = JSON.parse(savedEmprestimo);
         const parsedGarantia = JSON.parse(savedGarantia);
         const parsedGarantidores = JSON.parse(savedGarantidores);
-        console.log('Quantidade:', qtd);
+
+        console.log('Quantidade:', savedQtd);
         console.log('Tomadores:', parsed);
         console.log('Emprestimo:', parsedEmprestimo);
         console.log('Garantia:', parsedGarantia);
@@ -530,6 +569,8 @@ const Formulario: React.FC = () => {
               onChange={opt => {
                 setQuantidadeId(Number(opt.Id));
                 setQuantidade(Number(opt.Name));
+                localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify({ Id: opt.Id, Name: opt.Name }));
+                console.log('Quantidade selecionada:', { Id: opt.Id, Name: opt.Name });
               }}
             />
           )}
@@ -568,6 +609,9 @@ const Formulario: React.FC = () => {
 
   // Formulário de cadastro de tomador
   const renderCadastroTomador = () => {
+    if (showLoading) {
+      return <LoadingStep msg="Carregando próximo tomador..." />;
+    }
     const idx = etapa - 1;
     const tomador = tomadores[idx] || { ...initialTomador };
 
@@ -892,10 +936,19 @@ const Formulario: React.FC = () => {
                   setMostrarErro(true);
                   return;
                 }
-                
                 setErros({});
                 setMostrarErro(false);
-                setEtapa(etapa + 1);
+                // Se a próxima etapa ainda for um tomador, mostrar loading de tomador
+                if (etapa < (quantidade || 0)) {
+                  setShowLoading(true);
+                  setTimeout(() => {
+                    setShowLoading(false);
+                    setEtapa(etapa + 1);
+                  }, 500);
+                } else {
+                  // Se for para a etapa de empréstimo, apenas avança sem loading de tomador
+                  setEtapa(etapa + 1);
+                }
               }}
             >
               Próxima Etapa
