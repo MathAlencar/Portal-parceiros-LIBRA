@@ -87,7 +87,7 @@ const validarCampoVazio = (valor: string): boolean => {
 };
 
 const validarCampoObjeto = (valor: any): boolean => {
-  return valor && valor.id && valor.id !== '' && valor.name && valor.name !== '';
+  return valor && valor.Id && valor.Id !== '' && valor.Name && valor.Name !== '';
 };
 
 const LOCAL_STORAGE_KEY = 'ploomes_selected_tomadores';
@@ -105,24 +105,24 @@ const initialTomador = {
   cep: '',
   dataNascimento: '',
   email: '',
-  estadoCivil: { id: '', name: '' },
-  tipoPessoa: { id: '', name: '' },
-  qualificacaoProfissional: { id: '', name: '' },
+  estadoCivil: { Id: '', Name: '' },
+  tipoPessoa: { Id: '', Name: '' },
+  qualificacaoProfissional: { Id: '', Name: '' },
   profissao: '',
   rendaFormal: '',
-  comprovacaoRendaFormal: { id: '', name: '' },
+  comprovacaoRendaFormal: { Id: '', Name: '' },
   rendaInformal: '',
-  comprovacaoRendaInformal: { id: '', name: '' },
+  comprovacaoRendaInformal: { Id: '', Name: '' },
   rendaTotalInformada: '',
-  quantidadeSociosPJ: { id: '', name: '' },
+  quantidadeSociosPJ: { Id: '', Name: '' },
   ramoPJ: '',
 };
 
 const EMPRESTIMO_STORAGE_KEY = 'ploomes_emprestimo_dados';
 const initialEmprestimo = {
-  amortizacao: { id: '', name: '' },
-  carencia: { id: '', name: '' },
-  motivoEmprestimo: { id: '', name: '' },
+  amortizacao: { Id: '', Name: '' },
+  carencia: { Id: '', Name: '' },
+  motivoEmprestimo: { Id: '', Name: '' },
   valorSolicitado: '',
   rendaTotal: '',
   prazoSolicitado: '',
@@ -132,20 +132,23 @@ const initialEmprestimo = {
 
 const GARANTIA_STORAGE_KEY = 'ploomes_garantia_dados';
 const initialGarantia = {
-  garantiaPertenceTomador: '',
+  garantiaPertenceTomador: { Id: '', Name: '' },
   valorGarantia: '',
-  cidadeGarantia: '',
-  ruralUrbano: '',
+  cidadeGarantia: { Id: '', Name: '' },
+  ruralUrbano: { Id: '', Name: '' },
   enderecoGarantia: '',
-  unidadeFederativa: '',
-  situacaoGarantia: '',
-  escritura: '',
-  nomeMatrícula: '',
-  processoInventario: '',
-  penhora: '',
-  penhoraAtiva: '',
-  dividaCondominio: '',
-  dividaIPTU: '',
+  unidadeFederativa: { Id: '', Name: '' },
+  situacaoGarantia: undefined,
+  comQuemEstaFinanciada: { Id: '', Name: '' },
+  valorEmAberto: '',
+  quantasParcelasFalta: '',
+  escritura: undefined,
+  nomeMatrícula: undefined,
+  processoInventario: undefined,
+  imovelAverbado: undefined,
+  possuiUsufruto: undefined,
+  dividaCondominio: undefined,
+  dividaIPTU: undefined,
 };
 
 // Definições iniciais
@@ -219,6 +222,8 @@ const Formulario: React.FC = () => {
 
   // Estado dos dados da garantia
   const [garantia, setGarantia] = useState({ ...initialGarantia });
+  const [errosGarantia, setErrosGarantia] = useState<{ [key: string]: string }>({});
+  const [mostrarErroGarantia, setMostrarErroGarantia] = useState(false);
 
   // Estado dos dados dos garantidores
   const [garantidores, setGarantidores] = useState([{ ...initialGarantidor }]);
@@ -245,6 +250,19 @@ const Formulario: React.FC = () => {
   const comprovacaoRendaFormalOptionsArr = TOMADORES_OPTIONS_IDS.map(ids => usePloomesOptions(ids.comprovacaoRendaFormal));
   const comprovacaoRendaInformalOptionsArr = TOMADORES_OPTIONS_IDS.map(ids => usePloomesOptions(ids.comprovacaoRendaInformal));
   const quantidadeSociosOptionsArr = TOMADORES_OPTIONS_IDS.map(ids => usePloomesOptions(ids.quantidadeSocios));
+
+  // [Após os hooks de empréstimo, adicionar hooks da garantia]
+  const pertenceTomadorOptions = usePloomesOptions(31246);
+  const cidadeGarantiaOptions = usePloomesOptions(31460);
+  const ruralUrbanoOptions = usePloomesOptions(46826);
+  const unidadeFederativaOptions = usePloomesOptions(38986);
+  const comQuemEstaFinanciadaOptions = usePloomesOptions(32453);
+
+  // Opções Sim/Não para campos booleanos
+  const opcoesSimNao = [
+    { Id: 'true', Name: 'Sim' },
+    { Id: 'false', Name: 'Não' }
+  ];
 
   useEffect(() => {
     const savedQtd = localStorage.getItem(LOCAL_STORAGE_KEY);
@@ -317,7 +335,7 @@ const Formulario: React.FC = () => {
 
   // Lógica para mostrar etapa garantidores
   useEffect(() => {
-    if (garantia.garantiaPertenceTomador === 'Imóvel de terceiro') {
+    if (garantia.garantiaPertenceTomador?.Name === 'Imóvel de terceiro') {
       setShowGarantidores(true);
     } else {
       setShowGarantidores(false);
@@ -357,13 +375,13 @@ const Formulario: React.FC = () => {
     }
     
     // Validação de documento baseada no tipo de pessoa
-    if (tomador.tipoPessoa?.name?.toLowerCase() === 'pessoa física') {
+    if (tomador.tipoPessoa?.Name?.toLowerCase() === 'pessoa física') {
       if (!validarCampoVazio(tomador.cpf)) {
         erros.cpf = 'CPF é obrigatório';
       } else if (!validarCPF(tomador.cpf)) {
         erros.cpf = 'CPF inválido';
       }
-    } else if (tomador.tipoPessoa?.name?.toLowerCase() === 'pessoa jurídica') {
+    } else if (tomador.tipoPessoa?.Name?.toLowerCase() === 'pessoa jurídica') {
       if (!validarCampoVazio(tomador.cnpj)) {
         erros.cnpj = 'CNPJ é obrigatório';
       } else if (!validarCNPJ(tomador.cnpj)) {
@@ -414,7 +432,7 @@ const Formulario: React.FC = () => {
     }
     
     // Validação de campos específicos para PJ
-    if (tomador.tipoPessoa?.name?.toLowerCase() === 'pessoa jurídica') {
+    if (tomador.tipoPessoa?.Name?.toLowerCase() === 'pessoa jurídica') {
       if (!validarCampoObjeto(tomador.quantidadeSociosPJ)) {
         erros.quantidadeSociosPJ = 'Quantidade de sócios é obrigatória';
       }
@@ -456,11 +474,94 @@ const Formulario: React.FC = () => {
     return { valido: Object.keys(erros).length === 0, erros };
   };
 
+  const validarGarantia = (gar: any): { valido: boolean; erros: { [key: string]: string } } => {
+    const erros: { [key: string]: string } = {};
+
+    // Validações básicas
+    if (!validarCampoObjeto(gar.garantiaPertenceTomador)) {
+      erros.garantiaPertenceTomador = 'Informe se a garantia pertence ao tomador';
+    }
+    if (!validarCampoVazio(gar.valorGarantia)) {
+      erros.valorGarantia = 'Valor da garantia é obrigatório';
+    }
+    if (!validarCampoObjeto(gar.cidadeGarantia)) {
+      erros.cidadeGarantia = 'Cidade da garantia é obrigatória';
+    }
+    if (!validarCampoObjeto(gar.ruralUrbano)) {
+      erros.ruralUrbano = 'Selecione se é Rural ou Urbano';
+    }
+    if (!validarCampoVazio(gar.enderecoGarantia)) {
+      erros.enderecoGarantia = 'Endereço da garantia é obrigatório';
+    }
+    if (!validarCampoObjeto(gar.unidadeFederativa)) {
+      erros.unidadeFederativa = 'Unidade Federativa é obrigatória';
+    }
+
+    // Validação condicional para situação da garantia
+    if (gar.situacaoGarantia === undefined) {
+      erros.situacaoGarantia = 'Informe se a garantia está quitada';
+    }
+
+    // Validações condicionais para financiamento (quando garantia não está quitada)
+    if (gar.situacaoGarantia === false) {
+      if (!validarCampoObjeto(gar.comQuemEstaFinanciada)) {
+        erros.comQuemEstaFinanciada = 'Informe com quem a garantia está financiada';
+      }
+      if (!validarCampoVazio(gar.valorEmAberto)) {
+        erros.valorEmAberto = 'Valor em aberto da garantia é obrigatório';
+      }
+      if (!validarCampoVazio(gar.quantasParcelasFalta)) {
+        erros.quantasParcelasFalta = 'Quantidade de parcelas em aberto é obrigatória';
+      }
+    }
+
+    // Validações para campos booleanos
+    if (gar.escritura === undefined) {
+      erros.escritura = 'Informe se há escritura individual';
+    }
+    if (gar.nomeMatrícula === undefined) {
+      erros.nomeMatrícula = 'Informe se o nome está na matrícula';
+    }
+    if (gar.processoInventario === undefined) {
+      erros.processoInventario = 'Informe se há processo de inventário';
+    }
+    if (gar.imovelAverbado === undefined) {
+      erros.imovelAverbado = 'Informe se o imóvel está averbado';
+    }
+    if (gar.possuiUsufruto === undefined) {
+      erros.possuiUsufruto = 'Informe se o imóvel possui usufruto';
+    }
+
+    // Validações condicionais para dívidas baseadas no tipo do imóvel
+    if (gar.ruralUrbano?.Name === 'Urbano') {
+      if (gar.dividaCondominio === undefined) {
+        erros.dividaCondominio = 'Informe se há dívida de condomínio';
+      }
+      if (gar.dividaIPTU === undefined) {
+        erros.dividaIPTU = 'Informe se há dívida de IPTU';
+      }
+    } else if (gar.ruralUrbano?.Name === 'Rural') {
+      if (gar.dividaIPTU === undefined) {
+        erros.dividaIPTU = 'Informe se há dívida de ITR';
+      }
+    }
+
+    return { valido: Object.keys(erros).length === 0, erros };
+  };
+
   const limparErroEmprestimo = (campo: string) => {
     setErrosEmprestimo(prev => {
-      const novos = { ...prev };
-      delete novos[campo];
-      return novos;
+      const novo = { ...prev };
+      delete novo[campo];
+      return novo;
+    });
+  };
+
+  const limparErroGarantia = (campo: string) => {
+    setErrosGarantia(prev => {
+      const novo = { ...prev };
+      delete novo[campo];
+      return novo;
     });
   };
 
@@ -676,12 +777,12 @@ const Formulario: React.FC = () => {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-2">
               <SelectInput
                 options={estadoCivilOptions.options}
-                value={tomador.estadoCivil.id ? String(tomador.estadoCivil.id) : undefined}
+                value={tomador.estadoCivil.Id ? String(tomador.estadoCivil.Id) : undefined}
                 onChange={opt => {
                   limparErro('estadoCivil');
                   setTomadores(prev => {
                     const novo = [...prev];
-                    novo[idx] = { ...novo[idx], estadoCivil: { id: opt.Id, name: opt.Name } };
+                    novo[idx] = { ...novo[idx], estadoCivil: { Id: opt.Id, Name: opt.Name } };
                     return novo;
                   });
                 }}
@@ -691,12 +792,12 @@ const Formulario: React.FC = () => {
               />
               <SelectInput
                 options={tipoPessoaOptions.options}
-                value={tomador.tipoPessoa.id ? String(tomador.tipoPessoa.id) : undefined}
+                value={tomador.tipoPessoa.Id ? String(tomador.tipoPessoa.Id) : undefined}
                 onChange={opt => {
                   limparErro('tipoPessoa');
                   setTomadores(prev => {
                     const novo = [...prev];
-                    novo[idx] = { ...novo[idx], tipoPessoa: { id: opt.Id, name: opt.Name } };
+                    novo[idx] = { ...novo[idx], tipoPessoa: { Id: opt.Id, Name: opt.Name } };
                     return novo;
                   });
                 }}
@@ -733,7 +834,7 @@ const Formulario: React.FC = () => {
           <fieldset className="border border-blue-200 rounded-xl p-4 mb-4">
             <legend className="text-blue-900 font-semibold px-2">Documentação</legend>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {tomador.tipoPessoa?.name?.toLowerCase() === 'pessoa física' ? (
+              {tomador.tipoPessoa?.Name?.toLowerCase() === 'pessoa física' ? (
                 <InputText
                   inputName="CPF"
                   termo={tomador.cpf}
@@ -745,16 +846,16 @@ const Formulario: React.FC = () => {
                   typeInput="Cpf"
                   error={erros.cpf}
                 />
-              ) : tomador.tipoPessoa?.name?.toLowerCase() === 'pessoa jurídica' ? (
+              ) : tomador.tipoPessoa?.Name?.toLowerCase() === 'pessoa jurídica' ? (
                 <>
                   <SelectInput
                     options={quantidadeSociosOptions.options}
-                    value={tomador.quantidadeSociosPJ.id ? String(tomador.quantidadeSociosPJ.id) : undefined}
+                    value={tomador.quantidadeSociosPJ.Id ? String(tomador.quantidadeSociosPJ.Id) : undefined}
                     onChange={opt => {
                       limparErro('quantidadeSociosPJ');
                       setTomadores(prev => {
                         const novo = [...prev];
-                        novo[idx] = { ...novo[idx], quantidadeSociosPJ: { id: opt.Id, name: opt.Name } };
+                        novo[idx] = { ...novo[idx], quantidadeSociosPJ: { Id: opt.Id, Name: opt.Name } };
                         return novo;
                       });
                     }}
@@ -868,12 +969,12 @@ const Formulario: React.FC = () => {
               />
               <SelectInput
                 options={qualificacaoProfissaoOptions.options}
-                value={tomador.qualificacaoProfissional.id ? String(tomador.qualificacaoProfissional.id) : undefined}
+                value={tomador.qualificacaoProfissional.Id ? String(tomador.qualificacaoProfissional.Id) : undefined}
                 onChange={opt => {
                   limparErro('qualificacaoProfissional');
                   setTomadores(prev => {
                     const novo = [...prev];
-                    novo[idx] = { ...novo[idx], qualificacaoProfissional: { id: opt.Id, name: opt.Name } };
+                    novo[idx] = { ...novo[idx], qualificacaoProfissional: { Id: opt.Id, Name: opt.Name } };
                     return novo;
                   });
                 }}
@@ -890,12 +991,12 @@ const Formulario: React.FC = () => {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <SelectInput
                 options={comprovacaoRendaFormalOptions.options}
-                value={tomador.comprovacaoRendaFormal.id ? String(tomador.comprovacaoRendaFormal.id) : undefined}
+                value={tomador.comprovacaoRendaFormal.Id ? String(tomador.comprovacaoRendaFormal.Id) : undefined}
                 onChange={opt => {
                   limparErro('comprovacaoRendaFormal');
                   setTomadores(prev => {
                     const novo = [...prev];
-                    novo[idx] = { ...novo[idx], comprovacaoRendaFormal: { id: opt.Id, name: opt.Name } };
+                    novo[idx] = { ...novo[idx], comprovacaoRendaFormal: { Id: opt.Id, Name: opt.Name } };
                     return novo;
                   });
                 }}
@@ -916,12 +1017,12 @@ const Formulario: React.FC = () => {
               />
               <SelectInput
                 options={comprovacaoRendaInformalOptions.options}
-                value={tomador.comprovacaoRendaInformal.id ? String(tomador.comprovacaoRendaInformal.id) : undefined}
+                value={tomador.comprovacaoRendaInformal.Id ? String(tomador.comprovacaoRendaInformal.Id) : undefined}
                 onChange={opt => {
                   limparErro('comprovacaoRendaInformal');
                   setTomadores(prev => {
                     const novo = [...prev];
-                    novo[idx] = { ...novo[idx], comprovacaoRendaInformal: { id: opt.Id, name: opt.Name } };
+                    novo[idx] = { ...novo[idx], comprovacaoRendaInformal: { Id: opt.Id, Name: opt.Name } };
                     return novo;
                   });
                 }}
@@ -1029,24 +1130,51 @@ const Formulario: React.FC = () => {
 
   const renderModalErroEmprestimo = () => {
     if (!mostrarErroEmprestimo) return null;
+
     return (
       <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-        <div className="bg-white rounded-lg p-8 max-w-md w-full mx-4">
-          <div className="flex flex-col items-center text-center">
-            <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mb-4">
-              <span className="text-red-500 text-2xl font-bold">✕</span>
-            </div>
-            <h3 className="text-xl font-bold text-gray-900 mb-2">Oops...</h3>
-            <p className="text-gray-600 mb-6">
-              Por favor, preencha todos os campos obrigatórios do Empréstimo.
-            </p>
-            <button
-              onClick={() => setMostrarErroEmprestimo(false)}
-              className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors"
-            >
-              Fechar
-            </button>
+        <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+          <div className="flex items-center mb-4">
+            <svg className="w-6 h-6 text-red-600 mr-2" fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+            </svg>
+            <h3 className="text-lg font-semibold text-gray-900">Campos Obrigatórios</h3>
           </div>
+          <p className="text-gray-700 mb-4">
+            Por favor, preencha todos os campos obrigatórios antes de continuar.
+          </p>
+          <button
+            onClick={() => setMostrarErroEmprestimo(false)}
+            className="w-full bg-red-600 text-white py-2 px-4 rounded-lg hover:bg-red-700 transition-colors"
+          >
+            Entendi
+          </button>
+        </div>
+      </div>
+    );
+  };
+
+  const renderModalErroGarantia = () => {
+    if (!mostrarErroGarantia) return null;
+
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+          <div className="flex items-center mb-4">
+            <svg className="w-6 h-6 text-red-600 mr-2" fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+            </svg>
+            <h3 className="text-lg font-semibold text-gray-900">Campos Obrigatórios</h3>
+          </div>
+          <p className="text-gray-700 mb-4">
+            Por favor, preencha todos os campos obrigatórios antes de continuar.
+          </p>
+          <button
+            onClick={() => setMostrarErroGarantia(false)}
+            className="w-full bg-red-600 text-white py-2 px-4 rounded-lg hover:bg-red-700 transition-colors"
+          >
+            Entendi
+          </button>
         </div>
       </div>
     );
@@ -1065,11 +1193,11 @@ const Formulario: React.FC = () => {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
               <SelectInput
                 options={amortizacaoOptions.options}
-                value={emprestimo.amortizacao?.id || ''}
+                value={emprestimo.amortizacao?.Id || ''}
                 onChange={opt => {
                   limparErroEmprestimo('amortizacao');
-                  setEmprestimo(e => ({ ...e, amortizacao: { id: opt.Id, name: opt.Name } }));
-                  localStorage.setItem(EMPRESTIMO_STORAGE_KEY, JSON.stringify({ ...emprestimo, amortizacao: { id: opt.Id, name: opt.Name } }));
+                  setEmprestimo(e => ({ ...e, amortizacao: { Id: opt.Id, Name: opt.Name } }));
+                  localStorage.setItem(EMPRESTIMO_STORAGE_KEY, JSON.stringify({ ...emprestimo, amortizacao: { Id: opt.Id, Name: opt.Name } }));
                 }}
                 label="Amortização Escolhida"
                 placeholder="Selecione entre PRICE e SAC"
@@ -1077,11 +1205,11 @@ const Formulario: React.FC = () => {
               />
               <SelectInput
                 options={carenciaOptions.options}
-                value={emprestimo.carencia?.id || ''}
+                value={emprestimo.carencia?.Id || ''}
                 onChange={opt => {
                   limparErroEmprestimo('carencia');
-                  setEmprestimo(e => ({ ...e, carencia: { id: opt.Id, name: opt.Name } }));
-                  localStorage.setItem(EMPRESTIMO_STORAGE_KEY, JSON.stringify({ ...emprestimo, carencia: { id: opt.Id, name: opt.Name } }));
+                  setEmprestimo(e => ({ ...e, carencia: { Id: opt.Id, Name: opt.Name } }));
+                  localStorage.setItem(EMPRESTIMO_STORAGE_KEY, JSON.stringify({ ...emprestimo, carencia: { Id: opt.Id, Name: opt.Name } }));
                 }}
                 label="Carência"
                 placeholder="Selecione Carência Solicitada"
@@ -1147,11 +1275,11 @@ const Formulario: React.FC = () => {
               />
               <SelectInput
                 options={motivoEmprestimoOptions.options}
-                value={emprestimo.motivoEmprestimo?.id || ''}
+                value={emprestimo.motivoEmprestimo?.Id || ''}
                 onChange={opt => {
                   limparErroEmprestimo('motivoEmprestimo');
-                  setEmprestimo(e => ({ ...e, motivoEmprestimo: { id: opt.Id, name: opt.Name } }));
-                  localStorage.setItem(EMPRESTIMO_STORAGE_KEY, JSON.stringify({ ...emprestimo, motivoEmprestimo: { id: opt.Id, name: opt.Name } }));
+                  setEmprestimo(e => ({ ...e, motivoEmprestimo: { Id: opt.Id, Name: opt.Name } }));
+                  localStorage.setItem(EMPRESTIMO_STORAGE_KEY, JSON.stringify({ ...emprestimo, motivoEmprestimo: { Id: opt.Id, Name: opt.Name } }));
                 }}
                 label="Motivo do Empréstimo"
                 placeholder="Selecione o Motivo do Empréstimo"
@@ -1196,146 +1324,340 @@ const Formulario: React.FC = () => {
       return <LoadingStep msg="Agora iremos cadastrar a Garantia..." />;
     }
     return (
-      <section className="bg-white rounded-2xl shadow-lg p-8 w-full max-w-5xl space-y-6 flex flex-col items-center justify-center">
-        <h2 className="text-2xl font-semibold text-gray-800 mb-4">3. Condições de Garantia</h2>
-        <div className="w-full bg-blue-50 border border-blue-200 rounded-xl p-6 mb-4">
-          <h3 className="font-bold text-blue-900 mb-4">Dados Básicos da Garantia</h3>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
-            <InputText
-              inputName="Garantia pertence ao tomador?"
-              termo={garantia.garantiaPertenceTomador}
-              onSetName={v => setGarantia(e => ({ ...e, garantiaPertenceTomador: v }))}
-              placeholder="Selecione Sim ou Não"
-              typeInput="Text"
-            />
-            <InputText
-              inputName="Valor da Garantia"
-              termo={garantia.valorGarantia}
-              onSetName={v => setGarantia(e => ({ ...e, valorGarantia: v }))}
-              placeholder="Digite o valor da garantia (R$)"
-              typeInput="Money"
-            />
+      <section className="bg-white rounded-2xl shadow-lg p-8 w-full max-w-5xl flex flex-col items-center justify-center">
+        <form className="w-full space-y-6">
+          <fieldset className="border border-blue-200 rounded-xl p-4 mb-4 bg-blue-50">
+            <legend className="text-blue-900 font-semibold px-2">Dados Básicos da Garantia</legend>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+              <SelectInput
+                options={pertenceTomadorOptions.options}
+                value={garantia.garantiaPertenceTomador?.Id || ''}
+                onChange={opt => {
+                  limparErroGarantia('garantiaPertenceTomador');
+                  setGarantia(e => ({ ...e, garantiaPertenceTomador: opt }));
+                  localStorage.setItem(GARANTIA_STORAGE_KEY, JSON.stringify({ ...garantia, garantiaPertenceTomador: opt }));
+                }}
+                label="Garantia pertence ao tomador?"
+                placeholder="Selecione a opção"
+                error={errosGarantia.garantiaPertenceTomador}
+              />
+              <InputText
+                inputName="Valor da Garantia"
+                termo={garantia.valorGarantia}
+                onSetName={v => {
+                  limparErroGarantia('valorGarantia');
+                  setGarantia(e => ({ ...e, valorGarantia: v }));
+                  localStorage.setItem(GARANTIA_STORAGE_KEY, JSON.stringify({ ...garantia, valorGarantia: v }));
+                }}
+                placeholder="Valor da garantia (R$)"
+                typeInput="Money"
+                error={errosGarantia.valorGarantia}
+              />
+            </div>
+          </fieldset>
+
+          <fieldset className="border border-blue-200 rounded-xl p-4 mb-4 bg-blue-50">
+            <legend className="text-blue-900 font-semibold px-2">Localização</legend>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+              <SelectInput
+                options={cidadeGarantiaOptions.options}
+                value={garantia.cidadeGarantia?.Id || ''}
+                onChange={opt => {
+                  limparErroGarantia('cidadeGarantia');
+                  setGarantia(e => ({ ...e, cidadeGarantia: opt }));
+                  localStorage.setItem(GARANTIA_STORAGE_KEY, JSON.stringify({ ...garantia, cidadeGarantia: opt }));
+                }}
+                label="Cidade da garantia"
+                placeholder="Selecione a opção"
+                error={errosGarantia.cidadeGarantia}
+              />
+              <SelectInput
+                options={ruralUrbanoOptions.options}
+                value={garantia.ruralUrbano?.Id || ''}
+                onChange={opt => {
+                  limparErroGarantia('ruralUrbano');
+                  setGarantia(e => ({ ...e, ruralUrbano: opt }));
+                  localStorage.setItem(GARANTIA_STORAGE_KEY, JSON.stringify({ ...garantia, ruralUrbano: opt }));
+                }}
+                label="Selecione Rural ou Urbano"
+                placeholder="Selecione a opção"
+                error={errosGarantia.ruralUrbano}
+              />
+              <InputText
+                inputName="Endereço da Garantia"
+                termo={garantia.enderecoGarantia}
+                onSetName={v => {
+                  limparErroGarantia('enderecoGarantia');
+                  setGarantia(e => ({ ...e, enderecoGarantia: v }));
+                  localStorage.setItem(GARANTIA_STORAGE_KEY, JSON.stringify({ ...garantia, enderecoGarantia: v }));
+                }}
+                placeholder="Digite o endereço completo"
+                typeInput="Text"
+                error={errosGarantia.enderecoGarantia}
+              />
+              <SelectInput
+                options={unidadeFederativaOptions.options}
+                value={garantia.unidadeFederativa?.Id || ''}
+                onChange={opt => {
+                  limparErroGarantia('unidadeFederativa');
+                  setGarantia(e => ({ ...e, unidadeFederativa: opt }));
+                  localStorage.setItem(GARANTIA_STORAGE_KEY, JSON.stringify({ ...garantia, unidadeFederativa: opt }));
+                }}
+                label="Unidade Federativa"
+                placeholder="Selecione a opção"
+                error={errosGarantia.unidadeFederativa}
+              />
+            </div>
+          </fieldset>
+
+          <fieldset className="border border-blue-200 rounded-xl p-4 mb-4 bg-blue-50">
+            <legend className="text-blue-900 font-semibold px-2">Situação da Garantia</legend>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+              <SelectInput
+                options={opcoesSimNao}
+                value={garantia.situacaoGarantia === true ? 'true' : garantia.situacaoGarantia === false ? 'false' : ''}
+                onChange={opt => {
+                  limparErroGarantia('situacaoGarantia');
+                  const valor = opt && opt.Id ? opt.Id === 'true' : undefined;
+                  setGarantia(e => ({ ...e, situacaoGarantia: valor }));
+                  localStorage.setItem(GARANTIA_STORAGE_KEY, JSON.stringify({ ...garantia, situacaoGarantia: valor }));
+                }}
+                label="Garantia quitada?"
+                placeholder="Selecione Sim ou Não"
+                error={errosGarantia.situacaoGarantia}
+              />
+            </div>
+          </fieldset>
+
+          {garantia.situacaoGarantia === false && (
+            <fieldset className="border border-blue-200 rounded-xl p-4 mb-4 bg-blue-50">
+              <legend className="text-blue-900 font-semibold px-2">Financiamento</legend>
+              
+              {/* Aviso informativo */}
+              <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                <div className="flex items-center">
+                  <svg className="w-5 h-5 text-yellow-600 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                  </svg>
+                  <span className="text-yellow-800 font-medium">
+                    Atenção: Como a garantia não está quitada, é necessário preencher as informações de financiamento abaixo.
+                  </span>
+                </div>
+              </div>
+              
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+                <SelectInput
+                  options={comQuemEstaFinanciadaOptions.options}
+                  value={garantia.comQuemEstaFinanciada?.Id || ''}
+                  onChange={opt => {
+                    limparErroGarantia('comQuemEstaFinanciada');
+                    setGarantia(e => ({ ...e, comQuemEstaFinanciada: opt }));
+                    localStorage.setItem(GARANTIA_STORAGE_KEY, JSON.stringify({ ...garantia, comQuemEstaFinanciada: opt }));
+                  }}
+                  label="Com quem a garantia está financiada"
+                  placeholder="Selecione a opção"
+                  error={errosGarantia.comQuemEstaFinanciada}
+                />
+                <InputText
+                  inputName="Valor em aberto da Garantia"
+                  termo={garantia.valorEmAberto || ''}
+                  onSetName={v => {
+                    limparErroGarantia('valorEmAberto');
+                    setGarantia(e => ({ ...e, valorEmAberto: v }));
+                    localStorage.setItem(GARANTIA_STORAGE_KEY, JSON.stringify({ ...garantia, valorEmAberto: v }));
+                  }}
+                  placeholder="Saldo devedor (R$)"
+                  typeInput="Money"
+                  error={errosGarantia.valorEmAberto}
+                />
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <InputText
+                  inputName="Quantas parcelas falta"
+                  termo={garantia.quantasParcelasFalta || ''}
+                  onSetName={v => {
+                    limparErroGarantia('quantasParcelasFalta');
+                    setGarantia(e => ({ ...e, quantasParcelasFalta: v }));
+                    localStorage.setItem(GARANTIA_STORAGE_KEY, JSON.stringify({ ...garantia, quantasParcelasFalta: v }));
+                  }}
+                  placeholder="Quantas parcelas tem em aberto?"
+                  typeInput="Text"
+                  error={errosGarantia.quantasParcelasFalta}
+                />
+              </div>
+            </fieldset>
+          )}
+
+          <fieldset className="border border-blue-200 rounded-xl p-4 mb-4 bg-blue-50">
+            <legend className="text-blue-900 font-semibold px-2">Documentação</legend>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+              <SelectInput
+                options={opcoesSimNao}
+                value={garantia.escritura === true ? 'true' : garantia.escritura === false ? 'false' : ''}
+                onChange={opt => {
+                  limparErroGarantia('escritura');
+                  const valor = opt && opt.Id ? opt.Id === 'true' : undefined;
+                  setGarantia(e => ({ ...e, escritura: valor }));
+                  localStorage.setItem(GARANTIA_STORAGE_KEY, JSON.stringify({ ...garantia, escritura: valor }));
+                }}
+                label="Escritura individual?"
+                placeholder="Selecione Sim ou Não"
+                error={errosGarantia.escritura}
+              />
+              <SelectInput
+                options={opcoesSimNao}
+                value={garantia.nomeMatrícula === true ? 'true' : garantia.nomeMatrícula === false ? 'false' : ''}
+                onChange={opt => {
+                  limparErroGarantia('nomeMatrícula');
+                  const valor = opt && opt.Id ? opt.Id === 'true' : undefined;
+                  setGarantia(e => ({ ...e, nomeMatrícula: valor }));
+                  localStorage.setItem(GARANTIA_STORAGE_KEY, JSON.stringify({ ...garantia, nomeMatrícula: valor }));
+                }}
+                label="Nome está na matrícula?"
+                placeholder="Selecione Sim ou Não"
+                error={errosGarantia.nomeMatrícula}
+              />
+            </div>
+          </fieldset>
+
+          <fieldset className="border border-blue-200 rounded-xl p-4 mb-4 bg-blue-50">
+            <legend className="text-blue-900 font-semibold px-2">Situações Especiais</legend>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+              <SelectInput
+                options={opcoesSimNao}
+                value={garantia.imovelAverbado === true ? 'true' : garantia.imovelAverbado === false ? 'false' : ''}
+                onChange={opt => {
+                  limparErroGarantia('imovelAverbado');
+                  const valor = opt && opt.Id ? opt.Id === 'true' : undefined;
+                  setGarantia(e => ({ ...e, imovelAverbado: valor }));
+                  localStorage.setItem(GARANTIA_STORAGE_KEY, JSON.stringify({ ...garantia, imovelAverbado: valor }));
+                }}
+                label="Imóvel averbado?"
+                placeholder="Selecione Sim ou Não"
+                error={errosGarantia.imovelAverbado}
+              />
+              <SelectInput
+                options={opcoesSimNao}
+                value={garantia.possuiUsufruto === true ? 'true' : garantia.possuiUsufruto === false ? 'false' : ''}
+                onChange={opt => {
+                  limparErroGarantia('possuiUsufruto');
+                  const valor = opt && opt.Id ? opt.Id === 'true' : undefined;
+                  setGarantia(e => ({ ...e, possuiUsufruto: valor }));
+                  localStorage.setItem(GARANTIA_STORAGE_KEY, JSON.stringify({ ...garantia, possuiUsufruto: valor }));
+                }}
+                label="Possui usufruto?"
+                placeholder="Selecione Sim ou Não"
+                error={errosGarantia.possuiUsufruto}
+              />
+              <SelectInput
+                options={opcoesSimNao}
+                value={garantia.processoInventario === true ? 'true' : garantia.processoInventario === false ? 'false' : ''}
+                onChange={opt => {
+                  limparErroGarantia('processoInventario');
+                  const valor = opt && opt.Id ? opt.Id === 'true' : undefined;
+                  setGarantia(e => ({ ...e, processoInventario: valor }));
+                  localStorage.setItem(GARANTIA_STORAGE_KEY, JSON.stringify({ ...garantia, processoInventario: valor }));
+                }}
+                label="Processo de inventário?"
+                placeholder="Selecione Sim ou Não"
+                error={errosGarantia.processoInventario}
+              />
+            </div>
+          </fieldset>
+
+          <fieldset className="border border-blue-200 rounded-xl p-4 mb-4 bg-blue-50">
+            <legend className="text-blue-900 font-semibold px-2">Dívidas</legend>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {garantia.ruralUrbano?.Name === 'Urbano' ? (
+                <>
+                  <SelectInput
+                    options={opcoesSimNao}
+                    value={garantia.dividaCondominio === true ? 'true' : garantia.dividaCondominio === false ? 'false' : ''}
+                    onChange={opt => {
+                      limparErroGarantia('dividaCondominio');
+                      const valor = opt && opt.Id ? opt.Id === 'true' : undefined;
+                      setGarantia(e => ({ ...e, dividaCondominio: valor }));
+                      localStorage.setItem(GARANTIA_STORAGE_KEY, JSON.stringify({ ...garantia, dividaCondominio: valor }));
+                    }}
+                    label="Dívida de condomínio"
+                    placeholder="Selecione Sim ou Não"
+                    error={errosGarantia.dividaCondominio}
+                  />
+                  <SelectInput
+                    options={opcoesSimNao}
+                    value={garantia.dividaIPTU === true ? 'true' : garantia.dividaIPTU === false ? 'false' : ''}
+                    onChange={opt => {
+                      limparErroGarantia('dividaIPTU');
+                      const valor = opt && opt.Id ? opt.Id === 'true' : undefined;
+                      setGarantia(e => ({ ...e, dividaIPTU: valor }));
+                      localStorage.setItem(GARANTIA_STORAGE_KEY, JSON.stringify({ ...garantia, dividaIPTU: valor }));
+                    }}
+                    label="Dívida de IPTU"
+                    placeholder="Selecione Sim ou Não"
+                    error={errosGarantia.dividaIPTU}
+                  />
+                </>
+              ) : garantia.ruralUrbano?.Name === 'Rural' ? (
+                <SelectInput
+                  options={opcoesSimNao}
+                  value={garantia.dividaIPTU === true ? 'true' : garantia.dividaIPTU === false ? 'false' : ''}
+                  onChange={opt => {
+                    limparErroGarantia('dividaIPTU');
+                    const valor = opt && opt.Id ? opt.Id === 'true' : undefined;
+                    setGarantia(e => ({ ...e, dividaIPTU: valor }));
+                    localStorage.setItem(GARANTIA_STORAGE_KEY, JSON.stringify({ ...garantia, dividaIPTU: valor }));
+                  }}
+                  label="Dívida de ITR"
+                  placeholder="Selecione Sim ou Não"
+                  error={errosGarantia.dividaIPTU}
+                />
+              ) : (
+                <div className="col-span-2 p-3 bg-gray-50 border border-gray-200 rounded-lg">
+                  <p className="text-gray-600 text-sm">
+                    Selecione se o imóvel é Rural ou Urbano para exibir os campos de dívidas correspondentes.
+                  </p>
+                </div>
+              )}
+            </div>
+          </fieldset>
+
+          <div className="flex w-full justify-between mt-6">
+            <button
+              className="py-2 px-6 font-medium rounded-full bg-gray-200 text-gray-700 hover:bg-gray-300 transition"
+              type="button"
+              onClick={() => {
+                setErrosGarantia({});
+                setMostrarErroGarantia(false);
+                setEtapa(etapa - 1);
+              }}
+            >
+              Voltar
+            </button>
+            <button
+              className="py-2 px-6 font-medium rounded-full bg-blue-700 text-white hover:bg-blue-800 transition ml-4"
+              type="button"
+              onClick={() => {
+                const validacao = validarGarantia(garantia);
+                if (!validacao.valido) {
+                  setErrosGarantia(validacao.erros);
+                  setMostrarErroGarantia(true);
+                  return;
+                }
+                setErrosGarantia({});
+                setMostrarErroGarantia(false);
+                
+                if (garantia.garantiaPertenceTomador?.Name === 'Imóvel de terceiro') {
+                  setShowGarantidorModal(true);
+                } else {
+                  // Finalizar cadastro
+                  console.log('Formulário finalizado com sucesso!');
+                }
+              }}
+            >
+              Finalizar Cadastro
+            </button>
           </div>
-          <h3 className="font-bold text-blue-900 mb-2 mt-6">Localização</h3>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
-            <InputText
-              inputName="Cidade da garantia"
-              termo={garantia.cidadeGarantia}
-              onSetName={v => setGarantia(e => ({ ...e, cidadeGarantia: v }))}
-              placeholder="Selecione a cidade"
-              typeInput="Text"
-            />
-            <InputText
-              inputName="Selecione Rural ou Urbano"
-              termo={garantia.ruralUrbano}
-              onSetName={v => setGarantia(e => ({ ...e, ruralUrbano: v }))}
-              placeholder="Selecione Rural ou Urbano"
-              typeInput="Text"
-            />
-            <InputText
-              inputName="Endereço da Garantia"
-              termo={garantia.enderecoGarantia}
-              onSetName={v => setGarantia(e => ({ ...e, enderecoGarantia: v }))}
-              placeholder="Digite o endereço"
-              typeInput="Text"
-            />
-            <InputText
-              inputName="Unidade Federativa"
-              termo={garantia.unidadeFederativa}
-              onSetName={v => setGarantia(e => ({ ...e, unidadeFederativa: v }))}
-              placeholder="Selecione a unidade federativa"
-              typeInput="Text"
-            />
-          </div>
-          <h3 className="font-bold text-blue-900 mb-2 mt-6">Situação da Garantia</h3>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
-            <InputText
-              inputName="Garantia quitada?"
-              termo={garantia.situacaoGarantia}
-              onSetName={v => setGarantia(e => ({ ...e, situacaoGarantia: v }))}
-              placeholder="Selecione Sim ou Não"
-              typeInput="Text"
-            />
-          </div>
-          <h3 className="font-bold text-blue-900 mb-2 mt-6">Documentação</h3>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
-            <InputText
-              inputName="Escritura individual?"
-              termo={garantia.escritura}
-              onSetName={v => setGarantia(e => ({ ...e, escritura: v }))}
-              placeholder="Selecione Sim ou Não"
-              typeInput="Text"
-            />
-            <InputText
-              inputName="Nome está na matrícula?"
-              termo={garantia.nomeMatrícula}
-              onSetName={v => setGarantia(e => ({ ...e, nomeMatrícula: v }))}
-              placeholder="Selecione Sim ou Não"
-              typeInput="Text"
-            />
-          </div>
-          <h3 className="font-bold text-blue-900 mb-2 mt-6">Situações Especiais</h3>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
-            <InputText
-              inputName="Processo de inventário?"
-              termo={garantia.processoInventario}
-              onSetName={v => setGarantia(e => ({ ...e, processoInventario: v }))}
-              placeholder="Selecione Sim ou Não"
-              typeInput="Text"
-            />
-            <InputText
-              inputName="Penhora?"
-              termo={garantia.penhora}
-              onSetName={v => setGarantia(e => ({ ...e, penhora: v }))}
-              placeholder="Selecione Sim ou Não"
-              typeInput="Text"
-            />
-            <InputText
-              inputName="Penhora ativa?"
-              termo={garantia.penhoraAtiva}
-              onSetName={v => setGarantia(e => ({ ...e, penhoraAtiva: v }))}
-              placeholder="Selecione Sim ou Não"
-              typeInput="Text"
-            />
-          </div>
-          <h3 className="font-bold text-blue-900 mb-2 mt-6">Dívidas</h3>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <InputText
-              inputName="Dívida de condomínio"
-              termo={garantia.dividaCondominio}
-              onSetName={v => setGarantia(e => ({ ...e, dividaCondominio: v }))}
-              placeholder="Selecione Sim ou Não"
-              typeInput="Text"
-            />
-            <InputText
-              inputName="Dívida de IPTU"
-              termo={garantia.dividaIPTU}
-              onSetName={v => setGarantia(e => ({ ...e, dividaIPTU: v }))}
-              placeholder="Selecione Sim ou Não"
-              typeInput="Text"
-            />
-          </div>
-        </div>
-        <div className="flex w-full justify-between mt-2">
-          <button
-            className="flex-1 py-2 font-medium rounded-full bg-gray-200 text-gray-700 hover:bg-gray-300 transition transform hover:scale-105"
-            onClick={() => setEtapa((quantidade || 0) + 1)}
-          >
-            Voltar
-          </button>
-          <button
-            className="flex-1 py-2 font-medium rounded-full bg-blue-700 text-white hover:bg-blue-800 transition transform hover:scale-105 ml-4"
-            onClick={() => {
-              if (garantia.garantiaPertenceTomador === 'Imóvel de terceiro') {
-                setShowGarantidorModal(true);
-              } else {
-                alert('Fluxo finalizado!');
-              }
-            }}
-          >
-            Finalizar Cadastro
-          </button>
-        </div>
+        </form>
       </section>
     );
   };
@@ -1353,10 +1675,9 @@ const Formulario: React.FC = () => {
             className="flex-1 py-2 font-medium rounded-full bg-gray-200 text-gray-700 hover:bg-gray-300 transition transform hover:scale-105 mr-4"
             onClick={() => {
               setShowGarantidorModal(false);
-              setEtapa((quantidade || 0) + 1);
             }}
           >
-            Voltar
+            Cancelar
           </button>
           <button
             className="flex-1 py-2 font-medium rounded-full bg-blue-700 text-white hover:bg-blue-800 transition transform hover:scale-105"
@@ -1534,6 +1855,7 @@ const Formulario: React.FC = () => {
         </div>
         {renderModalErro()}
         {renderModalErroEmprestimo()}
+        {renderModalErroGarantia()}
         {/* Botão de debug fixo no canto inferior direito */}
         <div className="fixed bottom-6 right-6 flex flex-col gap-2 z-50">
           <button
