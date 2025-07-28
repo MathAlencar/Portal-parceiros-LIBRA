@@ -10,6 +10,7 @@ interface InputTextProps {
   hasError?: boolean;
   id?: string;
   error?: string;
+  tooltip?: string;
 }
 
 export const InputText: React.FC<InputTextProps> = ({
@@ -21,6 +22,7 @@ export const InputText: React.FC<InputTextProps> = ({
   hasError = false,
   id,
   error,
+  tooltip,
 }) => {
   const inputRef = useRef<HTMLInputElement>(null);
   const mapRef = useRef<HTMLDivElement>(null);
@@ -143,7 +145,18 @@ export const InputText: React.FC<InputTextProps> = ({
   // Renderização dos inputs conforme o tipo
   return (
     <label className="block text-sm font-medium text-gray-700" style={{ position: 'relative' }}>
-      {inputName}
+      <div className="flex items-center gap-2">
+        {inputName}
+        {tooltip && (
+          <div className="relative group">
+            <span className="text-blue-400 cursor-help text-sm hover:text-blue-600 transition-colors">ⓘ</span>
+            <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-800 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap z-50">
+              {tooltip}
+              <div className="absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-800"></div>
+            </div>
+          </div>
+        )}
+      </div>
       {typeInput === 'Endereço' && (
         <>
           <input

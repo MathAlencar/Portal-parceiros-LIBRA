@@ -227,7 +227,7 @@ const Formulario: React.FC = () => {
   const [mostrarErroGarantia, setMostrarErroGarantia] = useState(false);
 
   // Estado dos dados dos garantidores
-  const [garantidores, setGarantidores] = useState([{ ...initialGarantidor }]);
+  const [garantidores, setGarantidores] = useState<typeof initialGarantidor[]>([]);
   const [showGarantidorModal, setShowGarantidorModal] = useState(false);
   const [showQtdGarantidores, setShowQtdGarantidores] = useState(false);
   const [showGarantidores, setShowGarantidores] = useState(false);
@@ -321,19 +321,53 @@ const Formulario: React.FC = () => {
     localStorage.setItem(GARANTIA_STORAGE_KEY, JSON.stringify(garantia));
   }, [garantia]);
 
-  // Carregar garantidores do localStorage
+  // Carregar quantidade de garantidores do localStorage
   useEffect(() => {
-    const saved = localStorage.getItem(GARANTIDORES_STORAGE_KEY);
-    if (saved) {
+    const savedQtdGarantidores = localStorage.getItem(QUANTIDADE_GARANTIDORES_STORAGE_KEY);
+    if (savedQtdGarantidores) {
       try {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed)) setGarantidores(parsed);
+        const { Id, Name } = JSON.parse(savedQtdGarantidores);
+        setQtdGarantidores(Number(Name));
+        setQtdGarantidoresId(Id);
+        console.log('Quantidade de garantidores restaurada:', { Id, Name });
       } catch {}
     }
   }, []);
+
+  // Carregar garantidores do localStorage (após carregar a quantidade)
   useEffect(() => {
-    localStorage.setItem(GARANTIDORES_STORAGE_KEY, JSON.stringify(garantidores));
-  }, [garantidores]);
+    if (qtdGarantidores > 0) {
+      const saved = localStorage.getItem(GARANTIDORES_STORAGE_KEY);
+      if (saved) {
+        try {
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed) && parsed.length === qtdGarantidores) {
+            setGarantidores(parsed);
+            console.log('Garantidores restaurados do localStorage:', parsed);
+          } else {
+            // Se os dados salvos não correspondem à quantidade, inicializar com dados vazios
+            setGarantidores(Array(qtdGarantidores).fill(null).map(() => ({ ...initialGarantidor })));
+            console.log('Garantidores inicializados com dados vazios (quantidade não corresponde)');
+          }
+        } catch (error) {
+          // Se houver erro, inicializar com dados vazios
+          setGarantidores(Array(qtdGarantidores).fill(null).map(() => ({ ...initialGarantidor })));
+          console.log('Garantidores inicializados com dados vazios (erro no parse):', error);
+        }
+      } else {
+        // Se não há dados salvos, inicializar com dados vazios
+        setGarantidores(Array(qtdGarantidores).fill(null).map(() => ({ ...initialGarantidor })));
+        console.log('Garantidores inicializados com dados vazios (sem dados salvos)');
+      }
+    }
+  }, [qtdGarantidores]);
+
+  // Salvar garantidores no localStorage
+  useEffect(() => {
+    if (garantidores.length > 0 && qtdGarantidores > 0) {
+      localStorage.setItem(GARANTIDORES_STORAGE_KEY, JSON.stringify(garantidores));
+    }
+  }, [garantidores, qtdGarantidores]);
 
   // Lógica para mostrar etapa garantidores
   useEffect(() => {
@@ -345,20 +379,6 @@ const Formulario: React.FC = () => {
       setShowGarantidorModal(false);
     }
   }, [garantia.garantiaPertenceTomador]);
-
-  // Carregar quantidade de garantidores do localStorage
-  useEffect(() => {
-    const savedQtdGarantidores = localStorage.getItem(QUANTIDADE_GARANTIDORES_STORAGE_KEY);
-    if (savedQtdGarantidores) {
-      try {
-        const { Id, Name } = JSON.parse(savedQtdGarantidores);
-        setQtdGarantidores(Number(Name));
-        setQtdGarantidoresId(Id);
-        setGarantidores(Array(Number(Name)).fill(null).map(() => ({ ...initialGarantidor })));
-        console.log('Quantidade de garantidores restaurada:', { Id, Name });
-      } catch {}
-    }
-  }, []);
 
   // Salvar quantidade de garantidores no localStorage
   useEffect(() => {
@@ -389,6 +409,144 @@ const Formulario: React.FC = () => {
       delete novosErros[campo];
       return novosErros;
     });
+  };
+
+  // Funções para verificar se etapas estão completas
+  const verificarEtapaTomadoresCompleta = () => {
+    if (!quantidade || quantidade === 0) return false;
+    
+    for (let i = 0; i < quantidade; i++) {
+      const tomador = tomadores[i];
+      if (!tomador) return false;
+      
+      // Verificar se todos os campos obrigatórios estão preenchidos
+      if (!tomador.nome || !tomador.tipoPessoa?.Name || !tomador.estadoCivil?.Name || 
+          !tomador.dataNascimento || !tomador.email || !tomador.telefone || 
+          !tomador.cep || !tomador.endereco || !tomador.profissao || 
+          !tomador.qualificacaoProfissional?.Name || !tomador.comprovacaoRendaFormal?.Name || 
+          !tomador.rendaFormal || !tomador.comprovacaoRendaInformal?.Name || 
+          !tomador.rendaInformal || !tomador.rendaTotalInformada) {
+        return false;
+      }
+      
+      // Verificar CPF ou CNPJ baseado no tipo de pessoa
+      if (tomador.tipoPessoa?.Name?.toLowerCase() === 'pessoa física') {
+        if (!tomador.cpf) return false;
+      } else if (tomador.tipoPessoa?.Name?.toLowerCase() === 'pessoa jurídica') {
+        if (!tomador.cnpj || !tomador.ramoPJ || !tomador.quantidadeSociosPJ?.Name) return false;
+      }
+    }
+    return true;
+  };
+
+  const verificarEtapaEmprestimoCompleta = () => {
+    if (!emprestimo.amortizacao?.Name || !emprestimo.carencia?.Name || 
+        !emprestimo.valorSolicitado || !emprestimo.rendaTotal || 
+        !emprestimo.prazoSolicitado || !emprestimo.jurosSolicitado || 
+        !emprestimo.comentarios || !emprestimo.motivoEmprestimo?.Name) {
+      return false;
+    }
+    return true;
+  };
+
+  const verificarEtapaGarantiaCompleta = () => {
+    if (!garantia.garantiaPertenceTomador?.Name || !garantia.valorGarantia || 
+        !garantia.cidadeGarantia?.Name || !garantia.ruralUrbano?.Name || 
+        !garantia.enderecoGarantia || !garantia.unidadeFederativa?.Name || 
+        garantia.situacaoGarantia === undefined) {
+      return false;
+    }
+    
+    // Se garantia não está quitada, verificar campos de financiamento
+    if (garantia.situacaoGarantia === false) {
+      if (!garantia.comQuemEstaFinanciada?.Name || !garantia.valorEmAberto || 
+          !garantia.quantasParcelasFalta) {
+        return false;
+      }
+    }
+    
+    // Verificar campos de documentação
+    if (garantia.escritura === undefined || garantia.nomeMatrícula === undefined || 
+        garantia.imovelAverbado === undefined || garantia.possuiUsufruto === undefined || 
+        garantia.processoInventario === undefined) {
+      return false;
+    }
+    
+    // Verificar campos de dívidas baseado no tipo (rural/urbano)
+    if (garantia.ruralUrbano?.Name === 'Urbano') {
+      if (garantia.dividaCondominio === undefined || garantia.dividaIPTU === undefined) {
+        return false;
+      }
+    } else if (garantia.ruralUrbano?.Name === 'Rural') {
+      if (garantia.dividaIPTU === undefined) {
+        return false;
+      }
+    }
+    
+    return true;
+  };
+
+  const verificarEtapaGarantidoresCompleta = () => {
+    if (!qtdGarantidores || qtdGarantidores === 0) return false;
+    
+    for (let i = 0; i < qtdGarantidores; i++) {
+      const garantidor = garantidores[i];
+      if (!garantidor) return false;
+      
+      if (!garantidor.estadoCivil?.Name || !garantidor.nome || 
+          !garantidor.profissao || (!garantidor.cpf && !garantidor.cnpj)) {
+        return false;
+      }
+    }
+    return true;
+  };
+
+  // Função para obter texto dinâmico baseado na etapa atual
+  const obterTextoDinamico = () => {
+    // Etapa de seleção de quantidade
+    if (etapa === 0) {
+      return {
+        titulo: "O que é um Tomador?",
+        descricao: "Pessoa física ou jurídica que solicita o crédito, com dados pessoais, endereço e informações financeiras para análise."
+      };
+    }
+    
+    // Etapa de tomadores
+    if (etapa > 0 && etapa <= (quantidade || 0)) {
+      return {
+        titulo: "O que é um Tomador?",
+        descricao: "Pessoa física ou jurídica que solicita o crédito, com dados pessoais, endereço e informações financeiras para análise."
+      };
+    }
+    
+    // Etapa de empréstimo
+    if (etapa === (quantidade || 0) + 1) {
+      return {
+        titulo: "O que é um Empréstimo?",
+        descricao: "Operação financeira onde uma instituição empresta dinheiro ao tomador, que deve devolver com juros em um prazo determinado."
+      };
+    }
+    
+    // Etapa de garantia
+    if (etapa === (quantidade || 0) + 2) {
+      return {
+        titulo: "O que é uma Garantia?",
+        descricao: "Bem (geralmente um imóvel) oferecido como segurança para o empréstimo, que pode ser executado em caso de inadimplência."
+      };
+    }
+    
+    // Etapa de garantidores
+    if (showGarantidores && (etapa === (quantidade || 0) + 3 || etapa >= (quantidade || 0) + 4)) {
+      return {
+        titulo: "O que é um Garantidor?",
+        descricao: "Pessoa que se compromete a pagar o empréstimo caso o tomador não consiga honrar com suas obrigações."
+      };
+    }
+    
+    return {
+      titulo: "O que é um Tomador?",
+      descricao: "Pessoa física ou jurídica que solicita o crédito, com dados pessoais, endereço e informações financeiras para análise."
+    };
   };
 
   const validarTomador = (tomador: any): { valido: boolean; erros: { [key: string]: string } } => {
@@ -682,65 +840,111 @@ const Formulario: React.FC = () => {
     ? [...etapas, 'Garantidores']
     : etapas;
 
-  const renderSidebar = () => (
-    <aside className="w-64 bg-white rounded-2xl shadow-lg p-6 space-y-8">
-      <nav className="space-y-6">
-        {etapasSidebar.map((label, idx) => {
-          // Lógica para destacar a etapa correta
-          let isActive = false;
-          let isEnabled = false;
-          if (idx === 0) {
-            isActive = (etapa === 0) || (etapa > 0 && etapa <= (quantidade || 0));
-            isEnabled = etapa >= 0;
-          } else if (idx === 1) {
-            isActive = etapa === (quantidade || 0) + 1;
-            isEnabled = etapa === (quantidade || 0) + 1;
-          } else if (idx === 2) {
-            isActive = etapa === (quantidade || 0) + 2;
-            isEnabled = etapa === (quantidade || 0) + 2;
-          } else if (showGarantidores && idx === 3) {
-            isActive = (showGarantidores && showQtdGarantidores && etapa === (quantidade || 0) + 3) || (etapa >= (quantidade || 0) + 4 && etapa < (quantidade || 0) + 4 + qtdGarantidores);
-            isEnabled = (showGarantidores && showQtdGarantidores && etapa === (quantidade || 0) + 3) || (etapa >= (quantidade || 0) + 4 && etapa < (quantidade || 0) + 4 + qtdGarantidores);
-          }
-          return (
-            <Fragment key={label}>
-              <button
-                className={`flex items-center w-full space-x-3 px-2 py-2 rounded-lg transition font-semibold text-left ${
-                  isActive
-                    ? 'bg-indigo-100 text-blue-900'
-                    : isEnabled
-                      ? 'bg-white text-gray-700 hover:bg-gray-100'
-                      : 'bg-gray-100 text-gray-400 hover:bg-gray-200'}`}
-                disabled={!isEnabled}
-                onClick={() => {
-                  if (!isEnabled) return;
-                  if (idx === 0) setEtapa(1);
-                  else if (idx === 1) setEtapa((quantidade || 0) + 1);
-                  else if (idx === 2) setEtapa((quantidade || 0) + 2);
-                  else if (showGarantidores && idx === 3) setEtapa((quantidade || 0) + 4);
-                }}
-              >
-                <div className={`w-8 h-8 flex items-center justify-center rounded-full border-2 ${isActive ? 'border-blue-800 bg-blue-800 text-white' : 'border-gray-300 bg-white'}`}>
-                  {idx === 0 ? '👤' : idx === 1 ? '💰' : idx === 2 ? '🏠' : '🛡️'}
-                </div>
-                <span className="ml-2">
-                  {label}
-                </span>
-              </button>
-              {idx < etapasSidebar.length - 1 && <hr className="border-gray-200" />}
-            </Fragment>
-          );
-        })}
-      </nav>
-      <div className="text-sm text-gray-600">
-        <h2 className="font-semibold text-gray-800 mb-2">O que é um Tomador?</h2>
-        <p>
-          Pessoa física ou jurídica que solicita o crédito, com dados pessoais,
-          endereço e informações financeiras para análise.
-        </p>
-      </div>
-    </aside>
-  );
+  const renderSidebar = () => {
+    const textoAtual = obterTextoDinamico();
+    
+    return (
+      <aside className="w-64 bg-white rounded-2xl shadow-lg p-6 space-y-8">
+        <nav className="space-y-6">
+          {etapasSidebar.map((label, idx) => {
+            // Lógica para destacar a etapa correta
+            let isActive = false;
+            let isEnabled = false;
+            let isCompleted = false;
+            
+            if (idx === 0) {
+              isActive = (etapa === 0) || (etapa > 0 && etapa <= (quantidade || 0));
+              isEnabled = etapa >= 0;
+              isCompleted = verificarEtapaTomadoresCompleta();
+            } else if (idx === 1) {
+              isActive = etapa === (quantidade || 0) + 1;
+              isEnabled = etapa >= (quantidade || 0) + 1 || verificarEtapaTomadoresCompleta();
+              isCompleted = verificarEtapaEmprestimoCompleta();
+            } else if (idx === 2) {
+              isActive = etapa === (quantidade || 0) + 2;
+              isEnabled = etapa >= (quantidade || 0) + 2 || (verificarEtapaTomadoresCompleta() && verificarEtapaEmprestimoCompleta());
+              isCompleted = verificarEtapaGarantiaCompleta();
+            } else if (idx === 3) {
+              // Garantidores - sempre mostrar se as etapas anteriores estão completas e garantia é de terceiro
+              const garantidoresDevemAparecer = garantia.garantiaPertenceTomador?.Name === 'Imóvel de terceiro';
+              isActive = garantidoresDevemAparecer && ((showQtdGarantidores && etapa === (quantidade || 0) + 3) || (etapa >= (quantidade || 0) + 4 && etapa < (quantidade || 0) + 4 + qtdGarantidores));
+              isEnabled = garantidoresDevemAparecer && (etapa >= (quantidade || 0) + 3 || (verificarEtapaTomadoresCompleta() && verificarEtapaEmprestimoCompleta() && verificarEtapaGarantiaCompleta()));
+              isCompleted = garantidoresDevemAparecer && verificarEtapaGarantidoresCompleta();
+            }
+            
+            return (
+              <Fragment key={label}>
+                <button
+                  className={`flex items-center w-full space-x-3 px-2 py-2 rounded-lg transition font-semibold text-left relative ${
+                    isActive
+                      ? 'bg-indigo-100 text-blue-900'
+                      : isCompleted
+                        ? 'bg-green-50 text-green-800 hover:bg-green-100'
+                        : isEnabled
+                          ? 'bg-white text-gray-700 hover:bg-gray-100'
+                          : 'bg-gray-100 text-gray-400 hover:bg-gray-200'}`}
+                  disabled={!isEnabled}
+                  onClick={() => {
+                    if (!isEnabled) return;
+                    if (idx === 0) {
+                      // Navegar para tomadores - sempre volta para o primeiro tomador
+                      setEtapa(1);
+                    } else if (idx === 1) {
+                      // Navegar para empréstimo
+                      setEtapa((quantidade || 0) + 1);
+                    } else if (idx === 2) {
+                      // Navegar para garantia
+                      setEtapa((quantidade || 0) + 2);
+                    } else if (idx === 3) {
+                      // Navegar para garantidores
+                      // Verificar se garantidores devem ser mostrados
+                      if (garantia.garantiaPertenceTomador?.Name === 'Imóvel de terceiro') {
+                        setShowGarantidores(true);
+                        if (qtdGarantidores > 0) {
+                          // Se já tem quantidade definida, vai direto para o primeiro garantidor
+                          setShowQtdGarantidores(false);
+                          setEtapa((quantidade || 0) + 4);
+                        } else {
+                          // Se não tem quantidade definida, vai para seleção de quantidade
+                          setShowQtdGarantidores(true);
+                          setEtapa((quantidade || 0) + 3);
+                        }
+                      }
+                    }
+                  }}
+                >
+                  <div className={`w-8 h-8 flex items-center justify-center rounded-full border-2 ${
+                    isActive 
+                      ? 'border-blue-800 bg-blue-800 text-white' 
+                      : isCompleted
+                        ? 'border-green-600 bg-green-600 text-white'
+                        : 'border-gray-300 bg-white'
+                  }`}>
+                    {idx === 0 ? '👤' : idx === 1 ? '💰' : idx === 2 ? '🏠' : '🛡️'}
+                  </div>
+                  {isCompleted && (
+                    <div className="absolute -top-1 -right-1 w-5 h-5 bg-green-600 rounded-full flex items-center justify-center">
+                      <span className="text-white text-xs font-bold">✓</span>
+                    </div>
+                  )}
+                  <span className="ml-2">
+                    {label}
+                  </span>
+                </button>
+                {idx < etapasSidebar.length - 1 && <hr className="border-gray-200" />}
+              </Fragment>
+            );
+          })}
+        </nav>
+        <div className="text-sm text-gray-600">
+          <h2 className="font-semibold text-gray-800 mb-2">{textoAtual.titulo}</h2>
+          <p>
+            {textoAtual.descricao}
+          </p>
+        </div>
+      </aside>
+    );
+  };
 
   // Estado de loading para seleção de quantidade de tomadores
   const [showQtdLoading, setShowQtdLoading] = useState(true);
@@ -849,6 +1053,7 @@ const Formulario: React.FC = () => {
                 label="Estado Civil"
                 placeholder="Selecione o estado civil"
                 error={erros.estadoCivil}
+                tooltip="Selecione seu estado civil atual (solteiro, casado, divorciado, etc.)"
               />
               <SelectInput
                 options={tipoPessoaOptions.options}
@@ -864,6 +1069,7 @@ const Formulario: React.FC = () => {
                 label="Tipo Pessoa - Tomador 1"
                 placeholder="Pessoa Física ou Jurídica"
                 error={erros.tipoPessoa}
+                tooltip="Selecione se você é uma pessoa física (CPF) ou jurídica (CNPJ)"
               />
               <InputText
                 inputName="Nome"
@@ -875,6 +1081,7 @@ const Formulario: React.FC = () => {
                 placeholder="Digite o nome"
                 typeInput="Text"
                 error={erros.nome}
+                tooltip="Digite seu nome completo como consta nos documentos"
               />
               <InputText
                 inputName="Data de Nascimento"
@@ -886,6 +1093,7 @@ const Formulario: React.FC = () => {
                 placeholder="dd/mm/aaaa"
                 typeInput="Date"
                 error={erros.dataNascimento}
+                tooltip="Digite sua data de nascimento (idade máxima: 80 anos)"
               />
             </div>
           </fieldset>
@@ -905,6 +1113,7 @@ const Formulario: React.FC = () => {
                   placeholder="Digite seu CPF"
                   typeInput="Cpf"
                   error={erros.cpf}
+                  tooltip="Digite seu CPF completo (apenas números ou com pontos e traços)"
                 />
               ) : tomador.tipoPessoa?.Name?.toLowerCase() === 'pessoa jurídica' ? (
                 <>
@@ -922,6 +1131,7 @@ const Formulario: React.FC = () => {
                     placeholder="Informe a quantidade de sócios"
                     label="Quantidade de Sócios da PJ"
                     error={erros.quantidadeSociosPJ}
+                    tooltip="Selecione a quantidade total de sócios da pessoa jurídica"
                   />
                   <InputText
                     inputName="CNPJ"
@@ -933,6 +1143,7 @@ const Formulario: React.FC = () => {
                     placeholder="Digite seu CNPJ"
                     typeInput="Cnpj"
                     error={erros.cnpj}
+                    tooltip="Digite o CNPJ da empresa (apenas números ou com pontos, barra e traços)"
                   />
                   <InputText
                     inputName="Digite qual o Ramo da PJ"
@@ -944,6 +1155,7 @@ const Formulario: React.FC = () => {
                     placeholder="Informe o ramo da PJ"
                     typeInput="Text"
                     error={erros.ramoPJ}
+                    tooltip="Digite o ramo de atividade da pessoa jurídica (ex: comércio, indústria, serviços)"
                   />
                 </>
               ) : (
@@ -968,6 +1180,7 @@ const Formulario: React.FC = () => {
                 placeholder="Digite seu email"
                 typeInput="Text"
                 error={erros.email}
+                tooltip="Digite seu email válido para contato (ex: nome@email.com)"
               />
               <InputText
                 inputName="Telefone"
@@ -979,6 +1192,7 @@ const Formulario: React.FC = () => {
                 placeholder="Digite seu telefone"
                 typeInput="Phone"
                 error={erros.telefone}
+                tooltip="Digite seu telefone com DDD (celular ou fixo)"
               />
             </div>
           </fieldset>
@@ -997,6 +1211,7 @@ const Formulario: React.FC = () => {
                 placeholder="Digite o CEP"
                 typeInput="Cep"
                 error={erros.cep}
+                tooltip="Digite o CEP do seu endereço (apenas números ou com hífen)"
               />
               <InputText
                 inputName="Endereço"
@@ -1008,6 +1223,7 @@ const Formulario: React.FC = () => {
                 placeholder="Digite o endereço"
                 typeInput="Text"
                 error={erros.endereco}
+                tooltip="Digite seu endereço completo (rua, número, bairro, cidade)"
               />
             </div>
           </fieldset>
@@ -1026,6 +1242,7 @@ const Formulario: React.FC = () => {
                 placeholder="Digite a profissão"
                 typeInput="Text"
                 error={erros.profissao}
+                tooltip="Digite sua profissão ou cargo atual"
               />
               <SelectInput
                 options={qualificacaoProfissaoOptions.options}
@@ -1041,6 +1258,7 @@ const Formulario: React.FC = () => {
                 label="Qualificação Profissional"
                 placeholder="Digite a qualificação"
                 error={erros.qualificacaoProfissional}
+                tooltip="Selecione sua qualificação profissional (empregado, autônomo, empresário, etc.)"
               />
             </div>
           </fieldset>
@@ -1063,6 +1281,7 @@ const Formulario: React.FC = () => {
                 label="Comprovação de renda formal"
                 placeholder="Comprovação de renda formal"
                 error={erros.comprovacaoRendaFormal}
+                tooltip="Selecione como você comprova sua renda formal (holerite, contracheque, etc.)"
               />
               <InputText
                 inputName="Renda Formal"
@@ -1074,6 +1293,7 @@ const Formulario: React.FC = () => {
                 placeholder="Renda formal"
                 typeInput="Money"
                 error={erros.rendaFormal}
+                tooltip="Digite o valor da sua renda formal (salário, pró-labore, etc.)"
               />
               <SelectInput
                 options={comprovacaoRendaInformalOptions.options}
@@ -1089,6 +1309,7 @@ const Formulario: React.FC = () => {
                 label="Comprovação de renda informal"
                 placeholder="Comprovação de renda informal"
                 error={erros.comprovacaoRendaInformal}
+                tooltip="Selecione como você comprova sua renda informal (se aplicável)"
               />
               <InputText
                 inputName="Renda Informal"
@@ -1100,6 +1321,7 @@ const Formulario: React.FC = () => {
                 placeholder="Renda informal"
                 typeInput="Money"
                 error={erros.rendaInformal}
+                tooltip="Digite o valor da sua renda informal (freelance, bicos, etc.)"
               />
               <InputText
                 inputName="Renda Total Informada"
@@ -1111,6 +1333,7 @@ const Formulario: React.FC = () => {
                 placeholder="Renda total"
                 typeInput="Money"
                 error={erros.rendaTotalInformada}
+                tooltip="Digite o valor total da sua renda (formal + informal)"
               />
             </div>
           </fieldset>
@@ -1267,6 +1490,7 @@ const Formulario: React.FC = () => {
                 label="Amortização Escolhida"
                 placeholder="Selecione entre PRICE e SAC"
                 error={errosEmprestimo.amortizacao}
+                tooltip="Selecione o tipo de amortização do empréstimo (PRICE ou SAC)"
               />
               <SelectInput
                 options={carenciaOptions.options}
@@ -1279,6 +1503,7 @@ const Formulario: React.FC = () => {
                 label="Carência"
                 placeholder="Selecione Carência Solicitada"
                 error={errosEmprestimo.carencia}
+                tooltip="Selecione se deseja carência para pagamento do empréstimo"
               />
               <InputText
                 inputName="Valor Solicitado"
@@ -1290,6 +1515,7 @@ const Formulario: React.FC = () => {
                 placeholder="Informe o Valor Solicitado (R$)"
                 typeInput="Money"
                 error={errosEmprestimo.valorSolicitado}
+                tooltip="Digite o valor total do empréstimo que você deseja solicitar"
               />
               <InputText
                 inputName="Renda Total"
@@ -1301,6 +1527,7 @@ const Formulario: React.FC = () => {
                 placeholder="Informe a Renda Total (R$)"
                 typeInput="Money"
                 error={errosEmprestimo.rendaTotal}
+                tooltip="Digite a renda total de todos os tomadores somada"
               />
               <InputText
                 inputName="Prazo Solicitado"
@@ -1312,6 +1539,7 @@ const Formulario: React.FC = () => {
                 placeholder="Digite o prazo solicitado"
                 typeInput="Text"
                 error={errosEmprestimo.prazoSolicitado}
+                tooltip="Digite o prazo em meses para pagamento do empréstimo"
               />
               <InputText
                 inputName="Juros Solicitado"
@@ -1323,6 +1551,7 @@ const Formulario: React.FC = () => {
                 placeholder="Juros da operação"
                 typeInput="Juros"
                 error={errosEmprestimo.jurosSolicitado}
+                tooltip="Digite a taxa de juros anual desejada para o empréstimo"
               />
             </div>
             <h3 className="font-bold text-blue-900 mb-2 mt-6">Motivo e Comentários</h3>
@@ -1337,6 +1566,7 @@ const Formulario: React.FC = () => {
                 placeholder="Comentários sobre o motivo"
                 typeInput="Text"
                 error={errosEmprestimo.comentarios}
+                tooltip="Digite comentários adicionais sobre o motivo do empréstimo"
               />
               <SelectInput
                 options={motivoEmprestimoOptions.options}
@@ -1349,6 +1579,7 @@ const Formulario: React.FC = () => {
                 label="Motivo do Empréstimo"
                 placeholder="Selecione o Motivo do Empréstimo"
                 error={errosEmprestimo.motivoEmprestimo}
+                tooltip="Selecione o principal motivo para solicitar o empréstimo"
               />
             </div>
           </fieldset>
@@ -1405,6 +1636,7 @@ const Formulario: React.FC = () => {
                 label="Garantia pertence ao tomador?"
                 placeholder="Selecione a opção"
                 error={errosGarantia.garantiaPertenceTomador}
+                tooltip="Selecione se a garantia pertence ao tomador ou a terceiros"
               />
               <InputText
                 inputName="Valor da Garantia"
@@ -1417,6 +1649,7 @@ const Formulario: React.FC = () => {
                 placeholder="Valor da garantia (R$)"
                 typeInput="Money"
                 error={errosGarantia.valorGarantia}
+                tooltip="Digite o valor estimado da garantia (imóvel)"
               />
             </div>
           </fieldset>
@@ -1435,6 +1668,7 @@ const Formulario: React.FC = () => {
                 label="Cidade da garantia"
                 placeholder="Selecione a opção"
                 error={errosGarantia.cidadeGarantia}
+                tooltip="Selecione a cidade onde está localizada a garantia"
               />
               <SelectInput
                 options={ruralUrbanoOptions.options}
@@ -1447,6 +1681,7 @@ const Formulario: React.FC = () => {
                 label="Selecione Rural ou Urbano"
                 placeholder="Selecione a opção"
                 error={errosGarantia.ruralUrbano}
+                tooltip="Selecione se a garantia está em área rural ou urbana"
               />
               <InputText
                 inputName="Endereço da Garantia"
@@ -1459,6 +1694,7 @@ const Formulario: React.FC = () => {
                 placeholder="Digite o endereço completo"
                 typeInput="Text"
                 error={errosGarantia.enderecoGarantia}
+                tooltip="Digite o endereço completo da garantia (rua, número, bairro)"
               />
               <SelectInput
                 options={unidadeFederativaOptions.options}
@@ -1471,6 +1707,7 @@ const Formulario: React.FC = () => {
                 label="Unidade Federativa"
                 placeholder="Selecione a opção"
                 error={errosGarantia.unidadeFederativa}
+                tooltip="Selecione o estado onde está localizada a garantia"
               />
             </div>
           </fieldset>
@@ -1490,6 +1727,7 @@ const Formulario: React.FC = () => {
                 label="Garantia quitada?"
                 placeholder="Selecione Sim ou Não"
                 error={errosGarantia.situacaoGarantia}
+                tooltip="Selecione se a garantia está totalmente quitada ou ainda possui financiamento"
               />
             </div>
           </fieldset>
@@ -1522,6 +1760,7 @@ const Formulario: React.FC = () => {
                   label="Com quem a garantia está financiada"
                   placeholder="Selecione a opção"
                   error={errosGarantia.comQuemEstaFinanciada}
+                  tooltip="Selecione a instituição financeira que financia a garantia"
                 />
                 <InputText
                   inputName="Valor em aberto da Garantia"
@@ -1534,6 +1773,7 @@ const Formulario: React.FC = () => {
                   placeholder="Saldo devedor (R$)"
                   typeInput="Money"
                   error={errosGarantia.valorEmAberto}
+                  tooltip="Digite o valor que ainda falta pagar do financiamento da garantia"
                 />
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -1548,6 +1788,7 @@ const Formulario: React.FC = () => {
                   placeholder="Quantas parcelas tem em aberto?"
                   typeInput="Text"
                   error={errosGarantia.quantasParcelasFalta}
+                  tooltip="Digite quantas parcelas ainda faltam pagar do financiamento"
                 />
               </div>
             </fieldset>
@@ -1568,6 +1809,7 @@ const Formulario: React.FC = () => {
                 label="Escritura individual?"
                 placeholder="Selecione Sim ou Não"
                 error={errosGarantia.escritura}
+                tooltip="Selecione se a escritura da garantia é individual ou em condomínio"
               />
               <SelectInput
                 options={opcoesSimNao}
@@ -1581,6 +1823,7 @@ const Formulario: React.FC = () => {
                 label="Nome está na matrícula?"
                 placeholder="Selecione Sim ou Não"
                 error={errosGarantia.nomeMatrícula}
+                tooltip="Selecione se o nome do proprietário está na matrícula da garantia"
               />
             </div>
           </fieldset>
@@ -1600,6 +1843,7 @@ const Formulario: React.FC = () => {
                 label="Imóvel averbado?"
                 placeholder="Selecione Sim ou Não"
                 error={errosGarantia.imovelAverbado}
+                tooltip="Selecione se o imóvel possui averbações (restrições) no registro"
               />
               <SelectInput
                 options={opcoesSimNao}
@@ -1613,6 +1857,7 @@ const Formulario: React.FC = () => {
                 label="Possui usufruto?"
                 placeholder="Selecione Sim ou Não"
                 error={errosGarantia.possuiUsufruto}
+                tooltip="Selecione se o imóvel possui usufruto registrado"
               />
               <SelectInput
                 options={opcoesSimNao}
@@ -1626,6 +1871,7 @@ const Formulario: React.FC = () => {
                 label="Processo de inventário?"
                 placeholder="Selecione Sim ou Não"
                 error={errosGarantia.processoInventario}
+                tooltip="Selecione se existe processo de inventário envolvendo o imóvel"
               />
             </div>
           </fieldset>
@@ -1647,6 +1893,7 @@ const Formulario: React.FC = () => {
                     label="Dívida de condomínio"
                     placeholder="Selecione Sim ou Não"
                     error={errosGarantia.dividaCondominio}
+                    tooltip="Selecione se existem dívidas de condomínio em aberto"
                   />
                   <SelectInput
                     options={opcoesSimNao}
@@ -1660,6 +1907,7 @@ const Formulario: React.FC = () => {
                     label="Dívida de IPTU"
                     placeholder="Selecione Sim ou Não"
                     error={errosGarantia.dividaIPTU}
+                    tooltip="Selecione se existem dívidas de IPTU em aberto"
                   />
                 </>
               ) : garantia.ruralUrbano?.Name === 'Rural' ? (
@@ -1675,6 +1923,7 @@ const Formulario: React.FC = () => {
                   label="Dívida de ITR"
                   placeholder="Selecione Sim ou Não"
                   error={errosGarantia.dividaIPTU}
+                  tooltip="Selecione se existem dívidas de ITR (Imposto Territorial Rural) em aberto"
                 />
               ) : (
                 <div className="col-span-2 p-3 bg-gray-50 border border-gray-200 rounded-lg">
@@ -1779,6 +2028,7 @@ const Formulario: React.FC = () => {
           }}
           label="Quantidade de Garantidores"
           placeholder="Selecione a quantidade"
+          tooltip="Selecione quantos garantidores participarão do empréstimo (1 a 4)"
         />
       </div>
       <button
@@ -1805,6 +2055,8 @@ const Formulario: React.FC = () => {
     const garantidor = garantidores[idx] || { ...initialGarantidor };
     const estadoCivilOptions = estadoCivilGarantidoresOptionsArr[idx];
 
+    console.log('Renderizando garantidor:', { idx, garantidor, totalGarantidores: garantidores.length });
+
     return (
       <section className="bg-white rounded-2xl shadow-lg p-8 w-full max-w-5xl flex flex-col items-center justify-center">
         <h2 className="text-lg font-bold text-blue-900 mb-4">Garantidor {idx + 1}</h2>
@@ -1827,6 +2079,7 @@ const Formulario: React.FC = () => {
                 label="Estado Civil"
                 placeholder="Selecione o estado civil"
                 error={errosGarantidores.estadoCivil}
+                tooltip="Selecione o estado civil do garantidor"
               />
               <InputText
                 inputName="Nome"
@@ -1838,6 +2091,7 @@ const Formulario: React.FC = () => {
                 placeholder="Digite o nome"
                 typeInput="Text"
                 error={errosGarantidores.nome}
+                tooltip="Digite o nome completo do garantidor"
               />
             </div>
           </fieldset>
@@ -1856,6 +2110,7 @@ const Formulario: React.FC = () => {
                 placeholder="Digite o CPF"
                 typeInput="Cpf"
                 error={errosGarantidores.cpf}
+                tooltip="Digite o CPF do garantidor (apenas números ou com pontos e traços)"
               />
               <InputText
                 inputName="CNPJ"
@@ -1867,6 +2122,7 @@ const Formulario: React.FC = () => {
                 placeholder="Digite o CNPJ"
                 typeInput="Cnpj"
                 error={errosGarantidores.cnpj}
+                tooltip="Digite o CNPJ do garantidor (apenas números ou com pontos, barra e traços)"
               />
             </div>
           </fieldset>
@@ -1885,6 +2141,7 @@ const Formulario: React.FC = () => {
                 placeholder="Digite a profissão"
                 typeInput="Text"
                 error={errosGarantidores.profissao}
+                tooltip="Digite a profissão ou cargo atual do garantidor"
               />
             </div>
           </fieldset>
@@ -1978,9 +2235,9 @@ const Formulario: React.FC = () => {
                   ? renderEmprestimo()
                   : etapa === (quantidade || 0) + 2
                     ? renderGarantia()
-                    : showGarantidores && showQtdGarantidores && etapa === (quantidade || 0) + 3
+                    : etapa === (quantidade || 0) + 3 && garantia.garantiaPertenceTomador?.Name === 'Imóvel de terceiro'
                       ? renderQtdGarantidores()
-                      : showGarantidores && etapa >= (quantidade || 0) + 4 && etapa < (quantidade || 0) + 4 + qtdGarantidores
+                      : etapa >= (quantidade || 0) + 4 && etapa < (quantidade || 0) + 4 + qtdGarantidores && garantia.garantiaPertenceTomador?.Name === 'Imóvel de terceiro'
                         ? renderGarantidores()
                         : null}
           </div>
