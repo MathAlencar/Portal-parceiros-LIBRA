@@ -4,6 +4,7 @@ import { TOMADORES_OPTIONS_IDS, QUANTIDADE_GARANTIDORES_OPTIONS_ID, GARANTIDORES
 import { SelectInput } from '@/components/FormMVP/SelectInput';
 import { InputText } from '@/components/FormInputs/InputText';
 import { QUANTIDADE_TOMADORES_OPTIONS_ID } from '@/hooks/ploomesOptionsIds';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 
 // Funções de validação
 const validarCPF = (cpf: string): boolean => {
@@ -82,6 +83,19 @@ const validarDataNascimento = (dataNascimento: string): boolean => {
   return idade <= 80;
 };
 
+const validarCEP = (cep: string): boolean => {
+  if (!cep) return false;
+  // Remove caracteres não numéricos
+  const cepNumeros = cep.replace(/\D/g, '');
+  // Verifica se tem exatamente 8 dígitos
+  return cepNumeros.length === 8;
+};
+
+const validarMinimoCaracteres = (valor: string, minimo: number = 3): boolean => {
+  if (!valor) return false;
+  return valor.trim().length >= minimo;
+};
+
 const validarCampoVazio = (valor: string): boolean => {
   return valor && valor.trim() !== '' && valor !== 'R$ 0,00' && valor !== 'R$ 0,00' && valor !== 'Selecione uma opção' && valor !== 'Digite o nome' && valor !== 'Digite o email' && valor !== 'Digite o telefone' && valor !== 'Digite o CEP' && valor !== 'Digite o endereço' && valor !== 'Digite a profissão' && valor !== 'Renda formal' && valor !== 'Renda informal' && valor !== 'Renda total';
 };
@@ -149,6 +163,7 @@ const initialGarantia = {
   possuiUsufruto: undefined,
   dividaCondominio: undefined,
   dividaIPTU: undefined,
+  dividaITR: { Id: '', Name: '' },
 };
 
 // Definições iniciais
@@ -210,11 +225,90 @@ const Formulario: React.FC = () => {
 
   const limparErro = (campo: string) => {
     setErros(prev => {
-      const novosErros = { ...prev };
-      delete novosErros[campo];
-      return novosErros;
+      const novo = { ...prev };
+      delete novo[campo];
+      return novo;
     });
   };
+
+  // Função para converter valor monetário para número
+  const converterValorMonetario = (valor: string): number => {
+    if (!valor || valor === 'R$ 0,00') return 0;
+    const numero = valor.replace(/[^\d,]/g, '').replace(',', '.');
+    return parseFloat(numero) || 0;
+  };
+
+  // Função para formatar valor monetário
+  const formatarValorMonetario = (valor: number): string => {
+    return `R$ ${valor.toFixed(2).replace('.', ',').replace(/\B(?=(\d{3})+(?!\d))/g, '.')}`;
+  };
+
+  // Função para calcular renda total
+  const calcularRendaTotal = (rendaFormal: string, rendaInformal: string): string => {
+    const valorFormal = converterValorMonetario(rendaFormal);
+    const valorInformal = converterValorMonetario(rendaInformal);
+    const total = valorFormal + valorInformal;
+    return formatarValorMonetario(total);
+  };
+
+  // Função para atualizar renda total automaticamente
+  const atualizarRendaTotal = (idx: number) => {
+    const tomador = tomadores[idx];
+    if (!tomador) return;
+
+    const rendaFormalNaoSeAplica = tomador.comprovacaoRendaFormal?.Name?.toLowerCase() === 'não se aplica';
+    const rendaInformalNaoSeAplica = tomador.comprovacaoRendaInformal?.Name?.toLowerCase() === 'não se aplica';
+
+    let rendaFormal = rendaFormalNaoSeAplica ? 'R$ 0,00' : tomador.rendaFormal;
+    let rendaInformal = rendaInformalNaoSeAplica ? 'R$ 0,00' : tomador.rendaInformal;
+
+    const rendaTotal = calcularRendaTotal(rendaFormal, rendaInformal);
+
+    setTomadores(prev => {
+      const novo = [...prev];
+      novo[idx] = { 
+        ...novo[idx], 
+        rendaFormal: rendaFormalNaoSeAplica ? 'R$ 0,00' : novo[idx].rendaFormal,
+        rendaInformal: rendaInformalNaoSeAplica ? 'R$ 0,00' : novo[idx].rendaInformal,
+        rendaTotalInformada: rendaTotal
+      };
+      return novo;
+    });
+  };
+
+  // useEffect para atualizar renda total automaticamente quando os valores mudarem
+  useEffect(() => {
+    tomadores.forEach((tomador, idx) => {
+      if (tomador) {
+        const rendaFormalNaoSeAplica = tomador.comprovacaoRendaFormal?.Name?.toLowerCase() === 'não se aplica';
+        const rendaInformalNaoSeAplica = tomador.comprovacaoRendaInformal?.Name?.toLowerCase() === 'não se aplica';
+
+        let rendaFormal = rendaFormalNaoSeAplica ? 'R$ 0,00' : tomador.rendaFormal;
+        let rendaInformal = rendaInformalNaoSeAplica ? 'R$ 0,00' : tomador.rendaInformal;
+
+        const rendaTotal = calcularRendaTotal(rendaFormal, rendaInformal);
+
+        // Só atualiza se o valor for diferente
+        if (tomador.rendaTotalInformada !== rendaTotal) {
+          setTomadores(prev => {
+            const novo = [...prev];
+            novo[idx] = { 
+              ...novo[idx], 
+              rendaFormal: rendaFormalNaoSeAplica ? 'R$ 0,00' : novo[idx].rendaFormal,
+              rendaInformal: rendaInformalNaoSeAplica ? 'R$ 0,00' : novo[idx].rendaInformal,
+              rendaTotalInformada: rendaTotal
+            };
+            return novo;
+          });
+        }
+      }
+    });
+  }, [tomadores.map(t => ({ 
+    rendaFormal: t.rendaFormal, 
+    rendaInformal: t.rendaInformal, 
+    comprovacaoRendaFormal: t.comprovacaoRendaFormal?.Name,
+    comprovacaoRendaInformal: t.comprovacaoRendaInformal?.Name
+  }))]);
 
   // Estado dos dados do empréstimo
   const [emprestimo, setEmprestimo] = useState({ ...initialEmprestimo });
@@ -235,12 +329,15 @@ const Formulario: React.FC = () => {
   const [qtdGarantidoresId, setQtdGarantidoresId] = useState<number | null>(null);
   const [errosGarantidores, setErrosGarantidores] = useState<{ [key: string]: string }>({});
   const [mostrarErroGarantidores, setMostrarErroGarantidores] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [successData, setSuccessData] = useState<any>(null);
 
   const { options, loading, error } = usePloomesOptions(QUANTIDADE_TOMADORES_OPTIONS_ID);
   const { options: quantidadeGarantidoresOptions, loading: loadingGarantidores, error: errorGarantidores } = usePloomesOptions(QUANTIDADE_GARANTIDORES_OPTIONS_ID);
   const amortizacaoOptions = usePloomesOptions(44254);
   const carenciaOptions = usePloomesOptions(46299);
   const motivoEmprestimoOptions = usePloomesOptions(31247);
+  const dividaITROptions = usePloomesOptions(46865);
 
   // Hooks de opções para todos os tomadores (sempre na mesma ordem)
   const estadoCivilOptionsArr = TOMADORES_OPTIONS_IDS.map(ids => usePloomesOptions(ids.estadoCivil));
@@ -311,6 +408,13 @@ const Formulario: React.FC = () => {
     if (savedGarantia) {
       try {
         const parsed = JSON.parse(savedGarantia);
+        
+        // Se dividaITR é boolean (formato antigo), remover do localStorage e usar o formato novo
+        if (typeof parsed.dividaITR === 'boolean') {
+          delete parsed.dividaITR;
+          localStorage.setItem(GARANTIA_STORAGE_KEY, JSON.stringify(parsed));
+        }
+        
         setGarantia({ ...initialGarantia, ...parsed });
       } catch {}
     }
@@ -478,8 +582,8 @@ const Formulario: React.FC = () => {
         return false;
       }
     } else if (garantia.ruralUrbano?.Name === 'Rural') {
-      if (garantia.dividaIPTU === undefined) {
-        return false;
+      if (!validarCampoObjeto(garantia.dividaITR)) {
+        erros.dividaITR = 'Informe se há dívida de ITR';
       }
     }
     
@@ -555,6 +659,8 @@ const Formulario: React.FC = () => {
     // Validação de campos obrigatórios
     if (!validarCampoVazio(tomador.nome)) {
       erros.nome = 'Nome é obrigatório';
+    } else if (!validarMinimoCaracteres(tomador.nome)) {
+      erros.nome = 'Nome deve ter pelo menos 3 caracteres';
     }
     
     if (!validarCampoVazio(tomador.email)) {
@@ -603,40 +709,56 @@ const Formulario: React.FC = () => {
       erros.qualificacaoProfissional = 'Qualificação profissional é obrigatória';
     }
     
-    if (!validarCampoObjeto(tomador.comprovacaoRendaFormal)) {
-      erros.comprovacaoRendaFormal = 'Comprovação de renda formal é obrigatória';
-    }
-    
-    if (!validarCampoObjeto(tomador.comprovacaoRendaInformal)) {
-      erros.comprovacaoRendaInformal = 'Comprovação de renda informal é obrigatória';
-    }
-    
-    // Validação de campos adicionais
     if (!validarCampoVazio(tomador.profissao)) {
       erros.profissao = 'Profissão é obrigatória';
+    } else if (!validarMinimoCaracteres(tomador.profissao)) {
+      erros.profissao = 'Profissão deve ter pelo menos 3 caracteres';
     }
     
     if (!validarCampoVazio(tomador.cep)) {
       erros.cep = 'CEP é obrigatório';
+    } else if (!validarCEP(tomador.cep)) {
+      erros.cep = 'CEP deve ter 8 dígitos (formato: 00000-000)';
     }
     
     if (!validarCampoVazio(tomador.endereco)) {
       erros.endereco = 'Endereço é obrigatório';
+    } else if (!validarMinimoCaracteres(tomador.endereco)) {
+      erros.endereco = 'Endereço deve ter pelo menos 3 caracteres';
     }
     
-    if (!validarCampoVazio(tomador.rendaFormal)) {
-      erros.rendaFormal = 'Renda formal é obrigatória';
+    // Validação de comprovação de renda formal
+    if (!validarCampoObjeto(tomador.comprovacaoRendaFormal)) {
+      erros.comprovacaoRendaFormal = 'Comprovação de renda formal é obrigatória';
     }
     
-    if (!validarCampoVazio(tomador.rendaInformal)) {
-      erros.rendaInformal = 'Renda informal é obrigatória';
+    // Validação de comprovação de renda informal
+    if (!validarCampoObjeto(tomador.comprovacaoRendaInformal)) {
+      erros.comprovacaoRendaInformal = 'Comprovação de renda informal é obrigatória';
     }
     
+    // Validação de rendas baseada na comprovação
+    const rendaFormalNaoSeAplica = tomador.comprovacaoRendaFormal?.Name?.toLowerCase() === 'não se aplica';
+    const rendaInformalNaoSeAplica = tomador.comprovacaoRendaInformal?.Name?.toLowerCase() === 'não se aplica';
+    
+    if (!rendaFormalNaoSeAplica) {
+      if (!validarCampoVazio(tomador.rendaFormal)) {
+        erros.rendaFormal = 'Renda formal é obrigatória';
+      }
+    }
+    
+    if (!rendaInformalNaoSeAplica) {
+      if (!validarCampoVazio(tomador.rendaInformal)) {
+        erros.rendaInformal = 'Renda informal é obrigatória';
+      }
+    }
+    
+    // Renda total é sempre obrigatória (será calculada automaticamente)
     if (!validarCampoVazio(tomador.rendaTotalInformada)) {
       erros.rendaTotalInformada = 'Renda total informada é obrigatória';
     }
     
-    // Validação de campos específicos para PJ
+    // Validações específicas para pessoa jurídica
     if (tomador.tipoPessoa?.Name?.toLowerCase() === 'pessoa jurídica') {
       if (!validarCampoObjeto(tomador.quantidadeSociosPJ)) {
         erros.quantidadeSociosPJ = 'Quantidade de sócios é obrigatória';
@@ -644,10 +766,15 @@ const Formulario: React.FC = () => {
       
       if (!validarCampoVazio(tomador.ramoPJ)) {
         erros.ramoPJ = 'Ramo da PJ é obrigatório';
+      } else if (!validarMinimoCaracteres(tomador.ramoPJ)) {
+        erros.ramoPJ = 'Ramo da PJ deve ter pelo menos 3 caracteres';
       }
     }
     
-    return { valido: Object.keys(erros).length === 0, erros };
+    return {
+      valido: Object.keys(erros).length === 0,
+      erros
+    };
   };
 
   const validarEmprestimo = (emp: any): { valido: boolean; erros: { [key: string]: string } } => {
@@ -664,9 +791,7 @@ const Formulario: React.FC = () => {
     if (!validarCampoVazio(emp.valorSolicitado)) {
       erros.valorSolicitado = 'Valor solicitado é obrigatório';
     }
-    if (!validarCampoVazio(emp.rendaTotal)) {
-      erros.rendaTotal = 'Renda total é obrigatória';
-    }
+    // Renda total é calculada automaticamente, não precisa validar
     if (!validarCampoVazio(emp.prazoSolicitado)) {
       erros.prazoSolicitado = 'Prazo solicitado é obrigatório';
     }
@@ -674,7 +799,9 @@ const Formulario: React.FC = () => {
       erros.jurosSolicitado = 'Juros solicitado é obrigatório';
     }
     if (!validarCampoVazio(emp.comentarios)) {
-      erros.comentarios = 'Comentários são obrigatórios';
+      erros.comentarios = 'Defesa do crédito é obrigatória';
+    } else if (!validarMinimoCaracteres(emp.comentarios, 50)) {
+      erros.comentarios = 'A defesa do crédito deve ter pelo menos 50 caracteres';
     }
     return { valido: Object.keys(erros).length === 0, erros };
   };
@@ -746,8 +873,8 @@ const Formulario: React.FC = () => {
         erros.dividaIPTU = 'Informe se há dívida de IPTU';
       }
     } else if (gar.ruralUrbano?.Name === 'Rural') {
-      if (gar.dividaIPTU === undefined) {
-        erros.dividaIPTU = 'Informe se há dívida de ITR';
+      if (!validarCampoObjeto(gar.dividaITR)) {
+        erros.dividaITR = 'Informe se há dívida de ITR';
       }
     }
 
@@ -1032,15 +1159,9 @@ const Formulario: React.FC = () => {
     );
   };
 
-  // Estado de loading para transição entre etapas
-  const [showLoading, setShowLoading] = useState(false);
-  useEffect(() => {
-    if (etapa > 0) {
-      setShowLoading(true);
-      const timer = setTimeout(() => setShowLoading(false), 500);
-      return () => clearTimeout(timer);
-    }
-  }, [etapa]);
+  // Estado de transição entre etapas
+  const [isTransitioning, setIsTransitioning] = useState(false);
+  const [nextEtapa, setNextEtapa] = useState<number | null>(null);
 
   // Componente de loading
   const LoadingStep = ({ msg }: { msg: string }) => (
@@ -1055,9 +1176,6 @@ const Formulario: React.FC = () => {
 
   // Formulário de cadastro de tomador
   const renderCadastroTomador = () => {
-    if (showLoading) {
-      return <LoadingStep msg="Carregando próximo tomador..." />;
-    }
     const idx = etapa - 1;
     const tomador = tomadores[idx] || { ...initialTomador };
 
@@ -1071,7 +1189,9 @@ const Formulario: React.FC = () => {
     console.log(idx)
 
     return (
-      <section className="bg-white rounded-2xl shadow-lg p-8 w-full max-w-5xl flex flex-col items-center justify-center">
+      <section className={`bg-white rounded-2xl shadow-lg p-8 w-full max-w-5xl flex flex-col items-center justify-center transition-all duration-300 ease-in-out ${
+        isTransitioning ? 'opacity-0 transform scale-95' : 'opacity-100 transform scale-100'
+      }`}>
         <h2 className="text-lg font-bold text-blue-900 mb-4">Tomador {idx + 1}</h2>
         <form className="w-full space-y-6">
           {/* Dados Pessoais */}
@@ -1327,12 +1447,17 @@ const Formulario: React.FC = () => {
                 termo={tomador.rendaFormal}
                 onSetName={v => {
                   limparErro('rendaFormal');
-                  setTomadores(prev => { const novo = [...prev]; novo[idx] = { ...novo[idx], rendaFormal: v }; return novo; });
+                  setTomadores(prev => { 
+                    const novo = [...prev]; 
+                    novo[idx] = { ...novo[idx], rendaFormal: v }; 
+                    return novo; 
+                  });
                 }}
                 placeholder="Renda formal"
                 typeInput="Money"
                 error={erros.rendaFormal}
                 tooltip="Digite o valor da sua renda formal (salário, pró-labore, etc.)"
+                disabled={tomador.comprovacaoRendaFormal?.Name?.toLowerCase() === 'não se aplica'}
               />
               <SelectInput
                 options={comprovacaoRendaInformalOptions.options}
@@ -1355,25 +1480,72 @@ const Formulario: React.FC = () => {
                 termo={tomador.rendaInformal}
                 onSetName={v => {
                   limparErro('rendaInformal');
-                  setTomadores(prev => { const novo = [...prev]; novo[idx] = { ...novo[idx], rendaInformal: v }; return novo; });
+                  setTomadores(prev => { 
+                    const novo = [...prev]; 
+                    novo[idx] = { ...novo[idx], rendaInformal: v }; 
+                    return novo; 
+                  });
                 }}
                 placeholder="Renda informal"
                 typeInput="Money"
                 error={erros.rendaInformal}
                 tooltip="Digite o valor da sua renda informal (freelance, bicos, etc.)"
+                disabled={tomador.comprovacaoRendaInformal?.Name?.toLowerCase() === 'não se aplica'}
               />
-              <InputText
-                inputName="Renda Total Informada"
-                termo={tomador.rendaTotalInformada}
-                onSetName={v => {
-                  limparErro('rendaTotalInformada');
-                  setTomadores(prev => { const novo = [...prev]; novo[idx] = { ...novo[idx], rendaTotalInformada: v }; return novo; });
-                }}
-                placeholder="Renda total"
-                typeInput="Money"
-                error={erros.rendaTotalInformada}
-                tooltip="Digite o valor total da sua renda (formal + informal)"
-              />
+              <div className="sm:col-span-2">
+                <div className="relative">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <div className="flex items-center gap-2">
+                      <span className="text-lg font-semibold text-blue-900">Renda Total Informada</span>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <span className="text-blue-400 cursor-help text-sm hover:text-blue-600 transition-colors">ⓘ</span>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>Valor total calculado automaticamente (Renda Formal + Renda Informal)</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </div>
+                  </label>
+                  <div className="relative group">
+                    <div className="absolute inset-0 bg-gradient-to-r from-blue-400 to-indigo-500 rounded-xl opacity-0 group-hover:opacity-10 transition-opacity duration-300"></div>
+                    <input
+                      value={tomador.rendaTotalInformada}
+                      onChange={() => {}} // Campo bloqueado, não permite edição
+                      placeholder="Renda total (calculada automaticamente)"
+                      className="relative w-full px-4 py-4 rounded-xl border-2 border-blue-200 bg-gradient-to-r from-blue-50 via-indigo-50 to-blue-50 text-gray-800 font-bold text-xl shadow-lg cursor-not-allowed transition-all duration-300 hover:shadow-xl"
+                      disabled={true}
+                    />
+                    <div className="absolute inset-y-0 right-0 flex items-center pr-4">
+                      <div className="flex items-center gap-2 text-blue-600 bg-white/80 backdrop-blur-sm rounded-full px-3 py-1 shadow-sm">
+                        <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M6.267 3.455a3.066 3.066 0 001.745-.723 3.066 3.066 0 013.976 0 3.066 3.066 0 001.745.723 3.066 3.066 0 012.812 2.812c.051.643.304 1.254.723 1.745a3.066 3.066 0 010 3.976 3.066 3.066 0 00-.723 1.745 3.066 3.066 0 01-2.812 2.812 3.066 3.066 0 00-1.745.723 3.066 3.066 0 01-3.976 0 3.066 3.066 0 00-1.745-.723 3.066 3.066 0 01-2.812-2.812 3.066 3.066 0 00-.723-1.745 3.066 3.066 0 010-3.976 3.066 3.066 0 00.723-1.745 3.066 3.066 0 012.812-2.812zm7.44 5.252a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                        </svg>
+                        <span className="text-xs font-semibold">Calculado</span>
+                      </div>
+                    </div>
+                  </div>
+                  {erros.rendaTotalInformada && (
+                    <div className="mt-2 text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2 flex items-center gap-2">
+                      <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                      </svg>
+                      {erros.rendaTotalInformada}
+                    </div>
+                  )}
+                  <div className="mt-3 text-sm text-blue-700 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl px-4 py-3 flex items-start gap-3 shadow-sm">
+                    <div className="flex-shrink-0 mt-0.5">
+                      <svg className="w-5 h-5 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                      </svg>
+                    </div>
+                    <div>
+                      <p className="font-medium text-blue-800 mb-1">Valor Calculado Automaticamente</p>
+                      <p className="text-blue-600 text-xs leading-relaxed">Este valor é calculado automaticamente com base nas rendas formal e informal informadas acima. O sistema soma os valores e exibe o total aqui.</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
           </fieldset>
 
@@ -1384,12 +1556,7 @@ const Formulario: React.FC = () => {
               onClick={() => {
                 setErros({});
                 setMostrarErro(false);
-                // Se for o primeiro tomador (etapa 1), volta para seleção de quantidade (etapa 0)
-                if (etapa === 1) {
-                  setEtapa(0);
-                } else {
-                  setEtapa(etapa - 1);
-                }
+                transitionToEtapa(etapa - 1);
               }}
             >
               Voltar
@@ -1408,17 +1575,9 @@ const Formulario: React.FC = () => {
                 }
                 setErros({});
                 setMostrarErro(false);
-                // Se a próxima etapa ainda for um tomador, mostrar loading de tomador
-                if (etapa < (quantidade || 0)) {
-                  setShowLoading(true);
-                  setTimeout(() => {
-                    setShowLoading(false);
-                    setEtapa(etapa + 1);
-                  }, 500);
-                } else {
-                  // Se for para a etapa de empréstimo, apenas avança sem loading de tomador
-                  setEtapa(etapa + 1);
-                }
+                
+                // Usar transição suave para próxima etapa
+                transitionToEtapa(etapa + 1);
               }}
             >
               Próxima Etapa
@@ -1509,11 +1668,10 @@ const Formulario: React.FC = () => {
 
   // Renderização da etapa de empréstimo (formulário preenchível)
   const renderEmprestimo = () => {
-    if (showLoading) {
-      return <LoadingStep msg="Agora iremos cadastrar o Empréstimo..." />;
-    }
     return (
-      <section className="bg-white rounded-2xl shadow-lg p-8 w-full max-w-5xl flex flex-col items-center justify-center">
+      <section className={`bg-white rounded-2xl shadow-lg p-8 w-full max-w-5xl flex flex-col items-center justify-center transition-all duration-300 ease-in-out ${
+        isTransitioning ? 'opacity-0 transform scale-95' : 'opacity-100 transform scale-100'
+      }`}>
         <form className="w-full space-y-6">
           <fieldset className="border border-blue-200 rounded-xl p-4 mb-4 bg-blue-50">
             <legend className="text-blue-900 font-semibold px-2">Informações do Empréstimo</legend>
@@ -1557,18 +1715,6 @@ const Formulario: React.FC = () => {
                 tooltip="Digite o valor total do empréstimo que você deseja solicitar"
               />
               <InputText
-                inputName="Renda Total"
-                termo={emprestimo.rendaTotal}
-                onSetName={v => {
-                  limparErroEmprestimo('rendaTotal');
-                  setEmprestimo(e => ({ ...e, rendaTotal: v }));
-                }}
-                placeholder="Informe a Renda Total (R$)"
-                typeInput="Money"
-                error={errosEmprestimo.rendaTotal}
-                tooltip="Digite a renda total de todos os tomadores somada"
-              />
-              <InputText
                 inputName="Prazo Solicitado"
                 termo={emprestimo.prazoSolicitado}
                 onSetName={v => {
@@ -1592,21 +1738,123 @@ const Formulario: React.FC = () => {
                 error={errosEmprestimo.jurosSolicitado}
                 tooltip="Digite a taxa de juros anual desejada para o empréstimo"
               />
+              <div className="relative sm:col-span-2">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <div className="flex items-center gap-2">
+                    <span className="text-lg font-semibold text-blue-900">Renda Total</span>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <span className="text-blue-400 cursor-help text-sm hover:text-blue-600 transition-colors">ⓘ</span>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Soma automática das rendas totais de todos os tomadores da operação</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </div>
+                </label>
+                <div className="relative group">
+                  <div className="absolute inset-0 bg-gradient-to-r from-blue-400 to-indigo-500 rounded-xl opacity-0 group-hover:opacity-10 transition-opacity duration-300"></div>
+                  <input
+                    value={emprestimo.rendaTotal}
+                    onChange={() => {}} // Campo bloqueado, não permite edição
+                    placeholder="Renda total (calculada automaticamente)"
+                    className="relative w-full px-4 py-4 rounded-xl border-2 border-blue-200 bg-gradient-to-r from-blue-50 via-indigo-50 to-blue-50 text-gray-800 font-bold text-xl shadow-lg cursor-not-allowed transition-all duration-300 hover:shadow-xl"
+                    disabled={true}
+                  />
+                  <div className="absolute inset-y-0 right-0 flex items-center pr-4">
+                    <div className="flex items-center gap-2 text-blue-600 bg-white/80 backdrop-blur-sm rounded-full px-3 py-1 shadow-sm">
+                      <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M6.267 3.455a3.066 3.066 0 001.745-.723 3.066 3.066 0 013.976 0 3.066 3.066 0 001.745.723 3.066 3.066 0 012.812 2.812c.051.643.304 1.254.723 1.745a3.066 3.066 0 010 3.976 3.066 3.066 0 00-.723 1.745 3.066 3.066 0 01-2.812 2.812 3.066 3.066 0 00-1.745.723 3.066 3.066 0 01-3.976 0 3.066 3.066 0 00-1.745-.723 3.066 3.066 0 01-2.812-2.812 3.066 3.066 0 00-.723-1.745 3.066 3.066 0 010-3.976 3.066 3.066 0 00.723-1.745 3.066 3.066 0 012.812-2.812zm7.44 5.252a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                      </svg>
+                      <span className="text-xs font-semibold">Calculado</span>
+                    </div>
+                  </div>
+                </div>
+                {errosEmprestimo.rendaTotal && (
+                  <div className="mt-2 text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2 flex items-center gap-2">
+                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                    </svg>
+                    {errosEmprestimo.rendaTotal}
+                  </div>
+                )}
+                <div className="mt-3 text-sm text-blue-700 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl px-4 py-3 flex items-start gap-3 shadow-sm">
+                  <div className="flex-shrink-0 mt-0.5">
+                    <svg className="w-5 h-5 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                    </svg>
+                  </div>
+                  <div>
+                    <p className="font-medium text-blue-800 mb-1">Soma Automática das Rendas</p>
+                    <p className="text-blue-600 text-xs leading-relaxed">Este valor é calculado automaticamente somando as rendas totais de todos os tomadores cadastrados na operação.</p>
+                  </div>
+                </div>
+              </div>
             </div>
-            <h3 className="font-bold text-blue-900 mb-2 mt-6">Motivo e Comentários</h3>
+          </fieldset>
+          <fieldset className="border border-blue-200 rounded-xl p-4 mb-4 bg-blue-50">
+            <legend className="text-blue-900 font-semibold px-2">Motivo e Defesa do Crédito</legend>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <InputText
-                inputName="Comentários"
-                termo={emprestimo.comentarios}
-                onSetName={v => {
-                  limparErroEmprestimo('comentarios');
-                  setEmprestimo(e => ({ ...e, comentarios: v }));
-                }}
-                placeholder="Comentários sobre o motivo"
-                typeInput="Text"
-                error={errosEmprestimo.comentarios}
-                tooltip="Digite comentários adicionais sobre o motivo do empréstimo"
-              />
+              <div className="sm:col-span-2">
+                <div className="mb-4 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl">
+                  <div className="flex items-start gap-3">
+                    <div className="flex-shrink-0">
+                      <svg className="w-6 h-6 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                      </svg>
+                    </div>
+                    <div>
+                      <h4 className="text-sm font-semibold text-blue-900 mb-1">Importância da Defesa do Crédito</h4>
+                      <p className="text-sm text-blue-700">
+                        Esta etapa é fundamental para a análise do seu empréstimo. Descreva detalhadamente o motivo, 
+                        justificativa e como o crédito será utilizado. Quanto mais detalhada e convincente for sua 
+                        defesa, maiores são as chances de aprovação.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+                <div className="flex flex-col w-full">
+                  <div className="flex items-center gap-2 mb-2">
+                    <label className="text-sm font-medium text-blue-900">Defesa do Crédito *</label>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <span className="text-blue-400 cursor-help text-sm hover:text-blue-600 transition-colors">ⓘ</span>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Descreva detalhadamente o motivo do empréstimo, justificativa e como o valor será utilizado</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </div>
+                  <textarea
+                    value={emprestimo.comentarios}
+                    onChange={(e) => {
+                      limparErroEmprestimo('comentarios');
+                      setEmprestimo(prev => ({ ...prev, comentarios: e.target.value }));
+                    }}
+                    placeholder="Descreva detalhadamente o motivo do empréstimo, sua justificativa e como o valor será utilizado. Seja específico e convincente para aumentar as chances de aprovação..."
+                    className={`w-full px-4 py-3 rounded-xl border-2 transition-all duration-300 resize-none ${
+                      errosEmprestimo.comentarios 
+                        ? 'border-red-300 bg-red-50 focus:border-red-500 focus:ring-red-200' 
+                        : 'border-gray-300 bg-white focus:border-blue-500 focus:ring-blue-200'
+                    } focus:outline-none focus:ring-2`}
+                    rows={6}
+                    maxLength={2000}
+                  />
+                  <div className="flex justify-between items-center mt-2">
+                    <div className="text-xs text-gray-500">
+                      Mínimo 50 caracteres • Máximo 2000 caracteres
+                    </div>
+                    <div className="text-xs text-gray-500">
+                      {emprestimo.comentarios?.length || 0}/2000
+                    </div>
+                  </div>
+                  {errosEmprestimo.comentarios && (
+                    <div className="mt-1 text-sm text-red-600 bg-red-50 border border-red-200 rounded px-2 py-1">
+                      {errosEmprestimo.comentarios}
+                    </div>
+                  )}
+                </div>
+              </div>
               <SelectInput
                 options={motivoEmprestimoOptions.options}
                 value={emprestimo.motivoEmprestimo?.Id || ''}
@@ -1626,7 +1874,11 @@ const Formulario: React.FC = () => {
             <button
               className="py-2 px-6 font-medium rounded-full bg-gray-200 text-gray-700 hover:bg-gray-300 transition"
               type="button"
-              onClick={() => setEtapa(etapa - 1)}
+              onClick={() => {
+                setErrosEmprestimo({});
+                setMostrarErroEmprestimo(false);
+                transitionToEtapa(etapa - 1);
+              }}
             >
               Voltar
             </button>
@@ -1655,11 +1907,10 @@ const Formulario: React.FC = () => {
 
   // Renderização da etapa de garantia (formulário preenchível)
   const renderGarantia = () => {
-    if (showLoading) {
-      return <LoadingStep msg="Agora iremos cadastrar a Garantia..." />;
-    }
     return (
-      <section className="bg-white rounded-2xl shadow-lg p-8 w-full max-w-5xl flex flex-col items-center justify-center">
+      <section className={`bg-white rounded-2xl shadow-lg p-8 w-full max-w-5xl flex flex-col items-center justify-center transition-all duration-300 ease-in-out ${
+        isTransitioning ? 'opacity-0 transform scale-95' : 'opacity-100 transform scale-100'
+      }`}>
         <form className="w-full space-y-6">
           <fieldset className="border border-blue-200 rounded-xl p-4 mb-4 bg-blue-50">
             <legend className="text-blue-900 font-semibold px-2">Dados Básicos da Garantia</legend>
@@ -1951,17 +2202,16 @@ const Formulario: React.FC = () => {
                 </>
               ) : garantia.ruralUrbano?.Name === 'Rural' ? (
                 <SelectInput
-                  options={opcoesSimNao}
-                  value={garantia.dividaIPTU === true ? 'true' : garantia.dividaIPTU === false ? 'false' : ''}
+                  options={dividaITROptions.options}
+                  value={garantia.dividaITR?.Id || ''}
                   onChange={opt => {
-                    limparErroGarantia('dividaIPTU');
-                    const valor = opt && opt.Id ? opt.Id === 'true' : undefined;
-                    setGarantia(e => ({ ...e, dividaIPTU: valor }));
-                    localStorage.setItem(GARANTIA_STORAGE_KEY, JSON.stringify({ ...garantia, dividaIPTU: valor }));
+                    limparErroGarantia('dividaITR');
+                    setGarantia(e => ({ ...e, dividaITR: opt }));
+                    localStorage.setItem(GARANTIA_STORAGE_KEY, JSON.stringify({ ...garantia, dividaITR: opt }));
                   }}
                   label="Dívida de ITR"
-                  placeholder="Selecione Sim ou Não"
-                  error={errosGarantia.dividaIPTU}
+                  placeholder="Selecione a opção"
+                  error={errosGarantia.dividaITR}
                   tooltip="Selecione se existem dívidas de ITR (Imposto Territorial Rural) em aberto"
                 />
               ) : (
@@ -1981,7 +2231,7 @@ const Formulario: React.FC = () => {
               onClick={() => {
                 setErrosGarantia({});
                 setMostrarErroGarantia(false);
-                setEtapa(etapa - 1);
+                transitionToEtapa(etapa - 1);
               }}
             >
               Voltar
@@ -2004,6 +2254,7 @@ const Formulario: React.FC = () => {
                 } else {
                   // Finalizar cadastro
                   console.log('Formulário finalizado com sucesso!');
+                  enviarDadosParaBackend();
                 }
               }}
             >
@@ -2074,7 +2325,7 @@ const Formulario: React.FC = () => {
         className="w-full py-3 font-semibold rounded-full bg-indigo-600 text-white hover:bg-indigo-700 transition transform hover:scale-105 disabled:opacity-50 mt-6"
         onClick={() => {
           setShowQtdGarantidores(false);
-          setEtapa((quantidade || 0) + 4);
+          transitionToEtapa((quantidade || 0) + 4);
         }}
         disabled={!qtdGarantidoresId}
       >
@@ -2085,10 +2336,6 @@ const Formulario: React.FC = () => {
 
   // Formulário de garantidores
   const renderGarantidores = () => {
-    if (showLoading) {
-      return <LoadingStep msg="Carregando próximo garantidor..." />;
-    }
-    
     // O índice do garantidor atual é etapa - ((quantidade || 0) + 4)
     const idx = etapa - ((quantidade || 0) + 4);
     const garantidor = garantidores[idx] || { ...initialGarantidor };
@@ -2097,7 +2344,9 @@ const Formulario: React.FC = () => {
     console.log('Renderizando garantidor:', { idx, garantidor, totalGarantidores: garantidores.length });
 
     return (
-      <section className="bg-white rounded-2xl shadow-lg p-8 w-full max-w-5xl flex flex-col items-center justify-center">
+      <section className={`bg-white rounded-2xl shadow-lg p-8 w-full max-w-5xl flex flex-col items-center justify-center transition-all duration-300 ease-in-out ${
+        isTransitioning ? 'opacity-0 transform scale-95' : 'opacity-100 transform scale-100'
+      }`}>
         <h2 className="text-lg font-bold text-blue-900 mb-4">Garantidor {idx + 1}</h2>
         <form className="w-full space-y-6">
           {/* Dados Pessoais */}
@@ -2192,13 +2441,7 @@ const Formulario: React.FC = () => {
               onClick={() => {
                 setErrosGarantidores({});
                 setMostrarErroGarantidores(false);
-                // Se for o primeiro garantidor (idx === 0), volta para quantidade de garantidores
-                if (idx === 0) {
-                  setShowQtdGarantidores(true);
-                  setEtapa((quantidade || 0) + 3); // Etapa de quantidade de garantidores
-                } else {
-                  setEtapa(etapa - 1);
-                }
+                transitionToEtapa(etapa - 1);
               }}
             >
               Voltar
@@ -2218,16 +2461,13 @@ const Formulario: React.FC = () => {
                 setErrosGarantidores({});
                 setMostrarErroGarantidores(false);
                 
-                // Se a próxima etapa ainda for um garantidor, mostrar loading
+                // Se a próxima etapa ainda for um garantidor, usar transição suave
                 if (idx + 1 < qtdGarantidores) {
-                  setShowLoading(true);
-                  setTimeout(() => {
-                    setShowLoading(false);
-                    setEtapa(etapa + 1);
-                  }, 500);
+                  transitionToEtapa(etapa + 1);
                 } else {
                   // Finalizar cadastro
                   console.log('Formulário finalizado com sucesso!');
+                  enviarDadosParaBackend();
                 }
               }}
             >
@@ -2254,6 +2494,319 @@ const Formulario: React.FC = () => {
           Entendi
         </button>
       </div>
+    </div>
+  );
+
+  // Função para calcular renda total de todos os tomadores
+  const calcularRendaTotalTodosTomadores = (): string => {
+    const total = tomadores.reduce((soma, tomador) => {
+      const rendaTotal = converterValorMonetario(tomador.rendaTotalInformada || 'R$ 0,00');
+      return soma + rendaTotal;
+    }, 0);
+    return formatarValorMonetario(total);
+  };
+
+  // Função para atualizar renda total do empréstimo
+  const atualizarRendaTotalEmprestimo = () => {
+    const rendaTotalCalculada = calcularRendaTotalTodosTomadores();
+    setEmprestimo(prev => ({ ...prev, rendaTotal: rendaTotalCalculada }));
+    localStorage.setItem(EMPRESTIMO_STORAGE_KEY, JSON.stringify({ ...emprestimo, rendaTotal: rendaTotalCalculada }));
+  };
+
+  // Atualizar renda total do empréstimo sempre que os tomadores mudarem
+  useEffect(() => {
+    if (tomadores.length > 0) {
+      atualizarRendaTotalEmprestimo();
+    }
+  }, [tomadores]);
+
+  // Inicializar renda total quando entrar na etapa de empréstimo
+  useEffect(() => {
+    if (etapa === (quantidade || 0) + 1 && tomadores.length > 0) {
+      atualizarRendaTotalEmprestimo();
+    }
+  }, [etapa, quantidade, tomadores]);
+
+  // Função para scroll automático para o topo
+  const scrollToTop = () => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  // Função para transição suave entre etapas
+  const transitionToEtapa = (novaEtapa: number) => {
+    setIsTransitioning(true);
+    setNextEtapa(novaEtapa);
+    
+    // Pequeno delay para permitir a animação de fade out
+    setTimeout(() => {
+      setEtapa(novaEtapa);
+      setNextEtapa(null);
+      setIsTransitioning(false);
+      scrollToTop();
+    }, 300);
+  };
+
+  // Overlay de transição
+  const TransitionOverlay = () => {
+    if (!isTransitioning) return null;
+    
+    return (
+      <div className="fixed inset-0 bg-white bg-opacity-50 flex items-center justify-center z-40 transition-opacity duration-300">
+        <div className="flex flex-col items-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mb-4"></div>
+          <p className="text-blue-600 font-medium">Carregando...</p>
+        </div>
+      </div>
+    );
+  };
+
+  // Scroll automático para o topo quando a etapa mudar
+  useEffect(() => {
+    if (!isTransitioning) {
+      scrollToTop();
+    }
+  }, [etapa]);
+
+  // Função para enviar dados para o backend
+  const enviarDadosParaBackend = async () => {
+    try {
+      console.log('🚀 Iniciando envio de dados para o backend...');
+      
+      // Lista de todos os campos possíveis do tomador
+      const camposTomador = [
+        'estadoCivil', 'tipoPessoa', 'nome', 'dataNascimento', 'email', 'telefone', 'cep', 'endereco',
+        'profissao', 'qualificacaoProfissional', 'comprovacaoRendaFormal', 'rendaFormal',
+        'comprovacaoRendaInformal', 'rendaInformal', 'rendaTotalInformada',
+        'cpf', 'cnpj', 'ramoPJ', 'quantidadeSociosPJ'
+      ];
+
+      // Preparar dados dos tomadores (apenas até a quantidade selecionada, todos os campos)
+      const tomadoresParaEnviar = tomadores.slice(0, quantidade || 0).map(tomador => {
+        const dadosTomador: any = {};
+        camposTomador.forEach(campo => {
+          dadosTomador[campo] = tomador[campo] ?? "";
+        });
+        return dadosTomador;
+      });
+
+      console.log('📊 Tomadores preparados:', tomadoresParaEnviar);
+
+      // Preparar dados do empréstimo
+      const dadosEmprestimo = {
+        amortizacao: emprestimo.amortizacao,
+        carencia: emprestimo.carencia,
+        valorSolicitado: emprestimo.valorSolicitado,
+        rendaTotal: emprestimo.rendaTotal,
+        prazoSolicitado: emprestimo.prazoSolicitado,
+        jurosSolicitado: emprestimo.jurosSolicitado,
+        motivoEmprestimo: emprestimo.motivoEmprestimo,
+        comentarios: emprestimo.comentarios
+      };
+
+      console.log('💰 Dados do empréstimo:', dadosEmprestimo);
+
+      // Preparar dados da garantia
+      const dadosGarantia = {
+        garantiaPertenceTomador: garantia.garantiaPertenceTomador,
+        valorGarantia: garantia.valorGarantia,
+        situacaoGarantia: garantia.situacaoGarantia,
+        cidadeGarantia: garantia.cidadeGarantia,
+        ruralUrbano: garantia.ruralUrbano,
+        enderecoGarantia: garantia.enderecoGarantia,
+        unidadeFederativa: garantia.unidadeFederativa,
+        comQuemEstaFinanciada: garantia.comQuemEstaFinanciada,
+        valorEmAberto: garantia.valorEmAberto,
+        quantasParcelasFalta: garantia.quantasParcelasFalta,
+        escritura: garantia.escritura,
+        nomeNaMatricula: Boolean(garantia.nomeMatrícula),
+        processoInventario: garantia.processoInventario,
+        imovelAverbado: garantia.imovelAverbado,
+        possuiUsufruto: garantia.possuiUsufruto,
+        dividaCondominio: garantia.dividaCondominio,
+        dividaIPTU: garantia.dividaIPTU,
+        dividaITR: garantia.dividaITR
+      };
+
+      console.log('🏠 Dados da garantia:', dadosGarantia);
+
+      // Preparar dados dos garantidores (apenas os preenchidos)
+      const garantidoresParaEnviar = garantidores.slice(0, qtdGarantidores).map(garantidor => ({
+        estadoCivil: garantidor.estadoCivil,
+        nome: garantidor.nome,
+        cpf: garantidor.cpf,
+        cnpj: garantidor.cnpj,
+        profissao: garantidor.profissao
+      }));
+
+      console.log('👥 Garantidores preparados:', garantidoresParaEnviar);
+
+      // Dados completos para envio
+      const dadosCompletos = {
+        quantidadeTomadores: quantidade,
+        tomadores: tomadoresParaEnviar,
+        emprestimo: dadosEmprestimo,
+        garantia: dadosGarantia,
+        quantidadeGarantidores: qtdGarantidores,
+        garantidores: garantidoresParaEnviar,
+        timestamp: new Date().toISOString()
+      };
+
+      console.log('📤 Dados completos para envio:', dadosCompletos);
+      console.log('�� Enviando para URL: http://localhost:3063/cadastro/offline/');
+
+      // Enviar para o backend
+      const response = await fetch('http://localhost:3063/cadastro/offline/env', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(dadosCompletos)
+      });
+
+      console.log('📡 Resposta do servidor:', response.status, response.statusText);
+
+      if (response.ok) {
+        const result = await response.json();
+        console.log('✅ Dados enviados com sucesso:', result);
+        console.log('🔍 Status da API:', result.status);
+        console.log('🔍 Mensagem da API:', result.msg);
+        
+        // Capturar dados de retorno da API
+        setSuccessData({
+          status: result.status,
+          msg: result.msg,
+          nomeCompleto: result.retorno?.nomeCompleto,
+          email: result.retorno?.email
+        });
+        setShowSuccessModal(true);
+      } else {
+        const errorText = await response.text();
+        console.error('❌ Erro na resposta:', errorText);
+        throw new Error(`Erro no servidor: ${response.status} - ${errorText}`);
+      }
+
+    } catch (error) {
+      console.error('❌ Erro ao enviar dados:', error);
+      alert(`Erro ao enviar formulário: ${error.message}`);
+    }
+  };
+
+  // Modal de sucesso para exibir retorno da API
+  const renderModalSucesso = () => {
+    if (!showSuccessModal || !successData) return null;
+
+    // Se a API retornou dados, consideramos sucesso (mesmo que status não seja 'success')
+    const isSuccess = successData.status === 'success' || 
+                     successData.status === 200 || 
+                     successData.status === 'OK' ||
+                     (successData.msg && successData.msg.toLowerCase().includes('sucesso'));
+
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full mx-4 transform transition-all">
+          <div className="flex flex-col items-center text-center">
+            {/* Ícone de sucesso/erro */}
+            <div className={`w-20 h-20 rounded-full flex items-center justify-center mb-6 ${
+              isSuccess ? 'bg-green-100' : 'bg-red-100'
+            }`}>
+              {isSuccess ? (
+                <svg className="w-12 h-12 text-green-600" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                </svg>
+              ) : (
+                <svg className="w-12 h-12 text-red-600" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                </svg>
+              )}
+            </div>
+
+            {/* Título */}
+            <h2 className={`text-2xl font-bold mb-4 ${
+              isSuccess ? 'text-green-800' : 'text-red-800'
+            }`}>
+              {isSuccess ? 'Cadastro Realizado!' : 'Erro no Cadastro'}
+            </h2>
+
+            {/* Mensagem da API */}
+            <p className="text-gray-700 mb-6 leading-relaxed">
+              {successData.msg || 'Operação concluída com sucesso!'}
+            </p>
+
+            {/* Informações do cliente */}
+            {isSuccess && successData.nomeCompleto && (
+              <div className="w-full bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-4 mb-6">
+                <h3 className="text-sm font-semibold text-blue-900 mb-3">Informações do Cliente:</h3>
+                <div className="space-y-2 text-left">
+                  <div className="flex items-center gap-2">
+                    <svg className="w-4 h-4 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
+                    </svg>
+                    <span className="text-sm text-blue-800">
+                      <strong>Nome:</strong> {successData.nomeCompleto}
+                    </span>
+                  </div>
+                  {successData.email && (
+                    <div className="flex items-center gap-2">
+                      <svg className="w-4 h-4 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
+                        <path d="M2.003 5.884L10 9.882l7.997-3.998A2 2 0 0016 4H4a2 2 0 00-1.997 1.884z" />
+                        <path d="M18 8.118l-8 4-8-4V14a2 2 0 002 2h12a2 2 0 002-2V8.118z" />
+                      </svg>
+                      <span className="text-sm text-blue-800">
+                        <strong>Email:</strong> {successData.email}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Status da operação */}
+            <div className="w-full bg-gray-50 border border-gray-200 rounded-lg p-3 mb-6">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium text-gray-700">Status:</span>
+                <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
+                  isSuccess 
+                    ? 'bg-green-100 text-green-800' 
+                    : 'bg-red-100 text-red-800'
+                }`}>
+                  {successData.status}
+                </span>
+              </div>
+            </div>
+
+            {/* Botão de fechar */}
+            <button
+              onClick={() => {
+                setShowSuccessModal(false);
+                setSuccessData(null);
+                // Aqui você pode adicionar redirecionamento ou limpeza do formulário
+              }}
+              className={`w-full py-3 px-6 font-semibold rounded-xl transition-all duration-300 transform hover:scale-105 ${
+                isSuccess
+                  ? 'bg-gradient-to-r from-green-600 to-emerald-600 text-white hover:from-green-700 hover:to-emerald-700'
+                  : 'bg-gradient-to-r from-red-600 to-pink-600 text-white hover:from-red-700 hover:to-pink-700'
+              }`}
+            >
+              {isSuccess ? 'Continuar' : 'Tentar Novamente'}
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  // Botão de teste para debug (temporário)
+  const BotaoTesteEnvio = () => (
+    <div className="fixed bottom-4 right-4 z-50">
+      <button
+        onClick={() => {
+          console.log('🧪 Teste de envio iniciado...');
+          enviarDadosParaBackend();
+        }}
+        className="bg-red-600 text-white px-4 py-2 rounded-lg shadow-lg hover:bg-red-700 transition-colors"
+      >
+        🧪 Teste Envio
+      </button>
     </div>
   );
 
@@ -2305,6 +2858,9 @@ const Formulario: React.FC = () => {
           
         </div>
       </main>
+      <TransitionOverlay />
+      <BotaoTesteEnvio />
+      {showSuccessModal && renderModalSucesso()}
     </>
   );
 };

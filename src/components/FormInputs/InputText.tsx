@@ -12,6 +12,7 @@ interface InputTextProps {
   id?: string;
   error?: string;
   tooltip?: string;
+  disabled?: boolean;
 }
 
 export const InputText: React.FC<InputTextProps> = ({
@@ -24,6 +25,7 @@ export const InputText: React.FC<InputTextProps> = ({
   id,
   error,
   tooltip,
+  disabled = false,
 }) => {
   const inputRef = useRef<HTMLInputElement>(null);
   const mapRef = useRef<HTMLDivElement>(null);
@@ -167,10 +169,11 @@ export const InputText: React.FC<InputTextProps> = ({
             value={termo}
             onBlur={e => StyledInputs(e.target)}
             ref={inputRef}
-            className={`mt-1 w-full px-4 py-2 rounded-lg border ${hasError ? 'border-red-500' : 'border-gray-300'} bg-gray-50 text-gray-900 focus:ring-2 focus:ring-green-400 focus:outline-none`}
+            className={`mt-1 w-full px-4 py-2 rounded-lg border ${hasError ? 'border-red-500' : 'border-gray-300'} bg-gray-50 text-gray-900 focus:ring-2 focus:ring-green-400 focus:outline-none ${disabled ? 'opacity-75 cursor-not-allowed bg-gray-50 border-gray-200 text-gray-700' : ''}`}
             type="text"
             id={id}
             autoComplete="off"
+            disabled={disabled}
           />
           {error && (
             <div className="mt-1 text-sm text-red-600 bg-red-50 border border-red-200 rounded px-2 py-1">
@@ -204,9 +207,10 @@ export const InputText: React.FC<InputTextProps> = ({
           onChange={e => onSetName(formatadorInput.formatandoTelefone(e.target.value))}
           onBlur={e => StyledInputs(e.target)}
           value={termo}
-          className={`mt-1 w-full px-4 py-2 rounded-lg border ${hasError ? 'border-red-500' : 'border-gray-300'} bg-gray-50 text-gray-900 focus:ring-2 focus:ring-green-400 focus:outline-none`}
+          className={`mt-1 w-full px-4 py-2 rounded-lg border ${hasError ? 'border-red-500' : 'border-gray-300'} bg-gray-50 text-gray-900 focus:ring-2 focus:ring-green-400 focus:outline-none ${disabled ? 'opacity-75 cursor-not-allowed bg-gray-50 border-gray-200 text-gray-700' : ''}`}
           type="text"
           id={id}
+          disabled={disabled}
         />
       )}
       {error && typeInput === 'Phone' && (
@@ -220,9 +224,10 @@ export const InputText: React.FC<InputTextProps> = ({
           onChange={e => onSetName(e.target.value)}
           value={termo}
           onBlur={e => StyledInputs(e.target)}
-          className={`mt-1 w-full px-4 py-2 rounded-lg border ${hasError ? 'border-red-500' : 'border-gray-300'} bg-gray-50 text-gray-900 focus:ring-2 focus:ring-green-400 focus:outline-none`}
+          className={`mt-1 w-full px-4 py-2 rounded-lg border ${hasError ? 'border-red-500' : 'border-gray-300'} bg-gray-50 text-gray-900 focus:ring-2 focus:ring-green-400 focus:outline-none ${disabled ? 'opacity-75 cursor-not-allowed bg-gray-50 border-gray-200 text-gray-700' : ''}`}
           type="text"
           id={id}
+          disabled={disabled}
         />
       )}
       {error && typeInput === 'Text' && (
@@ -236,9 +241,10 @@ export const InputText: React.FC<InputTextProps> = ({
           onChange={e => onSetName(formatadorInput.formatarValorMonetario(e.target.value))}
           value={termo}
           onBlur={e => StyledInputs(e.target)}
-          className={`mt-1 w-full px-4 py-2 rounded-lg border ${hasError ? 'border-red-500' : 'border-gray-300'} bg-gray-50 text-gray-900 focus:ring-2 focus:ring-green-400 focus:outline-none`}
+          className={`mt-1 w-full px-4 py-2 rounded-lg border ${hasError ? 'border-red-500' : 'border-gray-300'} bg-gray-50 text-gray-900 focus:ring-2 focus:ring-green-400 focus:outline-none ${disabled ? 'opacity-75 cursor-not-allowed bg-gray-50 border-gray-200 text-gray-700' : ''}`}
           type="text"
           id={id}
+          disabled={disabled}
         />
       )}
       {error && typeInput === 'Juros' && (
@@ -252,14 +258,23 @@ export const InputText: React.FC<InputTextProps> = ({
           onChange={e => onSetName(formatadorInput.formatarValorMonetario(e.target.value))}
           value={termo}
           onBlur={e => StyledInputs(e.target)}
-          className={`mt-1 w-full px-4 py-2 rounded-lg border ${hasError ? 'border-red-500' : 'border-gray-300'} bg-gray-50 text-gray-900 focus:ring-2 focus:ring-green-400 focus:outline-none`}
+          className={`mt-1 w-full px-4 py-2 rounded-lg border ${hasError ? 'border-red-500' : 'border-gray-300'} bg-gray-50 text-gray-900 focus:ring-2 focus:ring-green-400 focus:outline-none ${disabled ? 'opacity-75 cursor-not-allowed bg-gray-50 border-gray-200 text-gray-700' : ''}`}
           type="text"
           id={id}
+          disabled={disabled}
         />
       )}
       {error && typeInput === 'Money' && (
         <div className="mt-1 text-sm text-red-600 bg-red-50 border border-red-200 rounded px-2 py-1">
           {error}
+        </div>
+      )}
+      {typeInput === 'Money' && disabled && (
+        <div className="mt-1 text-xs text-blue-600 bg-blue-50 border border-blue-200 rounded px-2 py-1 flex items-center gap-1">
+          <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+            <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+          </svg>
+          Valor calculado automaticamente
         </div>
       )}
       {typeInput === 'Cpf' && (
@@ -268,9 +283,10 @@ export const InputText: React.FC<InputTextProps> = ({
           onChange={e => onSetName(formatadorInput.formatarCPF(e.target.value))}
           value={termo}
           onBlur={e => StyledInputs(e.target)}
-          className={`mt-1 w-full px-4 py-2 rounded-lg border ${hasError ? 'border-red-500' : 'border-gray-300'} bg-gray-50 text-gray-900 focus:ring-2 focus:ring-green-400 focus:outline-none`}
+          className={`mt-1 w-full px-4 py-2 rounded-lg border ${hasError ? 'border-red-500' : 'border-gray-300'} bg-gray-50 text-gray-900 focus:ring-2 focus:ring-green-400 focus:outline-none ${disabled ? 'opacity-75 cursor-not-allowed bg-gray-50 border-gray-200 text-gray-700' : ''}`}
           type="text"
           id={id}
+          disabled={disabled}
         />
       )}
       {error && typeInput === 'Cpf' && (
@@ -284,9 +300,10 @@ export const InputText: React.FC<InputTextProps> = ({
           onChange={e => onSetName(formatadorInput.formatarCNPJ(e.target.value))}
           value={termo}
           onBlur={e => StyledInputs(e.target)}
-          className={`mt-1 w-full px-4 py-2 rounded-lg border ${hasError ? 'border-red-500' : 'border-gray-300'} bg-gray-50 text-gray-900 focus:ring-2 focus:ring-green-400 focus:outline-none`}
+          className={`mt-1 w-full px-4 py-2 rounded-lg border ${hasError ? 'border-red-500' : 'border-gray-300'} bg-gray-50 text-gray-900 focus:ring-2 focus:ring-green-400 focus:outline-none ${disabled ? 'opacity-75 cursor-not-allowed bg-gray-50 border-gray-200 text-gray-700' : ''}`}
           type="text"
           id={id}
+          disabled={disabled}
         />
       )}
       {error && typeInput === 'Cnpj' && (
@@ -300,9 +317,10 @@ export const InputText: React.FC<InputTextProps> = ({
           onChange={e => onSetName(formatadorInput.formatarCEP(e.target.value))}
           value={termo}
           onBlur={e => StyledInputs(e.target)}
-          className={`mt-1 w-full px-4 py-2 rounded-lg border ${hasError ? 'border-red-500' : 'border-gray-300'} bg-gray-50 text-gray-900 focus:ring-2 focus:ring-green-400 focus:outline-none`}
+          className={`mt-1 w-full px-4 py-2 rounded-lg border ${hasError ? 'border-red-500' : 'border-gray-300'} bg-gray-50 text-gray-900 focus:ring-2 focus:ring-green-400 focus:outline-none ${disabled ? 'opacity-75 cursor-not-allowed bg-gray-50 border-gray-200 text-gray-700' : ''}`}
           type="text"
           id={id}
+          disabled={disabled}
         />
       )}
       {error && typeInput === 'Cep' && (
@@ -318,7 +336,8 @@ export const InputText: React.FC<InputTextProps> = ({
           onBlur={e => StyledInputs(e.target)}
           type="date"
           id={id}
-          className={`mt-1 w-full px-4 py-2 rounded-lg border ${hasError ? 'border-red-500' : 'border-gray-300'} bg-gray-50 text-gray-900 focus:ring-2 focus:ring-green-400 focus:outline-none`}
+          className={`mt-1 w-full px-4 py-2 rounded-lg border ${hasError ? 'border-red-500' : 'border-gray-300'} bg-gray-50 text-gray-900 focus:ring-2 focus:ring-green-400 focus:outline-none ${disabled ? 'opacity-75 cursor-not-allowed bg-gray-50 border-gray-200 text-gray-700' : ''}`}
+          disabled={disabled}
         />
       )}
       {error && typeInput === 'Date' && (
