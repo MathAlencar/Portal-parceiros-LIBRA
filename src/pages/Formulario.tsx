@@ -97,11 +97,15 @@ const validarMinimoCaracteres = (valor: string, minimo: number = 3): boolean => 
 };
 
 const validarCampoVazio = (valor: string): boolean => {
-  return valor && valor.trim() !== '' && valor !== 'R$ 0,00' && valor !== 'R$ 0,00' && valor !== 'Selecione uma opção' && valor !== 'Digite o nome' && valor !== 'Digite o email' && valor !== 'Digite o telefone' && valor !== 'Digite o CEP' && valor !== 'Digite o endereço' && valor !== 'Digite a profissão' && valor !== 'Renda formal' && valor !== 'Renda informal' && valor !== 'Renda total';
+  return valor && valor.trim() !== '' && valor !== 'Selecione uma opção' && valor !== 'Digite o nome' && valor !== 'Digite o email' && valor !== 'Digite o telefone' && valor !== 'Digite o CEP' && valor !== 'Digite o endereço' && valor !== 'Digite a profissão' && valor !== 'Renda formal' && valor !== 'Renda informal' && valor !== 'Renda total';
 };
 
 const validarCampoObjeto = (valor: any): boolean => {
   return valor && valor.Id && valor.Id !== '' && valor.Name && valor.Name !== '';
+};
+
+const validarCampoMonetario = (valor: string): boolean => {
+  return valor && valor.trim() !== '' && valor !== 'Selecione uma opção' && valor !== 'Digite o nome' && valor !== 'Digite o email' && valor !== 'Digite o telefone' && valor !== 'Digite o CEP' && valor !== 'Digite o endereço' && valor !== 'Digite a profissão' && valor !== 'Renda formal' && valor !== 'Renda informal' && valor !== 'Renda total';
 };
 
 const LOCAL_STORAGE_KEY = 'ploomes_selected_tomadores';
@@ -554,24 +558,37 @@ const Formulario: React.FC = () => {
       });
       
       // Verificar se todos os campos obrigatórios estão preenchidos
-      if (!tomador.nome || !tomador.tipoPessoa?.Name || !tomador.estadoCivil?.Name || 
-          !tomador.dataNascimento || !tomador.email || !tomador.telefone || 
-          !tomador.cep || !tomador.endereco || !tomador.profissao || 
-          !tomador.qualificacaoProfissional?.Name || !tomador.comprovacaoRendaFormal?.Name || 
-          !tomador.rendaFormal || !tomador.comprovacaoRendaInformal?.Name || 
-          !tomador.rendaInformal || !tomador.rendaTotalInformada) {
+      if (!validarCampoVazio(tomador.nome) || !validarCampoObjeto(tomador.tipoPessoa) || !validarCampoObjeto(tomador.estadoCivil) || 
+          !validarCampoVazio(tomador.dataNascimento) || !validarCampoVazio(tomador.email) || !validarCampoVazio(tomador.telefone) || 
+          !validarCampoVazio(tomador.cep) || !validarCampoVazio(tomador.endereco) || !validarCampoVazio(tomador.profissao) || 
+          !validarCampoObjeto(tomador.qualificacaoProfissional) || !validarCampoObjeto(tomador.comprovacaoRendaFormal) || 
+          !validarCampoObjeto(tomador.comprovacaoRendaInformal) || !validarCampoMonetario(tomador.rendaTotalInformada)) {
         console.log(`Tomador ${i + 1} failed basic validation`);
+        return false;
+      }
+      
+      // Verificar rendas baseadas na comprovação
+      const rendaFormalNaoSeAplica = tomador.comprovacaoRendaFormal?.Name?.toLowerCase() === 'não se aplica';
+      const rendaInformalNaoSeAplica = tomador.comprovacaoRendaInformal?.Name?.toLowerCase() === 'não se aplica';
+      
+      if (!rendaFormalNaoSeAplica && !validarCampoMonetario(tomador.rendaFormal)) {
+        console.log(`Tomador ${i + 1} failed renda formal validation`);
+        return false;
+      }
+      
+      if (!rendaInformalNaoSeAplica && !validarCampoMonetario(tomador.rendaInformal)) {
+        console.log(`Tomador ${i + 1} failed renda informal validation`);
         return false;
       }
       
       // Verificar CPF ou CNPJ baseado no tipo de pessoa
       if (tomador.tipoPessoa?.Name?.toLowerCase() === 'pessoa física') {
-        if (!tomador.cpf) {
+        if (!validarCampoVazio(tomador.cpf)) {
           console.log(`Tomador ${i + 1} failed CPF validation`);
           return false;
         }
       } else if (tomador.tipoPessoa?.Name?.toLowerCase() === 'pessoa jurídica') {
-        if (!tomador.cnpj || !tomador.ramoPJ || !tomador.quantidadeSociosPJ?.Name || !tomador.numeroAdmin?.Name) {
+        if (!validarCampoVazio(tomador.cnpj) || !validarCampoVazio(tomador.ramoPJ) || !validarCampoObjeto(tomador.quantidadeSociosPJ) || !validarCampoObjeto(tomador.numeroAdmin)) {
           console.log(`Tomador ${i + 1} failed PJ validation`);
           return false;
         }
@@ -582,29 +599,29 @@ const Formulario: React.FC = () => {
   };
 
   const verificarEtapaEmprestimoCompleta = () => {
-    if (!emprestimo.amortizacao?.Name || !emprestimo.carencia?.Name || 
-        !emprestimo.valorSolicitado || !emprestimo.rendaTotal || 
-        !emprestimo.prazoSolicitado || !emprestimo.jurosSolicitado || 
-        !emprestimo.parcelaSolicitada || !emprestimo.comentarios || 
-        !emprestimo.motivoEmprestimo?.Name) {
+    if (!validarCampoObjeto(emprestimo.amortizacao) || !validarCampoObjeto(emprestimo.carencia) || 
+        !validarCampoMonetario(emprestimo.valorSolicitado) || !validarCampoMonetario(emprestimo.rendaTotal) || 
+        !validarCampoVazio(emprestimo.prazoSolicitado) || !validarCampoVazio(emprestimo.jurosSolicitado) || 
+        !validarCampoMonetario(emprestimo.parcelaSolicitada) || !validarCampoVazio(emprestimo.comentarios) || 
+        !validarCampoObjeto(emprestimo.motivoEmprestimo)) {
       return false;
     }
     return true;
   };
 
   const verificarEtapaGarantiaCompleta = () => {
-    if (!garantia.garantiaPertenceTomador?.Name || !garantia.valorGarantia || 
-        !garantia.cidadeGarantia?.Name || !garantia.ruralUrbano?.Name || 
-        !garantia.enderecoGarantia || !garantia.unidadeFederativa?.Name || 
-        !garantia.utilizacaoGarantia?.Name || !garantia.tipoGarantia?.Name ||
+    if (!validarCampoObjeto(garantia.garantiaPertenceTomador) || !validarCampoMonetario(garantia.valorGarantia) || 
+        !validarCampoObjeto(garantia.cidadeGarantia) || !validarCampoObjeto(garantia.ruralUrbano) || 
+        !validarCampoVazio(garantia.enderecoGarantia) || !validarCampoObjeto(garantia.unidadeFederativa) || 
+        !validarCampoObjeto(garantia.utilizacaoGarantia) || !validarCampoObjeto(garantia.tipoGarantia) ||
         garantia.situacaoGarantia === undefined) {
       return false;
     }
     
     // Se garantia não está quitada, verificar campos de financiamento
     if (garantia.situacaoGarantia === false) {
-      if (!garantia.comQuemEstaFinanciada?.Name || !garantia.valorEmAberto || 
-          !garantia.quantasParcelasFalta) {
+      if (!validarCampoObjeto(garantia.comQuemEstaFinanciada) || !validarCampoVazio(garantia.valorEmAberto) || 
+          !validarCampoVazio(garantia.quantasParcelasFalta)) {
         return false;
       }
     }
@@ -623,7 +640,7 @@ const Formulario: React.FC = () => {
       }
     } else if (garantia.ruralUrbano?.Name === 'Rural') {
       if (!validarCampoObjeto(garantia.dividaITR)) {
-        erros.dividaITR = 'Informe se há dívida de ITR';
+        return false;
       }
     }
     
@@ -637,8 +654,9 @@ const Formulario: React.FC = () => {
       const garantidor = garantidores[i];
       if (!garantidor) return false;
       
-      if (!garantidor.estadoCivil?.Name || !garantidor.nome || 
-          !garantidor.profissao || !garantidor.email || (!garantidor.cpf && !garantidor.cnpj)) {
+      if (!validarCampoObjeto(garantidor.estadoCivil) || !validarCampoVazio(garantidor.nome) || 
+          !validarCampoVazio(garantidor.profissao) || !validarCampoVazio(garantidor.email) || 
+          (!validarCampoVazio(garantidor.cpf) && !validarCampoVazio(garantidor.cnpj))) {
         return false;
       }
     }
