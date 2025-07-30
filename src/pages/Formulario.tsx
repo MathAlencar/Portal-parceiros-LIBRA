@@ -6,6 +6,7 @@ import { InputText } from '@/components/FormInputs/InputText';
 import { QUANTIDADE_TOMADORES_OPTIONS_ID } from '@/hooks/ploomesOptionsIds';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 
+
 // Funções de validação
 const validarCPF = (cpf: string): boolean => {
   const cpfLimpo = cpf.replace(/[^\d]/g, '');
@@ -415,9 +416,11 @@ const Formulario: React.FC = () => {
   // Carregar dados da garantia do localStorage ao iniciar
   useEffect(() => {
     const savedGarantia = localStorage.getItem(GARANTIA_STORAGE_KEY);
+    console.log('Tentativa inicial de carregar garantia do localStorage:', savedGarantia);
     if (savedGarantia) {
       try {
         const parsed = JSON.parse(savedGarantia);
+        console.log('Dados da garantia carregados inicialmente:', parsed);
         
         // Se dividaITR é boolean (formato antigo), remover do localStorage e usar o formato novo
         if (typeof parsed.dividaITR === 'boolean') {
@@ -426,9 +429,54 @@ const Formulario: React.FC = () => {
         }
         
         setGarantia({ ...initialGarantia, ...parsed });
-      } catch {}
+      } catch (error) {
+        console.error('Erro ao carregar dados da garantia inicialmente:', error);
+      }
     }
   }, []);
+
+  // Novo useEffect para restaurar dados da garantia após as opções serem carregadas
+  useEffect(() => {
+    // Verificar se todas as opções da garantia foram carregadas
+    const allOptionsLoaded = 
+      pertenceTomadorOptions.loading === false &&
+      utilizacaoGarantiaOptions.loading === false &&
+      tipoGarantiaOptions.loading === false &&
+      cidadeGarantiaOptions.loading === false &&
+      ruralUrbanoOptions.loading === false &&
+      unidadeFederativaOptions.loading === false &&
+      comQuemEstaFinanciadaOptions.loading === false &&
+      dividaITROptions.loading === false;
+
+    if (allOptionsLoaded) {
+      const savedGarantia = localStorage.getItem(GARANTIA_STORAGE_KEY);
+      if (savedGarantia) {
+        try {
+          const parsed = JSON.parse(savedGarantia);
+          console.log('Restaurando dados da garantia após carregamento das opções:', parsed);
+          
+          // Se dividaITR é boolean (formato antigo), remover do localStorage e usar o formato novo
+          if (typeof parsed.dividaITR === 'boolean') {
+            delete parsed.dividaITR;
+            localStorage.setItem(GARANTIA_STORAGE_KEY, JSON.stringify(parsed));
+          }
+          
+          setGarantia({ ...initialGarantia, ...parsed });
+        } catch (error) {
+          console.error('Erro ao restaurar dados da garantia:', error);
+        }
+      }
+    }
+  }, [
+    pertenceTomadorOptions.loading,
+    utilizacaoGarantiaOptions.loading,
+    tipoGarantiaOptions.loading,
+    cidadeGarantiaOptions.loading,
+    ruralUrbanoOptions.loading,
+    unidadeFederativaOptions.loading,
+    comQuemEstaFinanciadaOptions.loading,
+    dividaITROptions.loading
+  ]);
 
   // Salvar dados da garantia no localStorage sempre que mudarem
   useEffect(() => {
@@ -1075,66 +1123,87 @@ const Formulario: React.FC = () => {
               isCompleted = garantidoresDevemAparecer && verificarEtapaGarantidoresCompleta();
             }
             
+                          // Determinar o ícone baseado no estado da etapa
+        const getStepIcon = () => {
+          // Ícone padrão baseado no tipo de etapa - nunca alterado
+          switch (idx) {
+            case 0: return '👤';
+            case 1: return '💰';
+            case 2: return '🏠';
+            case 3: return '🛡️';
+            default: return '👤';
+          }
+        };
+            
             return (
               <Fragment key={label}>
-                <button
-                  className={`flex items-center w-full space-x-3 px-2 py-2 rounded-lg transition font-semibold text-left relative ${
-                    isActive
-                      ? 'bg-indigo-100 text-blue-900'
-                      : isCompleted
-                        ? 'bg-green-50 text-green-800 hover:bg-green-100'
-                        : isEnabled
-                          ? 'bg-white text-gray-700 hover:bg-gray-100'
-                          : 'bg-gray-100 text-gray-400 hover:bg-gray-200'}`}
-                  disabled={!isEnabled}
-                  onClick={() => {
-                    if (!isEnabled) return;
-                    if (idx === 0) {
-                      // Navegar para tomadores - sempre volta para o primeiro tomador
-                      setEtapa(1);
-                    } else if (idx === 1) {
-                      // Navegar para empréstimo
-                      setEtapa((quantidade || 0) + 1);
-                    } else if (idx === 2) {
-                      // Navegar para garantia
-                      setEtapa((quantidade || 0) + 2);
-                    } else if (idx === 3) {
-                      // Navegar para garantidores
-                      // Verificar se garantidores devem ser mostrados
-                      if (garantia.garantiaPertenceTomador?.Name === 'Imóvel de terceiro') {
-                        setShowGarantidores(true);
-                        if (qtdGarantidores > 0) {
-                          // Se já tem quantidade definida, vai direto para o primeiro garantidor
-                          setShowQtdGarantidores(false);
-                          setEtapa((quantidade || 0) + 4);
-                        } else {
-                          // Se não tem quantidade definida, vai para seleção de quantidade
+                <div className="relative">
+                  <button
+                    className={`flex items-center w-full space-x-3 px-3 py-3 rounded-lg transition font-semibold text-left relative ${
+                      isActive
+                        ? 'bg-blue-50 text-blue-900 border-2 border-blue-200'
+                        : isCompleted
+                          ? 'bg-green-50 text-green-800 hover:bg-green-100 border-2 border-green-200'
+                          : isEnabled
+                            ? 'bg-white text-gray-700 hover:bg-gray-50 border-2 border-gray-200'
+                            : 'bg-gray-50 text-gray-400 border-2 border-gray-200'}`}
+                    disabled={!isEnabled}
+                    onClick={() => {
+                      if (!isEnabled) return;
+                      if (idx === 0) {
+                        // Navegar para tomadores - sempre vai para seleção de quantidade
+                        setEtapa(0);
+                      } else if (idx === 1) {
+                        // Navegar para empréstimo
+                        setEtapa((quantidade || 0) + 1);
+                      } else if (idx === 2) {
+                        // Navegar para garantia
+                        setEtapa((quantidade || 0) + 2);
+                      } else if (idx === 3) {
+                        // Navegar para garantidores - sempre vai para seleção de quantidade
+                        // Verificar se garantidores devem ser mostrados
+                        if (garantia.garantiaPertenceTomador?.Name === 'Imóvel de terceiro') {
+                          setShowGarantidores(true);
                           setShowQtdGarantidores(true);
                           setEtapa((quantidade || 0) + 3);
                         }
                       }
-                    }
-                  }}
-                >
-                  <div className={`w-8 h-8 flex items-center justify-center rounded-full border-2 ${
-                    isActive 
-                      ? 'border-blue-800 bg-blue-800 text-white' 
-                      : isCompleted
-                        ? 'border-green-600 bg-green-600 text-white'
-                        : 'border-gray-300 bg-white'
-                  }`}>
-                    {idx === 0 ? '👤' : idx === 1 ? '💰' : idx === 2 ? '🏠' : '🛡️'}
-                  </div>
-                  {isCompleted && (
-                    <div className="absolute -top-1 -right-1 w-5 h-5 bg-green-600 rounded-full flex items-center justify-center">
-                      <span className="text-white text-xs font-bold">✓</span>
+                    }}
+                  >
+                                 <div className={`w-10 h-10 flex items-center justify-center rounded-full border-2 text-lg ${
+               isActive 
+                 ? 'border-blue-600 bg-blue-600 text-white' 
+                 : isCompleted
+                   ? 'border-green-600 bg-green-600 text-white'
+                   : isEnabled
+                     ? 'border-gray-400 bg-white text-gray-600'
+                     : 'border-gray-300 bg-gray-100 text-gray-400'
+             }`}>
+               {getStepIcon()}
+             </div>
+                    <div className="flex-1 ml-3">
+                      <span className="block font-medium">
+                        {label}
+                      </span>
+                      {isCompleted && (
+                        <span className="text-xs text-green-600 font-medium">
+                          ✓ Etapa finalizada
+                        </span>
+                      )}
+                      {isActive && (
+                        <span className="text-xs text-blue-600 font-medium">
+                          ▶ Etapa atual
+                        </span>
+                      )}
+                      {!isEnabled && (
+                        <span className="text-xs text-gray-500 font-medium">
+                          🔒 Etapa bloqueada
+                        </span>
+                      )}
                     </div>
-                  )}
-                  <span className="ml-2">
-                    {label}
-                  </span>
-                </button>
-                {idx < etapasSidebar.length - 1 && <hr className="border-gray-200" />}
+                  </button>
+                </div>
+                {idx < etapasSidebar.length - 1 && <hr className="border-gray-200 my-4" />}
               </Fragment>
             );
           })}
@@ -2013,6 +2082,53 @@ const Formulario: React.FC = () => {
 
   // Renderização da etapa de garantia (formulário preenchível)
   const renderGarantia = () => {
+    // Debug: verificar se as opções estão carregadas
+    const optionsLoading = 
+      pertenceTomadorOptions.loading ||
+      utilizacaoGarantiaOptions.loading ||
+      tipoGarantiaOptions.loading ||
+      cidadeGarantiaOptions.loading ||
+      ruralUrbanoOptions.loading ||
+      unidadeFederativaOptions.loading ||
+      comQuemEstaFinanciadaOptions.loading ||
+      dividaITROptions.loading;
+
+    // Debug: verificar se as opções têm dados
+    const optionsEmpty = 
+      pertenceTomadorOptions.options.length === 0 ||
+      utilizacaoGarantiaOptions.options.length === 0 ||
+      tipoGarantiaOptions.options.length === 0 ||
+      cidadeGarantiaOptions.options.length === 0 ||
+      ruralUrbanoOptions.options.length === 0 ||
+      unidadeFederativaOptions.options.length === 0 ||
+      comQuemEstaFinanciadaOptions.options.length === 0 ||
+      dividaITROptions.options.length === 0;
+
+    if (optionsLoading) {
+      console.log('Opções da garantia ainda carregando...');
+      return (
+        <section className={`bg-white rounded-2xl shadow-lg p-8 w-full max-w-5xl flex flex-col items-center justify-center transition-all duration-300 ease-in-out ${
+          isTransitioning ? 'opacity-0 transform scale-95' : 'opacity-100 transform scale-100'
+        }`}>
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-700 mx-auto mb-4"></div>
+            <p className="text-gray-600">Carregando opções da garantia...</p>
+          </div>
+        </section>
+      );
+    } else if (optionsEmpty) {
+      console.log('Algumas opções da garantia estão vazias:', {
+        pertenceTomador: pertenceTomadorOptions.options.length,
+        utilizacao: utilizacaoGarantiaOptions.options.length,
+        tipo: tipoGarantiaOptions.options.length,
+        cidade: cidadeGarantiaOptions.options.length,
+        ruralUrbano: ruralUrbanoOptions.options.length,
+        unidadeFederativa: unidadeFederativaOptions.options.length,
+        comQuemEstaFinanciada: comQuemEstaFinanciadaOptions.options.length,
+        dividaITR: dividaITROptions.options.length
+      });
+    }
+
     return (
       <section className={`bg-white rounded-2xl shadow-lg p-8 w-full max-w-5xl flex flex-col items-center justify-center transition-all duration-300 ease-in-out ${
         isTransitioning ? 'opacity-0 transform scale-95' : 'opacity-100 transform scale-100'
