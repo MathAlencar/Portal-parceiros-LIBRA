@@ -41,6 +41,7 @@ export const TOMADORES_OPTIONS_IDS = [
     comprovacaoRendaFormal: 31834,
     comprovacaoRendaInformal: 31835,
     quantidadeSocios: 47704,
+    numeroAdmin: 47705,
   },
   {
     estadoCivil: 39353,
@@ -49,6 +50,7 @@ export const TOMADORES_OPTIONS_IDS = [
     comprovacaoRendaFormal: 31836,
     comprovacaoRendaInformal: 31837,
     quantidadeSocios: 47706,
+    numeroAdmin: 47707,
   },
   {
     estadoCivil: 39384,
@@ -57,6 +59,7 @@ export const TOMADORES_OPTIONS_IDS = [
     comprovacaoRendaFormal: 31838,
     comprovacaoRendaInformal: 31839,
     quantidadeSocios: 47709,
+    numeroAdmin: 47710,
   },
   {
     estadoCivil: 39389,
@@ -65,6 +68,7 @@ export const TOMADORES_OPTIONS_IDS = [
     comprovacaoRendaFormal: 38543,
     comprovacaoRendaInformal: 38544,
     quantidadeSocios: 47711,
+    numeroAdmin: 47712,
   },
 ];
 

@@ -129,6 +129,7 @@ const initialTomador = {
   comprovacaoRendaInformal: { Id: '', Name: '' },
   rendaTotalInformada: '',
   quantidadeSociosPJ: { Id: '', Name: '' },
+  numeroAdmin: { Id: '', Name: '' },
   ramoPJ: '',
 };
 
@@ -141,6 +142,7 @@ const initialEmprestimo = {
   rendaTotal: '',
   prazoSolicitado: '',
   jurosSolicitado: '',
+  parcelaSolicitada: '',
   comentarios: '',
 };
 
@@ -164,6 +166,8 @@ const initialGarantia = {
   dividaCondominio: undefined,
   dividaIPTU: undefined,
   dividaITR: { Id: '', Name: '' },
+  utilizacaoGarantia: { Id: '', Name: '' },
+  tipoGarantia: { Id: '', Name: '' },
 };
 
 // Definições iniciais
@@ -175,6 +179,7 @@ const initialGarantidor = {
   cpf: '',
   cnpj: '',
   profissao: '',
+  email: '',
 };
 
 const Formulario: React.FC = () => {
@@ -278,37 +283,35 @@ const Formulario: React.FC = () => {
 
   // useEffect para atualizar renda total automaticamente quando os valores mudarem
   useEffect(() => {
-    tomadores.forEach((tomador, idx) => {
-      if (tomador) {
-        const rendaFormalNaoSeAplica = tomador.comprovacaoRendaFormal?.Name?.toLowerCase() === 'não se aplica';
-        const rendaInformalNaoSeAplica = tomador.comprovacaoRendaInformal?.Name?.toLowerCase() === 'não se aplica';
+    let hasChanges = false;
+    const updatedTomadores = tomadores.map((tomador, idx) => {
+      if (!tomador) return tomador;
+      
+      const rendaFormalNaoSeAplica = tomador.comprovacaoRendaFormal?.Name?.toLowerCase() === 'não se aplica';
+      const rendaInformalNaoSeAplica = tomador.comprovacaoRendaInformal?.Name?.toLowerCase() === 'não se aplica';
 
-        let rendaFormal = rendaFormalNaoSeAplica ? 'R$ 0,00' : tomador.rendaFormal;
-        let rendaInformal = rendaInformalNaoSeAplica ? 'R$ 0,00' : tomador.rendaInformal;
+      let rendaFormal = rendaFormalNaoSeAplica ? 'R$ 0,00' : tomador.rendaFormal;
+      let rendaInformal = rendaInformalNaoSeAplica ? 'R$ 0,00' : tomador.rendaInformal;
 
-        const rendaTotal = calcularRendaTotal(rendaFormal, rendaInformal);
+      const rendaTotal = calcularRendaTotal(rendaFormal, rendaInformal);
 
-        // Só atualiza se o valor for diferente
-        if (tomador.rendaTotalInformada !== rendaTotal) {
-          setTomadores(prev => {
-            const novo = [...prev];
-            novo[idx] = { 
-              ...novo[idx], 
-              rendaFormal: rendaFormalNaoSeAplica ? 'R$ 0,00' : novo[idx].rendaFormal,
-              rendaInformal: rendaInformalNaoSeAplica ? 'R$ 0,00' : novo[idx].rendaInformal,
-              rendaTotalInformada: rendaTotal
-            };
-            return novo;
-          });
-        }
+      // Só atualiza se o valor for diferente
+      if (tomador.rendaTotalInformada !== rendaTotal) {
+        hasChanges = true;
+        return {
+          ...tomador,
+          rendaFormal: rendaFormalNaoSeAplica ? 'R$ 0,00' : tomador.rendaFormal,
+          rendaInformal: rendaInformalNaoSeAplica ? 'R$ 0,00' : tomador.rendaInformal,
+          rendaTotalInformada: rendaTotal
+        };
       }
+      return tomador;
     });
-  }, [tomadores.map(t => ({ 
-    rendaFormal: t.rendaFormal, 
-    rendaInformal: t.rendaInformal, 
-    comprovacaoRendaFormal: t.comprovacaoRendaFormal?.Name,
-    comprovacaoRendaInformal: t.comprovacaoRendaInformal?.Name
-  }))]);
+
+    if (hasChanges) {
+      setTomadores(updatedTomadores);
+    }
+  }, [tomadores]);
 
   // Estado dos dados do empréstimo
   const [emprestimo, setEmprestimo] = useState({ ...initialEmprestimo });
@@ -346,6 +349,7 @@ const Formulario: React.FC = () => {
   const comprovacaoRendaFormalOptionsArr = TOMADORES_OPTIONS_IDS.map(ids => usePloomesOptions(ids.comprovacaoRendaFormal));
   const comprovacaoRendaInformalOptionsArr = TOMADORES_OPTIONS_IDS.map(ids => usePloomesOptions(ids.comprovacaoRendaInformal));
   const quantidadeSociosOptionsArr = TOMADORES_OPTIONS_IDS.map(ids => usePloomesOptions(ids.quantidadeSocios));
+  const numeroAdminOptionsArr = TOMADORES_OPTIONS_IDS.map(ids => usePloomesOptions(ids.numeroAdmin));
 
   // Hooks de opções para garantidores
   const estadoCivilGarantidoresOptionsArr = GARANTIDORES_OPTIONS_IDS.map(ids => usePloomesOptions(ids.estadoCivil));
@@ -356,6 +360,8 @@ const Formulario: React.FC = () => {
   const ruralUrbanoOptions = usePloomesOptions(46826);
   const unidadeFederativaOptions = usePloomesOptions(38986);
   const comQuemEstaFinanciadaOptions = usePloomesOptions(32453);
+  const utilizacaoGarantiaOptions = usePloomesOptions(31833);
+  const tipoGarantiaOptions = usePloomesOptions(31459);
 
   // Opções Sim/Não para campos booleanos
   const opcoesSimNao = [
@@ -523,6 +529,30 @@ const Formulario: React.FC = () => {
       const tomador = tomadores[i];
       if (!tomador) return false;
       
+      // Debug: log the tomador data to see what's missing
+      console.log(`Tomador ${i + 1} data:`, {
+        nome: tomador.nome,
+        tipoPessoa: tomador.tipoPessoa?.Name,
+        estadoCivil: tomador.estadoCivil?.Name,
+        dataNascimento: tomador.dataNascimento,
+        email: tomador.email,
+        telefone: tomador.telefone,
+        cep: tomador.cep,
+        endereco: tomador.endereco,
+        profissao: tomador.profissao,
+        qualificacaoProfissional: tomador.qualificacaoProfissional?.Name,
+        comprovacaoRendaFormal: tomador.comprovacaoRendaFormal?.Name,
+        rendaFormal: tomador.rendaFormal,
+        comprovacaoRendaInformal: tomador.comprovacaoRendaInformal?.Name,
+        rendaInformal: tomador.rendaInformal,
+        rendaTotalInformada: tomador.rendaTotalInformada,
+        cpf: tomador.cpf,
+        cnpj: tomador.cnpj,
+        ramoPJ: tomador.ramoPJ,
+        quantidadeSociosPJ: tomador.quantidadeSociosPJ?.Name,
+        numeroAdmin: tomador.numeroAdmin?.Name
+      });
+      
       // Verificar se todos os campos obrigatórios estão preenchidos
       if (!tomador.nome || !tomador.tipoPessoa?.Name || !tomador.estadoCivil?.Name || 
           !tomador.dataNascimento || !tomador.email || !tomador.telefone || 
@@ -530,16 +560,24 @@ const Formulario: React.FC = () => {
           !tomador.qualificacaoProfissional?.Name || !tomador.comprovacaoRendaFormal?.Name || 
           !tomador.rendaFormal || !tomador.comprovacaoRendaInformal?.Name || 
           !tomador.rendaInformal || !tomador.rendaTotalInformada) {
+        console.log(`Tomador ${i + 1} failed basic validation`);
         return false;
       }
       
       // Verificar CPF ou CNPJ baseado no tipo de pessoa
       if (tomador.tipoPessoa?.Name?.toLowerCase() === 'pessoa física') {
-        if (!tomador.cpf) return false;
+        if (!tomador.cpf) {
+          console.log(`Tomador ${i + 1} failed CPF validation`);
+          return false;
+        }
       } else if (tomador.tipoPessoa?.Name?.toLowerCase() === 'pessoa jurídica') {
-        if (!tomador.cnpj || !tomador.ramoPJ || !tomador.quantidadeSociosPJ?.Name) return false;
+        if (!tomador.cnpj || !tomador.ramoPJ || !tomador.quantidadeSociosPJ?.Name || !tomador.numeroAdmin?.Name) {
+          console.log(`Tomador ${i + 1} failed PJ validation`);
+          return false;
+        }
       }
     }
+    console.log('All tomadores validation passed');
     return true;
   };
 
@@ -547,7 +585,8 @@ const Formulario: React.FC = () => {
     if (!emprestimo.amortizacao?.Name || !emprestimo.carencia?.Name || 
         !emprestimo.valorSolicitado || !emprestimo.rendaTotal || 
         !emprestimo.prazoSolicitado || !emprestimo.jurosSolicitado || 
-        !emprestimo.comentarios || !emprestimo.motivoEmprestimo?.Name) {
+        !emprestimo.parcelaSolicitada || !emprestimo.comentarios || 
+        !emprestimo.motivoEmprestimo?.Name) {
       return false;
     }
     return true;
@@ -557,6 +596,7 @@ const Formulario: React.FC = () => {
     if (!garantia.garantiaPertenceTomador?.Name || !garantia.valorGarantia || 
         !garantia.cidadeGarantia?.Name || !garantia.ruralUrbano?.Name || 
         !garantia.enderecoGarantia || !garantia.unidadeFederativa?.Name || 
+        !garantia.utilizacaoGarantia?.Name || !garantia.tipoGarantia?.Name ||
         garantia.situacaoGarantia === undefined) {
       return false;
     }
@@ -598,7 +638,7 @@ const Formulario: React.FC = () => {
       if (!garantidor) return false;
       
       if (!garantidor.estadoCivil?.Name || !garantidor.nome || 
-          !garantidor.profissao || (!garantidor.cpf && !garantidor.cnpj)) {
+          !garantidor.profissao || !garantidor.email || (!garantidor.cpf && !garantidor.cnpj)) {
         return false;
       }
     }
@@ -764,6 +804,10 @@ const Formulario: React.FC = () => {
         erros.quantidadeSociosPJ = 'Quantidade de sócios é obrigatória';
       }
       
+      if (!validarCampoObjeto(tomador.numeroAdmin)) {
+        erros.numeroAdmin = 'Número de administradores é obrigatório';
+      }
+      
       if (!validarCampoVazio(tomador.ramoPJ)) {
         erros.ramoPJ = 'Ramo da PJ é obrigatório';
       } else if (!validarMinimoCaracteres(tomador.ramoPJ)) {
@@ -798,6 +842,9 @@ const Formulario: React.FC = () => {
     if (!validarCampoVazio(emp.jurosSolicitado)) {
       erros.jurosSolicitado = 'Juros solicitado é obrigatório';
     }
+    if (!validarCampoVazio(emp.parcelaSolicitada)) {
+      erros.parcelaSolicitada = 'Parcela solicitada é obrigatória';
+    }
     if (!validarCampoVazio(emp.comentarios)) {
       erros.comentarios = 'Defesa do crédito é obrigatória';
     } else if (!validarMinimoCaracteres(emp.comentarios, 50)) {
@@ -827,6 +874,12 @@ const Formulario: React.FC = () => {
     }
     if (!validarCampoObjeto(gar.unidadeFederativa)) {
       erros.unidadeFederativa = 'Unidade Federativa é obrigatória';
+    }
+    if (!validarCampoObjeto(gar.utilizacaoGarantia)) {
+      erros.utilizacaoGarantia = 'Qual a utilização da garantia é obrigatória';
+    }
+    if (!validarCampoObjeto(gar.tipoGarantia)) {
+      erros.tipoGarantia = 'Tipo da garantia é obrigatório';
     }
 
     // Validação condicional para situação da garantia
@@ -902,6 +955,11 @@ const Formulario: React.FC = () => {
     }
     if (!validarCampoVazio(garantidor.profissao)) {
       erros.profissao = 'Profissão é obrigatória';
+    }
+    if (!validarCampoVazio(garantidor.email)) {
+      erros.email = 'Email é obrigatório';
+    } else if (!validarEmail(garantidor.email)) {
+      erros.email = 'Email inválido';
     }
 
     return {
@@ -1185,6 +1243,7 @@ const Formulario: React.FC = () => {
     const comprovacaoRendaFormalOptions = comprovacaoRendaFormalOptionsArr[idx];
     const comprovacaoRendaInformalOptions = comprovacaoRendaInformalOptionsArr[idx];
     const quantidadeSociosOptions = quantidadeSociosOptionsArr[idx];
+    const numeroAdminOptions = numeroAdminOptionsArr[idx];
 
     console.log(idx)
 
@@ -1199,7 +1258,7 @@ const Formulario: React.FC = () => {
             <legend className="text-blue-900 font-semibold px-2">Dados Pessoais</legend>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-2">
               <SelectInput
-                options={estadoCivilOptions.options}
+                options={estadoCivilOptions?.options || []}
                 value={tomador.estadoCivil.Id ? String(tomador.estadoCivil.Id) : undefined}
                 onChange={opt => {
                   limparErro('estadoCivil');
@@ -1215,7 +1274,7 @@ const Formulario: React.FC = () => {
                 tooltip="Selecione seu estado civil atual (solteiro, casado, divorciado, etc.)"
               />
               <SelectInput
-                options={tipoPessoaOptions.options}
+                options={tipoPessoaOptions?.options || []}
                 value={tomador.tipoPessoa.Id ? String(tomador.tipoPessoa.Id) : undefined}
                 onChange={opt => {
                   limparErro('tipoPessoa');
@@ -1277,7 +1336,7 @@ const Formulario: React.FC = () => {
               ) : tomador.tipoPessoa?.Name?.toLowerCase() === 'pessoa jurídica' ? (
                 <>
                   <SelectInput
-                    options={quantidadeSociosOptions.options}
+                    options={quantidadeSociosOptions?.options || []}
                     value={tomador.quantidadeSociosPJ.Id ? String(tomador.quantidadeSociosPJ.Id) : undefined}
                     onChange={opt => {
                       limparErro('quantidadeSociosPJ');
@@ -1291,6 +1350,22 @@ const Formulario: React.FC = () => {
                     label="Quantidade de Sócios da PJ"
                     error={erros.quantidadeSociosPJ}
                     tooltip="Selecione a quantidade total de sócios da pessoa jurídica"
+                  />
+                  <SelectInput
+                    options={numeroAdminOptions?.options || []}
+                    value={tomador.numeroAdmin.Id ? String(tomador.numeroAdmin.Id) : undefined}
+                    onChange={opt => {
+                      limparErro('numeroAdmin');
+                      setTomadores(prev => {
+                        const novo = [...prev];
+                        novo[idx] = { ...novo[idx], numeroAdmin: { Id: opt.Id, Name: opt.Name } };
+                        return novo;
+                      });
+                    }}
+                    placeholder="Informe o número de administradores"
+                    label="N° de admin"
+                    error={erros.numeroAdmin}
+                    tooltip="Selecione o número de administradores da pessoa jurídica"
                   />
                   <InputText
                     inputName="CNPJ"
@@ -1404,7 +1479,7 @@ const Formulario: React.FC = () => {
                 tooltip="Digite sua profissão ou cargo atual"
               />
               <SelectInput
-                options={qualificacaoProfissaoOptions.options}
+                options={qualificacaoProfissaoOptions?.options || []}
                 value={tomador.qualificacaoProfissional.Id ? String(tomador.qualificacaoProfissional.Id) : undefined}
                 onChange={opt => {
                   limparErro('qualificacaoProfissional');
@@ -1427,7 +1502,7 @@ const Formulario: React.FC = () => {
             <legend className="text-blue-900 font-semibold px-2">Renda</legend>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <SelectInput
-                options={comprovacaoRendaFormalOptions.options}
+                options={comprovacaoRendaFormalOptions?.options || []}
                 value={tomador.comprovacaoRendaFormal.Id ? String(tomador.comprovacaoRendaFormal.Id) : undefined}
                 onChange={opt => {
                   limparErro('comprovacaoRendaFormal');
@@ -1460,7 +1535,7 @@ const Formulario: React.FC = () => {
                 disabled={tomador.comprovacaoRendaFormal?.Name?.toLowerCase() === 'não se aplica'}
               />
               <SelectInput
-                options={comprovacaoRendaInformalOptions.options}
+                options={comprovacaoRendaInformalOptions?.options || []}
                 value={tomador.comprovacaoRendaInformal.Id ? String(tomador.comprovacaoRendaInformal.Id) : undefined}
                 onChange={opt => {
                   limparErro('comprovacaoRendaInformal');
@@ -1738,6 +1813,19 @@ const Formulario: React.FC = () => {
                 error={errosEmprestimo.jurosSolicitado}
                 tooltip="Digite a taxa de juros anual desejada para o empréstimo"
               />
+              <InputText
+                inputName="Parcela Solicitada"
+                termo={emprestimo.parcelaSolicitada}
+                onSetName={v => {
+                  limparErroEmprestimo('parcelaSolicitada');
+                  setEmprestimo(e => ({ ...e, parcelaSolicitada: v }));
+                  localStorage.setItem(EMPRESTIMO_STORAGE_KEY, JSON.stringify({ ...emprestimo, parcelaSolicitada: v }));
+                }}
+                placeholder="Informe o valor da parcela (R$)"
+                typeInput="Money"
+                error={errosEmprestimo.parcelaSolicitada}
+                tooltip="O valor que o cliente deseja pagar de parcelas"
+              />
               <div className="relative sm:col-span-2">
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   <div className="flex items-center gap-2">
@@ -1940,6 +2028,34 @@ const Formulario: React.FC = () => {
                 typeInput="Money"
                 error={errosGarantia.valorGarantia}
                 tooltip="Digite o valor estimado da garantia (imóvel)"
+              />
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <SelectInput
+                options={utilizacaoGarantiaOptions.options || []}
+                value={garantia.utilizacaoGarantia?.Id || ''}
+                onChange={opt => {
+                  limparErroGarantia('utilizacaoGarantia');
+                  setGarantia(e => ({ ...e, utilizacaoGarantia: opt }));
+                  localStorage.setItem(GARANTIA_STORAGE_KEY, JSON.stringify({ ...garantia, utilizacaoGarantia: opt }));
+                }}
+                label="Qual a utilização da garantia?"
+                placeholder="Selecione a opção"
+                error={errosGarantia.utilizacaoGarantia}
+                tooltip="Selecione qual será a utilização da garantia"
+              />
+              <SelectInput
+                options={tipoGarantiaOptions.options || []}
+                value={garantia.tipoGarantia?.Id || ''}
+                onChange={opt => {
+                  limparErroGarantia('tipoGarantia');
+                  setGarantia(e => ({ ...e, tipoGarantia: opt }));
+                  localStorage.setItem(GARANTIA_STORAGE_KEY, JSON.stringify({ ...garantia, tipoGarantia: opt }));
+                }}
+                label="Tipo da garantia"
+                placeholder="Selecione a opção"
+                error={errosGarantia.tipoGarantia}
+                tooltip="Selecione o tipo da garantia"
               />
             </div>
           </fieldset>
@@ -2313,6 +2429,7 @@ const Formulario: React.FC = () => {
               setQtdGarantidores(qtd);
               setQtdGarantidoresId(opt.Id);
               setGarantidores(Array(qtd).fill(null).map(() => ({ ...initialGarantidor })));
+              localStorage.setItem(QUANTIDADE_GARANTIDORES_STORAGE_KEY, JSON.stringify({ Id: opt.Id, Name: opt.Name }));
               console.log('Quantidade de garantidores selecionada:', { Id: opt.Id, Name: opt.Name });
             }
           }}
@@ -2431,6 +2548,18 @@ const Formulario: React.FC = () => {
                 error={errosGarantidores.profissao}
                 tooltip="Digite a profissão ou cargo atual do garantidor"
               />
+              <InputText
+                inputName="Email"
+                termo={garantidor.email}
+                onSetName={v => {
+                  limparErroGarantidores('email');
+                  setGarantidores(prev => { const novo = [...prev]; novo[idx] = { ...novo[idx], email: v }; return novo; });
+                }}
+                placeholder="Digite o email"
+                typeInput="Text"
+                error={errosGarantidores.email}
+                tooltip="Digite o email do garantidor"
+              />
             </div>
           </fieldset>
 
@@ -2516,16 +2645,22 @@ const Formulario: React.FC = () => {
   // Atualizar renda total do empréstimo sempre que os tomadores mudarem
   useEffect(() => {
     if (tomadores.length > 0) {
-      atualizarRendaTotalEmprestimo();
+      const rendaTotalCalculada = calcularRendaTotalTodosTomadores();
+      if (emprestimo.rendaTotal !== rendaTotalCalculada) {
+        setEmprestimo(prev => ({ ...prev, rendaTotal: rendaTotalCalculada }));
+      }
     }
-  }, [tomadores]);
+  }, [tomadores, emprestimo.rendaTotal]);
 
   // Inicializar renda total quando entrar na etapa de empréstimo
   useEffect(() => {
     if (etapa === (quantidade || 0) + 1 && tomadores.length > 0) {
-      atualizarRendaTotalEmprestimo();
+      const rendaTotalCalculada = calcularRendaTotalTodosTomadores();
+      if (emprestimo.rendaTotal !== rendaTotalCalculada) {
+        setEmprestimo(prev => ({ ...prev, rendaTotal: rendaTotalCalculada }));
+      }
     }
-  }, [etapa, quantidade, tomadores]);
+  }, [etapa, quantidade, tomadores, emprestimo.rendaTotal]);
 
   // Função para scroll automático para o topo
   const scrollToTop = () => {
@@ -2577,7 +2712,7 @@ const Formulario: React.FC = () => {
         'estadoCivil', 'tipoPessoa', 'nome', 'dataNascimento', 'email', 'telefone', 'cep', 'endereco',
         'profissao', 'qualificacaoProfissional', 'comprovacaoRendaFormal', 'rendaFormal',
         'comprovacaoRendaInformal', 'rendaInformal', 'rendaTotalInformada',
-        'cpf', 'cnpj', 'ramoPJ', 'quantidadeSociosPJ'
+        'cpf', 'cnpj', 'ramoPJ', 'quantidadeSociosPJ', 'numeroAdmin'
       ];
 
       // Preparar dados dos tomadores (apenas até a quantidade selecionada, todos os campos)
@@ -2599,6 +2734,7 @@ const Formulario: React.FC = () => {
         rendaTotal: emprestimo.rendaTotal,
         prazoSolicitado: emprestimo.prazoSolicitado,
         jurosSolicitado: emprestimo.jurosSolicitado,
+        parcelaSolicitada: emprestimo.parcelaSolicitada,
         motivoEmprestimo: emprestimo.motivoEmprestimo,
         comentarios: emprestimo.comentarios
       };
@@ -2624,7 +2760,9 @@ const Formulario: React.FC = () => {
         possuiUsufruto: garantia.possuiUsufruto,
         dividaCondominio: garantia.dividaCondominio,
         dividaIPTU: garantia.dividaIPTU,
-        dividaITR: garantia.dividaITR
+        dividaITR: garantia.dividaITR,
+        utilizacaoGarantia: garantia.utilizacaoGarantia,
+        tipoGarantia: garantia.tipoGarantia
       };
 
       console.log('🏠 Dados da garantia:', dadosGarantia);
@@ -2635,18 +2773,19 @@ const Formulario: React.FC = () => {
         nome: garantidor.nome,
         cpf: garantidor.cpf,
         cnpj: garantidor.cnpj,
-        profissao: garantidor.profissao
+        profissao: garantidor.profissao,
+        email: garantidor.email
       }));
 
       console.log('👥 Garantidores preparados:', garantidoresParaEnviar);
 
       // Dados completos para envio
       const dadosCompletos = {
-        quantidadeTomadores: quantidade,
+        quantidadeTomadores: { Id: quantidadeId, Name: quantidade },
         tomadores: tomadoresParaEnviar,
         emprestimo: dadosEmprestimo,
         garantia: dadosGarantia,
-        quantidadeGarantidores: qtdGarantidores,
+        quantidadeGarantidores: { Id: qtdGarantidoresId, Name: qtdGarantidores },
         garantidores: garantidoresParaEnviar,
         timestamp: new Date().toISOString()
       };
