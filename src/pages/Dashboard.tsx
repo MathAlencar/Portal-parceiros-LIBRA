@@ -394,8 +394,20 @@ const Dashboard: React.FC = () => {
     </div>
   );
 
-  const UserDashboard = () => (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
+  const UserDashboard = () => {
+    if (!userGroup) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-100">
+        <div className="text-center">
+          <div className="animate-spin h-10 w-10 border-4 border-blue-500 border-t-transparent rounded-full mx-auto mb-4" />
+          <p className="text-gray-700 text-lg">Carregando...</p>
+        </div>
+      </div>
+    );
+    }
+    else {
+      return (
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
       <div className="container mx-auto px-6 py-8 space-y-8">
         {/* Menu Toggle for Mobile */}
         <div className="flex justify-between items-center">
@@ -483,7 +495,9 @@ const Dashboard: React.FC = () => {
         </Card>
       </div>
     </div>
-  );
+    )
+    }
+  };
 
   return (
     <>

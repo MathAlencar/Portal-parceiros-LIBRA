@@ -19,14 +19,14 @@ const validarCPF = (cpf: string): boolean => {
     soma += parseInt(cpfLimpo.charAt(i)) * (10 - i);
   }
   let resto = soma % 11;
-  let digito1 = resto < 2 ? 0 : 11 - resto;
+  const digito1 = resto < 2 ? 0 : 11 - resto;
   
   soma = 0;
   for (let i = 0; i < 10; i++) {
     soma += parseInt(cpfLimpo.charAt(i)) * (11 - i);
   }
   resto = soma % 11;
-  let digito2 = resto < 2 ? 0 : 11 - resto;
+  const digito2 = resto < 2 ? 0 : 11 - resto;
   
   return cpfLimpo.charAt(9) === digito1.toString() && cpfLimpo.charAt(10) === digito2.toString();
 };
@@ -44,7 +44,7 @@ const validarCNPJ = (cnpj: string): boolean => {
     peso = peso === 9 ? 2 : peso + 1;
   }
   let resto = soma % 11;
-  let digito1 = resto < 2 ? 0 : 11 - resto;
+  const digito1 = resto < 2 ? 0 : 11 - resto;
   
   soma = 0;
   peso = 2;
@@ -53,7 +53,7 @@ const validarCNPJ = (cnpj: string): boolean => {
     peso = peso === 9 ? 2 : peso + 1;
   }
   resto = soma % 11;
-  let digito2 = resto < 2 ? 0 : 11 - resto;
+  const digito2 = resto < 2 ? 0 : 11 - resto;
   
   return cnpjLimpo.charAt(12) === digito1.toString() && cnpjLimpo.charAt(13) === digito2.toString();
 };
@@ -298,8 +298,8 @@ const Formulario: React.FC = () => {
     const rendaFormalNaoSeAplica = tomador.comprovacaoRendaFormal?.Name?.toLowerCase() === 'não se aplica';
     const rendaInformalNaoSeAplica = tomador.comprovacaoRendaInformal?.Name?.toLowerCase() === 'não se aplica';
 
-    let rendaFormal = rendaFormalNaoSeAplica ? 'R$ 0,00' : tomador.rendaFormal;
-    let rendaInformal = rendaInformalNaoSeAplica ? 'R$ 0,00' : tomador.rendaInformal;
+    const rendaFormal = rendaFormalNaoSeAplica ? 'R$ 0,00' : tomador.rendaFormal;
+    const rendaInformal = rendaInformalNaoSeAplica ? 'R$ 0,00' : tomador.rendaInformal;
 
     const rendaTotal = calcularRendaTotal(rendaFormal, rendaInformal);
 
@@ -324,8 +324,8 @@ const Formulario: React.FC = () => {
       const rendaFormalNaoSeAplica = tomador.comprovacaoRendaFormal?.Name?.toLowerCase() === 'não se aplica';
       const rendaInformalNaoSeAplica = tomador.comprovacaoRendaInformal?.Name?.toLowerCase() === 'não se aplica';
 
-      let rendaFormal = rendaFormalNaoSeAplica ? 'R$ 0,00' : tomador.rendaFormal;
-      let rendaInformal = rendaInformalNaoSeAplica ? 'R$ 0,00' : tomador.rendaInformal;
+      const rendaFormal = rendaFormalNaoSeAplica ? 'R$ 0,00' : tomador.rendaFormal;
+      const rendaInformal = rendaInformalNaoSeAplica ? 'R$ 0,00' : tomador.rendaInformal;
 
       const rendaTotal = calcularRendaTotal(rendaFormal, rendaInformal);
 
@@ -609,6 +609,7 @@ const Formulario: React.FC = () => {
 
   const limparTodosOsDados = () => {
     // Limpar dados dos tomadores
+
     setQuantidade(null);
     setQuantidadeId(null);
     setTomadores([]);
@@ -1181,39 +1182,157 @@ const Formulario: React.FC = () => {
     }
   };
 
-  const renderBanner = () => (
-    <div className="w-full flex justify-center py-8 bg-gradient-to-r from-purple-100 to-indigo-100">
-      <div className="flex items-center justify-between max-w-7xl w-full bg-white rounded-3xl shadow-xl p-6">
-        <div className="flex items-center space-x-6">
-          <div className="flex flex-col items-center justify-center p-4 rounded-xl">
-            <img src="https://www.libracredito.com.br/images/site/logo-libra-credito.png" alt="Logo Libra Crédito" />
+  const renderBanner = () => {
+    const etapasSidebar = showGarantidores
+      ? [...etapas, 'Garantidores']
+      : etapas;
+
+    return (
+      <div className="w-full flex justify-center py-6 bg-gradient-to-r from-purple-100 to-indigo-100">
+        <div className="max-w-7xl w-full rounded-3xl shadow-xl p-8 flex justify-between bg-white">
+          {/* Header com logo e botão */}
+
+          {/* Barra de progresso das etapas */}
+          <div className="flex items-center w-full justify-between space-x-6">
+
+            <div className="flex items-center w-full justify-center space-x-6 ">
+                {etapasSidebar.map((label, idx) => {
+                  // Lógica para destacar a etapa correta
+                  let isActive = false;
+                  let isEnabled = false;
+                  let isCompleted = false;
+                  
+                  if (idx === 0) {
+                    isActive = (etapa === 0) || (etapa > 0 && etapa <= (quantidade || 0));
+                    isEnabled = etapa >= 0;
+                    isCompleted = verificarEtapaTomadoresCompleta();
+                  } else if (idx === 1) {
+                    isActive = etapa === (quantidade || 0) + 1;
+                    isEnabled = etapa >= (quantidade || 0) + 1 || verificarEtapaTomadoresCompleta();
+                    isCompleted = verificarEtapaEmprestimoCompleta();
+                  } else if (idx === 2) {
+                    isActive = etapa === (quantidade || 0) + 2;
+                    isEnabled = etapa >= (quantidade || 0) + 2 || (verificarEtapaTomadoresCompleta() && verificarEtapaEmprestimoCompleta());
+                    isCompleted = verificarEtapaGarantiaCompleta();
+                  } else if (idx === 3) {
+                    // Garantidores - sempre mostrar se as etapas anteriores estão completas e garantia é de terceiro
+                    const garantidoresDevemAparecer = garantia.garantiaPertenceTomador?.Name === 'Imóvel de terceiro';
+                    isActive = garantidoresDevemAparecer && ((showQtdGarantidores && etapa === (quantidade || 0) + 3) || (etapa >= (quantidade || 0) + 4 && etapa < (quantidade || 0) + 4 + qtdGarantidores));
+                    isEnabled = garantidoresDevemAparecer && (etapa >= (quantidade || 0) + 3 || (verificarEtapaTomadoresCompleta() && verificarEtapaEmprestimoCompleta() && verificarEtapaGarantiaCompleta()));
+                    isCompleted = garantidoresDevemAparecer && verificarEtapaGarantidoresCompleta();
+                  }
+                  
+                  // Determinar o ícone baseado no estado da etapa
+                  const getStepIcon = () => {
+                    switch (idx) {
+                      case 0: return '👤';
+                      case 1: return '💰';
+                      case 2: return '🏠';
+                      case 3: return '🛡️';
+                      default: return '👤';
+                    }
+                  };
+
+                  return (
+                    <div key={label} className="flex items-center">
+                      <button
+                        className={`flex flex-col items-center space-y-3 px-6 py-4 rounded-xl transition-all duration-300 min-w-[120px] ${
+                          isActive
+                            ? 'bg-blue-50 text-blue-900 border-2 border-blue-200 shadow-lg'
+                            : isCompleted
+                              ? 'bg-green-50 text-green-800 border-2 border-green-200 hover:bg-green-100'
+                              : isEnabled
+                                ? 'bg-white text-gray-700 border-2 border-gray-200 hover:bg-gray-50'
+                                : 'bg-gray-50 text-gray-400 border-2 border-gray-200'
+                        }`}
+                        disabled={!isEnabled}
+                        onClick={() => {
+                          if (!isEnabled) return;
+                          if (idx === 0) {
+                            // Navegar para tomadores - sempre vai para seleção de quantidade
+                            setEtapa(0);
+                          } else if (idx === 1) {
+                            // Navegar para empréstimo - verificar renda total mínima primeiro
+                            const rendaTotalTodosTomadores = converterValorMonetario(calcularRendaTotalTodosTomadores());
+                            if (rendaTotalTodosTomadores <= 7000) {
+                              setMostrarErroRendaMinima(true);
+                              return;
+                            }
+                            setEtapa((quantidade || 0) + 1);
+                          } else if (idx === 2) {
+                            // Navegar para garantia
+                            setEtapa((quantidade || 0) + 2);
+                          } else if (idx === 3) {
+                            // Navegar para garantidores - sempre vai para seleção de quantidade
+                            if (garantia.garantiaPertenceTomador?.Name === 'Imóvel de terceiro') {
+                              setShowGarantidores(true);
+                              setShowQtdGarantidores(true);
+                              setEtapa((quantidade || 0) + 3);
+                            }
+                          }
+                        }}
+                      >
+                        <div className={`w-14 h-14 flex items-center justify-center rounded-full border-2 text-2xl ${
+                          isActive 
+                            ? 'border-blue-600 bg-blue-600 text-white' 
+                            : isCompleted
+                              ? 'border-green-600 bg-green-600 text-white'
+                              : isEnabled
+                                ? 'border-gray-400 bg-white text-gray-600'
+                                : 'border-gray-300 bg-gray-100 text-gray-400'
+                        }`}>
+                          {getStepIcon()}
+                        </div>
+                        <span className="text-sm font-semibold whitespace-nowrap">
+                          {label}
+                        </span>
+                        {isActive && (
+                          <span className="text-xs text-blue-600 font-medium flex items-center gap-1">
+                            <span>▶</span> Etapa atual
+                          </span>
+                        )}
+                        {isCompleted && (
+                          <span className="text-xs text-green-600 font-medium flex items-center gap-1">
+                            <span>✓</span> Concluída
+                          </span>
+                        )}
+                        {!isEnabled && (
+                          <span className="text-xs text-gray-500 font-medium flex items-center gap-1">
+                            <span>🔒</span> Bloqueada
+                          </span>
+                        )}
+                      </button>
+                      
+                      {/* Linha conectora entre etapas */}
+                      {idx < etapasSidebar.length - 1 && (
+                        <div className={`w-20 h-1 mx-3 rounded-full ${
+                          isCompleted ? 'bg-green-400' : 'bg-gray-300'
+                        }`} />
+                      )}
+                    </div>
+                  );
+                })}
+            </div>
+              
+              {/* Botão de limpar dados */}
+              {(quantidade || emprestimo.valorSolicitado || garantia.valorGarantia) && (
+                <button
+                  onClick={() => setShowModalLimparDados(true)}
+                  className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium text-sm w-48"
+                  title="Limpar todos os dados preenchidos"
+                >
+                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
+                  </svg>
+                  Limpar Dados
+                </button>
+              )}
           </div>
-          <div className="flex-1 text-center">
-            <h1 className="text-3xl font-semibold text-gray-800">
-              Cadastro de Proposta
-            </h1>
-            <p className="mt-1 text-gray-600">
-              Preencha os dados em cada etapa para prosseguir com a proposta.
-            </p>
-          </div>
+          
         </div>
-        
-        {/* Botão de limpar dados - só aparece se há dados preenchidos */}
-        {(quantidade || tomadores.length > 0 || emprestimo.valorSolicitado || garantia.valorGarantia) && (
-          <button
-            onClick={() => setShowModalLimparDados(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium"
-            title="Limpar todos os dados preenchidos"
-          >
-            <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-              <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
-            </svg>
-            Limpar Dados
-          </button>
-        )}
       </div>
-    </div>
-  );
+    );
+  };
 
   // Sidebar dinâmica
   const etapasSidebar = showGarantidores
@@ -1224,124 +1343,7 @@ const Formulario: React.FC = () => {
     const textoAtual = obterTextoDinamico();
     
     return (
-      <aside className="w-64 bg-white rounded-2xl shadow-lg p-6 space-y-8">
-        <nav className="space-y-6">
-          {etapasSidebar.map((label, idx) => {
-            // Lógica para destacar a etapa correta
-            let isActive = false;
-            let isEnabled = false;
-            let isCompleted = false;
-            
-            if (idx === 0) {
-              isActive = (etapa === 0) || (etapa > 0 && etapa <= (quantidade || 0));
-              isEnabled = etapa >= 0;
-              isCompleted = verificarEtapaTomadoresCompleta();
-            } else if (idx === 1) {
-              isActive = etapa === (quantidade || 0) + 1;
-              isEnabled = etapa >= (quantidade || 0) + 1 || verificarEtapaTomadoresCompleta();
-              isCompleted = verificarEtapaEmprestimoCompleta();
-            } else if (idx === 2) {
-              isActive = etapa === (quantidade || 0) + 2;
-              isEnabled = etapa >= (quantidade || 0) + 2 || (verificarEtapaTomadoresCompleta() && verificarEtapaEmprestimoCompleta());
-              isCompleted = verificarEtapaGarantiaCompleta();
-            } else if (idx === 3) {
-              // Garantidores - sempre mostrar se as etapas anteriores estão completas e garantia é de terceiro
-              const garantidoresDevemAparecer = garantia.garantiaPertenceTomador?.Name === 'Imóvel de terceiro';
-              isActive = garantidoresDevemAparecer && ((showQtdGarantidores && etapa === (quantidade || 0) + 3) || (etapa >= (quantidade || 0) + 4 && etapa < (quantidade || 0) + 4 + qtdGarantidores));
-              isEnabled = garantidoresDevemAparecer && (etapa >= (quantidade || 0) + 3 || (verificarEtapaTomadoresCompleta() && verificarEtapaEmprestimoCompleta() && verificarEtapaGarantiaCompleta()));
-              isCompleted = garantidoresDevemAparecer && verificarEtapaGarantidoresCompleta();
-            }
-            
-                          // Determinar o ícone baseado no estado da etapa
-        const getStepIcon = () => {
-          // Ícone padrão baseado no tipo de etapa - nunca alterado
-          switch (idx) {
-            case 0: return '👤';
-            case 1: return '💰';
-            case 2: return '🏠';
-            case 3: return '🛡️';
-            default: return '👤';
-          }
-        };
-            
-            return (
-              <Fragment key={label}>
-                <div className="relative">
-                  <button
-                    className={`flex items-center w-full space-x-3 px-3 py-3 rounded-lg transition font-semibold text-left relative ${
-                      isActive
-                        ? 'bg-blue-50 text-blue-900 border-2 border-blue-200'
-                        : isCompleted
-                          ? 'bg-green-50 text-green-800 hover:bg-green-100 border-2 border-green-200'
-                          : isEnabled
-                            ? 'bg-white text-gray-700 hover:bg-gray-50 border-2 border-gray-200'
-                            : 'bg-gray-50 text-gray-400 border-2 border-gray-200'}`}
-                    disabled={!isEnabled}
-                    onClick={() => {
-                      if (!isEnabled) return;
-                      if (idx === 0) {
-                        // Navegar para tomadores - sempre vai para seleção de quantidade
-                        setEtapa(0);
-                      } else if (idx === 1) {
-                        // Navegar para empréstimo - verificar renda total mínima primeiro
-                        const rendaTotalTodosTomadores = converterValorMonetario(calcularRendaTotalTodosTomadores());
-                        if (rendaTotalTodosTomadores <= 7000) {
-                          setMostrarErroRendaMinima(true);
-                          return;
-                        }
-                        setEtapa((quantidade || 0) + 1);
-                      } else if (idx === 2) {
-                        // Navegar para garantia
-                        setEtapa((quantidade || 0) + 2);
-                      } else if (idx === 3) {
-                        // Navegar para garantidores - sempre vai para seleção de quantidade
-                        // Verificar se garantidores devem ser mostrados
-                        if (garantia.garantiaPertenceTomador?.Name === 'Imóvel de terceiro') {
-                          setShowGarantidores(true);
-                          setShowQtdGarantidores(true);
-                          setEtapa((quantidade || 0) + 3);
-                        }
-                      }
-                    }}
-                  >
-                                 <div className={`w-10 h-10 flex items-center justify-center rounded-full border-2 text-lg ${
-               isActive 
-                 ? 'border-blue-600 bg-blue-600 text-white' 
-                 : isCompleted
-                   ? 'border-green-600 bg-green-600 text-white'
-                   : isEnabled
-                     ? 'border-gray-400 bg-white text-gray-600'
-                     : 'border-gray-300 bg-gray-100 text-gray-400'
-             }`}>
-               {getStepIcon()}
-             </div>
-                    <div className="flex-1 ml-3">
-                      <span className="block font-medium">
-                        {label}
-                      </span>
-                      {isCompleted && (
-                        <span className="text-xs text-green-600 font-medium">
-                          ✓ Etapa finalizada
-                        </span>
-                      )}
-                      {isActive && (
-                        <span className="text-xs text-blue-600 font-medium">
-                          ▶ Etapa atual
-                        </span>
-                      )}
-                      {!isEnabled && (
-                        <span className="text-xs text-gray-500 font-medium">
-                          🔒 Etapa bloqueada
-                        </span>
-                      )}
-                    </div>
-                  </button>
-                </div>
-                {idx < etapasSidebar.length - 1 && <hr className="border-gray-200 my-4" />}
-              </Fragment>
-            );
-          })}
-        </nav>
+      <aside className="w-64 bg-white rounded-2xl shadow-lg p-6">
         <div className="text-sm text-gray-600">
           <h2 className="font-semibold text-gray-800 mb-2">{textoAtual.titulo}</h2>
           <p>
@@ -3436,9 +3438,9 @@ const Formulario: React.FC = () => {
       {showGarantidorModal && renderGarantidorModal()}
       {renderBanner()}
       <main className="min-h-screen bg-gradient-to-r from-purple-100 to-indigo-100 flex items-start justify-center py-16">
-        <div className="flex space-x-12 max-w-7xl w-full px-4">
+        <div className="flex space-x-8 max-w-7xl w-full px-4">
           {renderSidebar()}
-          <div className="flex-1 flex flex-col items-center">
+          <div className="flex-1 flex flex-col items-center max-w-8xl">
             {etapa === 0
               ? renderSelecaoQuantidade()
               : etapa > 0 && etapa <= (quantidade || 0)
@@ -3462,18 +3464,18 @@ const Formulario: React.FC = () => {
         {showModalErroEnvio && renderModalErroEnvio()}
         {showModalLimparDados && renderModalLimparDados()}
         {/* Botão de debug fixo no canto inferior direito */}
-        <div className="fixed bottom-6 right-6 flex flex-col gap-2 z-50">
+        {/* <div className="fixed bottom-6 right-6 flex flex-col gap-2 z-50">
           <button
             onClick={handleDebug}
             className="bg-blue-900 text-white px-6 py-3 rounded-full shadow-xl hover:bg-blue-700 transition font-bold text-lg tracking-wide"
           >
             Debug
           </button>
-        </div>
+        </div> */}
       </main>
       <TransitionOverlay />
       <LoadingEnvioOverlay />
-      <BotaoTesteEnvio />
+      {/* <BotaoTesteEnvio /> */}
       {showSuccessModal && renderModalSucesso()}
     </>
   );
