@@ -77,11 +77,14 @@ const validarDataNascimento = (dataNascimento: string): boolean => {
   const mesAtual = hoje.getMonth();
   const mesNascimento = data.getMonth();
   
+  // Ajustar idade se ainda não fez aniversário este ano
+  let idadeAjustada = idade;
   if (mesAtual < mesNascimento || (mesAtual === mesNascimento && hoje.getDate() < data.getDate())) {
-    return idade - 1 <= 80;
+    idadeAjustada = idade - 1;
   }
   
-  return idade <= 80;
+  // Verificar se a idade está entre 18 e 80 anos
+  return idadeAjustada >= 18 && idadeAjustada <= 80;
 };
 
 const validarCEP = (cep: string): boolean => {
@@ -107,6 +110,32 @@ const validarCampoObjeto = (valor: any): boolean => {
 
 const validarCampoMonetario = (valor: string): boolean => {
   return valor && valor.trim() !== '' && valor !== 'Selecione uma opção' && valor !== 'Digite o nome' && valor !== 'Digite o email' && valor !== 'Digite o telefone' && valor !== 'Digite o CEP' && valor !== 'Digite o endereço' && valor !== 'Digite a profissão' && valor !== 'Renda formal' && valor !== 'Renda informal' && valor !== 'Renda total';
+};
+
+const validarCampoMonetarioMaiorQueZero = (valor: string): boolean => {
+  if (!validarCampoMonetario(valor)) return false;
+  
+  // Converter o valor monetário para número
+  const numero = valor.replace(/[^\d,]/g, '').replace(',', '.');
+  const valorNumerico = parseFloat(numero) || 0;
+  
+  return valorNumerico > 0;
+};
+
+const validarValorSolicitado = (valor: string): boolean => {
+  if (!validarCampoMonetario(valor)) return false;
+  
+  // Converter o valor monetário para número
+  const numero = valor.replace(/[^\d,]/g, '').replace(',', '.');
+  const valorNumerico = parseFloat(numero) || 0;
+  
+  return valorNumerico >= 75000 && valorNumerico <= 5000000;
+};
+
+const validarPrazoSolicitado = (valor: string): boolean => {
+  if (!valor) return false;
+  const numero = parseInt(valor.replace(/\D/g, ''));
+  return numero >= 35 && numero <= 180;
 };
 
 const LOCAL_STORAGE_KEY = 'ploomes_selected_tomadores';
@@ -339,6 +368,11 @@ const Formulario: React.FC = () => {
   const [mostrarErroGarantidores, setMostrarErroGarantidores] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [successData, setSuccessData] = useState<any>(null);
+  const [mostrarErroRendaMinima, setMostrarErroRendaMinima] = useState(false);
+  const [isEnviando, setIsEnviando] = useState(false);
+  const [showModalErroEnvio, setShowModalErroEnvio] = useState(false);
+  const [erroEnvio, setErroEnvio] = useState<string>('');
+  const [showModalLimparDados, setShowModalLimparDados] = useState(false);
 
   const { options, loading, error } = usePloomesOptions(QUANTIDADE_TOMADORES_OPTIONS_ID);
   const { options: quantidadeGarantidoresOptions, loading: loadingGarantidores, error: errorGarantidores } = usePloomesOptions(QUANTIDADE_GARANTIDORES_OPTIONS_ID);
@@ -573,6 +607,57 @@ const Formulario: React.FC = () => {
     });
   };
 
+  const limparTodosOsDados = () => {
+    // Limpar dados dos tomadores
+    setQuantidade(null);
+    setQuantidadeId(null);
+    setTomadores([]);
+    setErros({});
+    setMostrarErro(false);
+    
+    // Limpar dados do empréstimo
+    setEmprestimo({ ...initialEmprestimo });
+    setErrosEmprestimo({});
+    setMostrarErroEmprestimo(false);
+    
+    // Limpar dados da garantia
+    setGarantia({ ...initialGarantia });
+    setErrosGarantia({});
+    setMostrarErroGarantia(false);
+    
+    // Limpar dados dos garantidores
+    setGarantidores([]);
+    setQtdGarantidores(1);
+    setQtdGarantidoresId(null);
+    setErrosGarantidores({});
+    setMostrarErroGarantidores(false);
+    
+    // Limpar modais
+    setShowGarantidorModal(false);
+    setShowQtdGarantidores(false);
+    setShowGarantidores(false);
+    setShowSuccessModal(false);
+    setSuccessData(null);
+    setMostrarErroRendaMinima(false);
+    setIsEnviando(false);
+    setShowModalErroEnvio(false);
+    setErroEnvio('');
+    setShowModalLimparDados(false);
+    
+    // Limpar localStorage
+    localStorage.removeItem(LOCAL_STORAGE_KEY);
+    localStorage.removeItem(TOMADORES_STORAGE_KEY);
+    localStorage.removeItem(EMPRESTIMO_STORAGE_KEY);
+    localStorage.removeItem(GARANTIA_STORAGE_KEY);
+    localStorage.removeItem(GARANTIDORES_STORAGE_KEY);
+    localStorage.removeItem(QUANTIDADE_GARANTIDORES_STORAGE_KEY);
+    
+    // Voltar para a etapa inicial
+    setEtapa(0);
+    
+    console.log('✅ Todos os dados foram limpos com sucesso!');
+  };
+
   // Funções para verificar se etapas estão completas
   const verificarEtapaTomadoresCompleta = () => {
     if (!quantidade || quantidade === 0) return false;
@@ -607,10 +692,10 @@ const Formulario: React.FC = () => {
       
       // Verificar se todos os campos obrigatórios estão preenchidos
       if (!validarCampoVazio(tomador.nome) || !validarCampoObjeto(tomador.tipoPessoa) || !validarCampoObjeto(tomador.estadoCivil) || 
-          !validarCampoVazio(tomador.dataNascimento) || !validarCampoVazio(tomador.email) || !validarCampoVazio(tomador.telefone) || 
+          !validarCampoVazio(tomador.dataNascimento) || !validarDataNascimento(tomador.dataNascimento) || !validarCampoVazio(tomador.email) || !validarCampoVazio(tomador.telefone) || 
           !validarCampoVazio(tomador.cep) || !validarCampoVazio(tomador.endereco) || !validarCampoVazio(tomador.profissao) || 
           !validarCampoObjeto(tomador.qualificacaoProfissional) || !validarCampoObjeto(tomador.comprovacaoRendaFormal) || 
-          !validarCampoObjeto(tomador.comprovacaoRendaInformal) || !validarCampoMonetario(tomador.rendaTotalInformada)) {
+          !validarCampoObjeto(tomador.comprovacaoRendaInformal)) {
         console.log(`Tomador ${i + 1} failed basic validation`);
         return false;
       }
@@ -619,13 +704,21 @@ const Formulario: React.FC = () => {
       const rendaFormalNaoSeAplica = tomador.comprovacaoRendaFormal?.Name?.toLowerCase() === 'não se aplica';
       const rendaInformalNaoSeAplica = tomador.comprovacaoRendaInformal?.Name?.toLowerCase() === 'não se aplica';
       
-      if (!rendaFormalNaoSeAplica && !validarCampoMonetario(tomador.rendaFormal)) {
-        console.log(`Tomador ${i + 1} failed renda formal validation`);
+      if (!rendaFormalNaoSeAplica && !validarCampoMonetarioMaiorQueZero(tomador.rendaFormal)) {
+        console.log(`Tomador ${i + 1} failed renda formal validation - valor deve ser maior que zero`);
         return false;
       }
       
-      if (!rendaInformalNaoSeAplica && !validarCampoMonetario(tomador.rendaInformal)) {
-        console.log(`Tomador ${i + 1} failed renda informal validation`);
+      if (!rendaInformalNaoSeAplica && !validarCampoMonetarioMaiorQueZero(tomador.rendaInformal)) {
+        console.log(`Tomador ${i + 1} failed renda informal validation - valor deve ser maior que zero`);
+        return false;
+      }
+      
+      // Verificar se a renda total é maior que zero
+      // Se ambos "renda formal" e "renda informal" são "não se aplica", permite renda total 0,00
+      const ambosNaoSeAplicam = rendaFormalNaoSeAplica && rendaInformalNaoSeAplica;
+      if (!ambosNaoSeAplicam && !validarCampoMonetarioMaiorQueZero(tomador.rendaTotalInformada)) {
+        console.log(`Tomador ${i + 1} failed renda total validation - valor deve ser maior que zero`);
         return false;
       }
       
@@ -642,14 +735,22 @@ const Formulario: React.FC = () => {
         }
       }
     }
+    
+    // Verificar se a renda total mínima de todos os tomadores é maior que R$ 7.000,00
+    const rendaTotalTodosTomadores = converterValorMonetario(calcularRendaTotalTodosTomadores());
+    if (rendaTotalTodosTomadores <= 7000) {
+      console.log(`Renda total mínima não atingida: R$ ${rendaTotalTodosTomadores.toFixed(2)} (mínimo: R$ 7.000,00)`);
+      return false;
+    }
+    
     console.log('All tomadores validation passed');
     return true;
   };
 
   const verificarEtapaEmprestimoCompleta = () => {
     if (!validarCampoObjeto(emprestimo.amortizacao) || !validarCampoObjeto(emprestimo.carencia) || 
-        !validarCampoMonetario(emprestimo.valorSolicitado) || !validarCampoMonetario(emprestimo.rendaTotal) || 
-        !validarCampoVazio(emprestimo.prazoSolicitado) || !validarCampoVazio(emprestimo.jurosSolicitado) || 
+        !validarValorSolicitado(emprestimo.valorSolicitado) || !validarCampoMonetario(emprestimo.rendaTotal) || 
+        !validarPrazoSolicitado(emprestimo.prazoSolicitado) || !validarCampoVazio(emprestimo.jurosSolicitado) || 
         !validarCampoMonetario(emprestimo.parcelaSolicitada) || !validarCampoVazio(emprestimo.comentarios) || 
         !validarCampoObjeto(emprestimo.motivoEmprestimo)) {
       return false;
@@ -784,7 +885,7 @@ const Formulario: React.FC = () => {
     if (!validarCampoVazio(tomador.dataNascimento)) {
       erros.dataNascimento = 'Data de nascimento é obrigatória';
     } else if (!validarDataNascimento(tomador.dataNascimento)) {
-      erros.dataNascimento = 'Idade máxima permitida é 80 anos';
+      erros.dataNascimento = 'Idade deve estar entre 18 e 80 anos';
     }
     
     if (!validarCampoObjeto(tomador.tipoPessoa)) {
@@ -850,18 +951,26 @@ const Formulario: React.FC = () => {
     if (!rendaFormalNaoSeAplica) {
       if (!validarCampoVazio(tomador.rendaFormal)) {
         erros.rendaFormal = 'Renda formal é obrigatória';
+      } else if (!validarCampoMonetarioMaiorQueZero(tomador.rendaFormal)) {
+        erros.rendaFormal = 'Renda formal deve ser maior que zero';
       }
     }
     
     if (!rendaInformalNaoSeAplica) {
       if (!validarCampoVazio(tomador.rendaInformal)) {
         erros.rendaInformal = 'Renda informal é obrigatória';
+      } else if (!validarCampoMonetarioMaiorQueZero(tomador.rendaInformal)) {
+        erros.rendaInformal = 'Renda informal deve ser maior que zero';
       }
     }
     
     // Renda total é sempre obrigatória (será calculada automaticamente)
+    // Se ambos "renda formal" e "renda informal" são "não se aplica", permite renda total 0,00
+    const ambosNaoSeAplicam = rendaFormalNaoSeAplica && rendaInformalNaoSeAplica;
     if (!validarCampoVazio(tomador.rendaTotalInformada)) {
       erros.rendaTotalInformada = 'Renda total informada é obrigatória';
+    } else if (!ambosNaoSeAplicam && !validarCampoMonetarioMaiorQueZero(tomador.rendaTotalInformada)) {
+      erros.rendaTotalInformada = 'Renda total deve ser maior que zero';
     }
     
     // Validações específicas para pessoa jurídica
@@ -900,10 +1009,14 @@ const Formulario: React.FC = () => {
     }
     if (!validarCampoVazio(emp.valorSolicitado)) {
       erros.valorSolicitado = 'Valor solicitado é obrigatório';
+    } else if (!validarValorSolicitado(emp.valorSolicitado)) {
+      erros.valorSolicitado = 'Valor solicitado deve estar entre R$ 75.000,00 e R$ 5.000.000,00';
     }
     // Renda total é calculada automaticamente, não precisa validar
     if (!validarCampoVazio(emp.prazoSolicitado)) {
       erros.prazoSolicitado = 'Prazo solicitado é obrigatório';
+    } else if (!validarPrazoSolicitado(emp.prazoSolicitado)) {
+      erros.prazoSolicitado = 'Prazo solicitado deve estar entre 35 e 180 meses';
     }
     if (!validarCampoVazio(emp.jurosSolicitado)) {
       erros.jurosSolicitado = 'Juros solicitado é obrigatório';
@@ -1070,19 +1183,35 @@ const Formulario: React.FC = () => {
 
   const renderBanner = () => (
     <div className="w-full flex justify-center py-8 bg-gradient-to-r from-purple-100 to-indigo-100">
-      {/* <div className="flex items-center max-w-7xl w-full bg-white rounded-3xl shadow-xl p-6 space-x-6">
-        <div className="flex flex-col items-center justify-center p-4 rounded-xl">
-          <img src="https://www.libracredito.com.br/images/site/logo-libra-credito.png"></img>
+      <div className="flex items-center justify-between max-w-7xl w-full bg-white rounded-3xl shadow-xl p-6">
+        <div className="flex items-center space-x-6">
+          <div className="flex flex-col items-center justify-center p-4 rounded-xl">
+            <img src="https://www.libracredito.com.br/images/site/logo-libra-credito.png" alt="Logo Libra Crédito" />
+          </div>
+          <div className="flex-1 text-center">
+            <h1 className="text-3xl font-semibold text-gray-800">
+              Cadastro de Proposta
+            </h1>
+            <p className="mt-1 text-gray-600">
+              Preencha os dados em cada etapa para prosseguir com a proposta.
+            </p>
+          </div>
         </div>
-        <div className="flex-1 text-center">
-          <h1 className="text-3xl font-semibold text-gray-800">
-            Cadastro de Proposta
-          </h1>
-          <p className="mt-1 text-gray-600">
-            Preencha os dados em cada etapa para prosseguir com a proposta.
-          </p>
-        </div>
-      </div> */}
+        
+        {/* Botão de limpar dados - só aparece se há dados preenchidos */}
+        {(quantidade || tomadores.length > 0 || emprestimo.valorSolicitado || garantia.valorGarantia) && (
+          <button
+            onClick={() => setShowModalLimparDados(true)}
+            className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium"
+            title="Limpar todos os dados preenchidos"
+          >
+            <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
+            </svg>
+            Limpar Dados
+          </button>
+        )}
+      </div>
     </div>
   );
 
@@ -1154,7 +1283,12 @@ const Formulario: React.FC = () => {
                         // Navegar para tomadores - sempre vai para seleção de quantidade
                         setEtapa(0);
                       } else if (idx === 1) {
-                        // Navegar para empréstimo
+                        // Navegar para empréstimo - verificar renda total mínima primeiro
+                        const rendaTotalTodosTomadores = converterValorMonetario(calcularRendaTotalTodosTomadores());
+                        if (rendaTotalTodosTomadores <= 7000) {
+                          setMostrarErroRendaMinima(true);
+                          return;
+                        }
                         setEtapa((quantidade || 0) + 1);
                       } else if (idx === 2) {
                         // Navegar para garantia
@@ -1332,7 +1466,7 @@ const Formulario: React.FC = () => {
     const quantidadeSociosOptions = quantidadeSociosOptionsArr[idx];
     const numeroAdminOptions = numeroAdminOptionsArr[idx];
 
-    console.log(idx)
+
 
     return (
       <section className={`bg-white rounded-2xl shadow-lg p-8 w-full max-w-5xl flex flex-col items-center justify-center transition-all duration-300 ease-in-out ${
@@ -1422,38 +1556,82 @@ const Formulario: React.FC = () => {
                 />
               ) : tomador.tipoPessoa?.Name?.toLowerCase() === 'pessoa jurídica' ? (
                 <>
-                  <SelectInput
-                    options={quantidadeSociosOptions?.options || []}
-                    value={tomador.quantidadeSociosPJ.Id ? String(tomador.quantidadeSociosPJ.Id) : undefined}
-                    onChange={opt => {
-                      limparErro('quantidadeSociosPJ');
-                      setTomadores(prev => {
-                        const novo = [...prev];
-                        novo[idx] = { ...novo[idx], quantidadeSociosPJ: { Id: opt.Id, Name: opt.Name } };
-                        return novo;
-                      });
-                    }}
-                    placeholder="Informe a quantidade de sócios"
-                    label="Quantidade de Sócios da PJ"
-                    error={erros.quantidadeSociosPJ}
-                    tooltip="Selecione a quantidade total de sócios da pessoa jurídica"
-                  />
-                  <SelectInput
-                    options={numeroAdminOptions?.options || []}
-                    value={tomador.numeroAdmin.Id ? String(tomador.numeroAdmin.Id) : undefined}
-                    onChange={opt => {
-                      limparErro('numeroAdmin');
-                      setTomadores(prev => {
-                        const novo = [...prev];
-                        novo[idx] = { ...novo[idx], numeroAdmin: { Id: opt.Id, Name: opt.Name } };
-                        return novo;
-                      });
-                    }}
-                    placeholder="Informe o número de administradores"
-                    label="N° de admin"
-                    error={erros.numeroAdmin}
-                    tooltip="Selecione o número de administradores da pessoa jurídica"
-                  />
+                  {quantidadeSociosOptions?.loading ? (
+                    <div className="flex flex-col w-full">
+                      <div className="flex items-center gap-2 mb-1">
+                        <label className="text-sm font-medium text-blue-900">Quantidade de Sócios da PJ</label>
+                        <span className="text-blue-400 cursor-help text-sm hover:text-blue-600 transition-colors">ⓘ</span>
+                      </div>
+                      <div className="h-10 bg-gray-100 rounded animate-pulse flex items-center px-3">
+                        <span className="text-gray-500">Carregando opções...</span>
+                      </div>
+                    </div>
+                  ) : quantidadeSociosOptions?.error ? (
+                    <div className="flex flex-col w-full">
+                      <div className="flex items-center gap-2 mb-1">
+                        <label className="text-sm font-medium text-blue-900">Quantidade de Sócios da PJ</label>
+                        <span className="text-blue-400 cursor-help text-sm hover:text-blue-600 transition-colors">ⓘ</span>
+                      </div>
+                      <div className="h-10 bg-red-50 border border-red-200 rounded flex items-center px-3">
+                        <span className="text-red-600 text-sm">Erro ao carregar opções: {quantidadeSociosOptions.error}</span>
+                      </div>
+                    </div>
+                  ) : (
+                    <SelectInput
+                      options={quantidadeSociosOptions?.options || []}
+                      value={tomador.quantidadeSociosPJ.Id ? String(tomador.quantidadeSociosPJ.Id) : undefined}
+                      onChange={opt => {
+                        limparErro('quantidadeSociosPJ');
+                        setTomadores(prev => {
+                          const novo = [...prev];
+                          novo[idx] = { ...novo[idx], quantidadeSociosPJ: { Id: opt.Id, Name: opt.Name } };
+                          return novo;
+                        });
+                      }}
+                      placeholder="Informe a quantidade de sócios"
+                      label="Quantidade de Sócios da PJ"
+                      error={erros.quantidadeSociosPJ}
+                      tooltip="Selecione a quantidade total de sócios da pessoa jurídica"
+                    />
+                  )}
+                  {numeroAdminOptions?.loading ? (
+                    <div className="flex flex-col w-full">
+                      <div className="flex items-center gap-2 mb-1">
+                        <label className="text-sm font-medium text-blue-900">N° de admin</label>
+                        <span className="text-blue-400 cursor-help text-sm hover:text-blue-600 transition-colors">ⓘ</span>
+                      </div>
+                      <div className="h-10 bg-gray-100 rounded animate-pulse flex items-center px-3">
+                        <span className="text-gray-500">Carregando opções...</span>
+                      </div>
+                    </div>
+                  ) : numeroAdminOptions?.error ? (
+                    <div className="flex flex-col w-full">
+                      <div className="flex items-center gap-2 mb-1">
+                        <label className="text-sm font-medium text-blue-900">N° de admin</label>
+                        <span className="text-blue-400 cursor-help text-sm hover:text-blue-600 transition-colors">ⓘ</span>
+                      </div>
+                      <div className="h-10 bg-red-50 border border-red-200 rounded flex items-center px-3">
+                        <span className="text-red-600 text-sm">Erro ao carregar opções: {numeroAdminOptions.error}</span>
+                      </div>
+                    </div>
+                  ) : (
+                    <SelectInput
+                      options={numeroAdminOptions?.options || []}
+                      value={tomador.numeroAdmin.Id ? String(tomador.numeroAdmin.Id) : undefined}
+                      onChange={opt => {
+                        limparErro('numeroAdmin');
+                        setTomadores(prev => {
+                          const novo = [...prev];
+                          novo[idx] = { ...novo[idx], numeroAdmin: { Id: opt.Id, Name: opt.Name } };
+                          return novo;
+                        });
+                      }}
+                      placeholder="Informe o número de administradores"
+                      label="N° de admin"
+                      error={erros.numeroAdmin}
+                      tooltip="Selecione o número de administradores da pessoa jurídica"
+                    />
+                  )}
                   <InputText
                     inputName="CNPJ"
                     termo={tomador.cnpj}
@@ -1735,6 +1913,16 @@ const Formulario: React.FC = () => {
                   setMostrarErro(true);
                   return;
                 }
+                
+                // Se estamos no último tomador, verificar a renda total mínima
+                if (etapa === (quantidade || 0)) {
+                  const rendaTotalTodosTomadores = converterValorMonetario(calcularRendaTotalTodosTomadores());
+                  if (rendaTotalTodosTomadores <= 7000) {
+                    setMostrarErroRendaMinima(true);
+                    return;
+                  }
+                }
+                
                 setErros({});
                 setMostrarErro(false);
                 
@@ -1871,10 +2059,10 @@ const Formulario: React.FC = () => {
                   limparErroEmprestimo('valorSolicitado');
                   setEmprestimo(e => ({ ...e, valorSolicitado: v }));
                 }}
-                placeholder="Informe o Valor Solicitado (R$)"
+                placeholder="Informe o Valor Solicitado (R$ 75.000,00 - 5.000.000,00)"
                 typeInput="Money"
                 error={errosEmprestimo.valorSolicitado}
-                tooltip="Digite o valor total do empréstimo que você deseja solicitar"
+                tooltip="Digite o valor total do empréstimo que você deseja solicitar (mínimo: R$ 75.000,00, máximo: R$ 5.000.000,00)"
               />
               <InputText
                 inputName="Prazo Solicitado"
@@ -1883,10 +2071,10 @@ const Formulario: React.FC = () => {
                   limparErroEmprestimo('prazoSolicitado');
                   setEmprestimo(e => ({ ...e, prazoSolicitado: v }));
                 }}
-                placeholder="Digite o prazo solicitado"
+                placeholder="Digite o prazo solicitado (35-180 meses)"
                 typeInput="Text"
                 error={errosEmprestimo.prazoSolicitado}
-                tooltip="Digite o prazo em meses para pagamento do empréstimo"
+                tooltip="Digite o prazo em meses para pagamento do empréstimo (mínimo: 35 meses, máximo: 180 meses)"
               />
               <InputText
                 inputName="Juros Solicitado"
@@ -2760,6 +2948,50 @@ const Formulario: React.FC = () => {
     </div>
   );
 
+  const renderModalErroRendaMinima = () => {
+    if (!mostrarErroRendaMinima) return null;
+
+    const rendaTotalAtual = calcularRendaTotalTodosTomadores();
+    const rendaTotalNumerica = converterValorMonetario(rendaTotalAtual);
+
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div className="bg-white rounded-lg p-8 max-w-lg w-full mx-4">
+          <div className="flex flex-col items-center text-center">
+            <div className="w-16 h-16 bg-orange-100 rounded-full flex items-center justify-center mb-4">
+              <span className="text-orange-500 text-2xl font-bold">⚠</span>
+            </div>
+            <h3 className="text-xl font-bold text-gray-900 mb-2">Renda Mínima Não Atingida</h3>
+            <p className="text-gray-600 mb-4">
+              A renda total mínima de todos os tomadores deve ser maior que <strong>R$ 7.000,00</strong>.
+            </p>
+            <div className="bg-gray-50 rounded-lg p-4 mb-6 w-full">
+              <p className="text-sm text-gray-700 mb-2">Renda total atual:</p>
+              <p className="text-lg font-semibold text-gray-900">{rendaTotalAtual}</p>
+              <p className="text-sm text-gray-500 mt-1">
+                Faltam: <span className="font-semibold text-red-600">R$ {(7000 - rendaTotalNumerica).toFixed(2).replace('.', ',').replace(/\B(?=(\d{3})+(?!\d))/g, '.')}</span>
+              </p>
+            </div>
+            <p className="text-gray-600 mb-6">
+              Para continuar, você pode:
+            </p>
+            <ul className="text-left text-gray-600 mb-6 space-y-2">
+              <li>• Adicionar mais tomadores à operação</li>
+              <li>• Aumentar a renda dos tomadores existentes</li>
+              <li>• Compor mais renda para atingir o valor mínimo</li>
+            </ul>
+            <button
+              onClick={() => setMostrarErroRendaMinima(false)}
+              className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              Entendi
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   // Função para calcular renda total de todos os tomadores
   const calcularRendaTotalTodosTomadores = (): string => {
     const total = tomadores.reduce((soma, tomador) => {
@@ -2829,6 +3061,28 @@ const Formulario: React.FC = () => {
     );
   };
 
+  // Overlay de loading para envio
+  const LoadingEnvioOverlay = () => {
+    if (!isEnviando) return null;
+    
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div className="bg-white rounded-xl shadow-2xl p-8 max-w-md w-full mx-4">
+          <div className="flex flex-col items-center text-center">
+            <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-blue-600 mb-6"></div>
+            <h3 className="text-xl font-bold text-gray-900 mb-2">Enviando Dados</h3>
+            <p className="text-gray-600 mb-4">
+              Aguarde enquanto enviamos seus dados para análise...
+            </p>
+            <div className="w-full bg-gray-200 rounded-full h-2">
+              <div className="bg-blue-600 h-2 rounded-full animate-pulse"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   // Scroll automático para o topo quando a etapa mudar
   useEffect(() => {
     if (!isTransitioning) {
@@ -2838,6 +3092,7 @@ const Formulario: React.FC = () => {
 
   // Função para enviar dados para o backend
   const enviarDadosParaBackend = async () => {
+    setIsEnviando(true);
     try {
       console.log('🚀 Iniciando envio de dados para o backend...');
       
@@ -2960,7 +3215,10 @@ const Formulario: React.FC = () => {
 
     } catch (error) {
       console.error('❌ Erro ao enviar dados:', error);
-      alert(`Erro ao enviar formulário: ${error.message}`);
+      setErroEnvio(error.message || 'Erro desconhecido ao enviar formulário');
+      setShowModalErroEnvio(true);
+    } finally {
+      setIsEnviando(false);
     }
   };
 
@@ -3052,7 +3310,10 @@ const Formulario: React.FC = () => {
               onClick={() => {
                 setShowSuccessModal(false);
                 setSuccessData(null);
-                // Aqui você pode adicionar redirecionamento ou limpeza do formulário
+                if (isSuccess) {
+                  // Se foi sucesso, limpar dados e voltar para etapa inicial
+                  limparTodosOsDados();
+                }
               }}
               className={`w-full py-3 px-6 font-semibold rounded-xl transition-all duration-300 transform hover:scale-105 ${
                 isSuccess
@@ -3060,8 +3321,94 @@ const Formulario: React.FC = () => {
                   : 'bg-gradient-to-r from-red-600 to-pink-600 text-white hover:from-red-700 hover:to-pink-700'
               }`}
             >
-              {isSuccess ? 'Continuar' : 'Tentar Novamente'}
+              {isSuccess ? 'Novo Cadastro' : 'Tentar Novamente'}
             </button>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  // Modal de erro de envio
+  const renderModalErroEnvio = () => {
+    if (!showModalErroEnvio) return null;
+
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div className="bg-white rounded-lg p-8 max-w-lg w-full mx-4">
+          <div className="flex flex-col items-center text-center">
+            <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mb-4">
+              <span className="text-red-500 text-2xl font-bold">⚠</span>
+            </div>
+            <h3 className="text-xl font-bold text-gray-900 mb-2">Erro no Envio</h3>
+            <p className="text-gray-600 mb-6">
+              {erroEnvio}
+            </p>
+            <p className="text-gray-600 mb-6">
+              O que você gostaria de fazer?
+            </p>
+            <div className="flex flex-col sm:flex-row gap-3 w-full">
+              <button
+                onClick={() => {
+                  setShowModalErroEnvio(false);
+                  setErroEnvio('');
+                  // Manter os dados e tentar novamente
+                  enviarDadosParaBackend();
+                }}
+                className="flex-1 bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors font-medium"
+              >
+                Tentar Novamente
+              </button>
+              <button
+                onClick={() => {
+                  setShowModalErroEnvio(false);
+                  setErroEnvio('');
+                  // Limpar dados e começar novo cadastro
+                  limparTodosOsDados();
+                }}
+                className="flex-1 bg-gray-600 text-white px-6 py-3 rounded-lg hover:bg-gray-700 transition-colors font-medium"
+              >
+                Novo Cadastro
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  // Modal de confirmação para limpar dados
+  const renderModalLimparDados = () => {
+    if (!showModalLimparDados) return null;
+
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div className="bg-white rounded-lg p-8 max-w-md w-full mx-4">
+          <div className="flex flex-col items-center text-center">
+            <div className="w-16 h-16 bg-orange-100 rounded-full flex items-center justify-center mb-4">
+              <span className="text-orange-500 text-2xl font-bold">⚠</span>
+            </div>
+            <h3 className="text-xl font-bold text-gray-900 mb-2">Limpar Dados</h3>
+            <p className="text-gray-600 mb-6">
+              Tem certeza que deseja apagar todos os dados preenchidos? Esta ação não pode ser desfeita.
+            </p>
+            <div className="flex gap-3 w-full">
+              <button
+                onClick={() => setShowModalLimparDados(false)}
+                className="flex-1 bg-gray-600 text-white px-6 py-3 rounded-lg hover:bg-gray-700 transition-colors font-medium"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={() => {
+                  setShowModalLimparDados(false);
+                  limparTodosOsDados();
+                }}
+                className="flex-1 bg-red-600 text-white px-6 py-3 rounded-lg hover:bg-red-700 transition-colors font-medium"
+              >
+                Sim, Limpar Tudo
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -3111,6 +3458,9 @@ const Formulario: React.FC = () => {
         {mostrarErroEmprestimo && renderModalErroEmprestimo()}
         {mostrarErroGarantia && renderModalErroGarantia()}
         {mostrarErroGarantidores && renderModalErroGarantidores()}
+        {mostrarErroRendaMinima && renderModalErroRendaMinima()}
+        {showModalErroEnvio && renderModalErroEnvio()}
+        {showModalLimparDados && renderModalLimparDados()}
         {/* Botão de debug fixo no canto inferior direito */}
         <div className="fixed bottom-6 right-6 flex flex-col gap-2 z-50">
           <button
@@ -3119,19 +3469,10 @@ const Formulario: React.FC = () => {
           >
             Debug
           </button>
-          <button
-            onClick={() => {
-              localStorage.clear();
-              alert('LocalStorage limpo!');
-            }}
-            className="bg-red-600 text-white px-6 py-3 rounded-full shadow-xl hover:bg-red-700 transition font-bold text-lg tracking-wide"
-          >
-            Limpar Dados
-          </button>
-          
         </div>
       </main>
       <TransitionOverlay />
+      <LoadingEnvioOverlay />
       <BotaoTesteEnvio />
       {showSuccessModal && renderModalSucesso()}
     </>

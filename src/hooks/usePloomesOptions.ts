@@ -13,22 +13,37 @@ export function usePloomesOptions(tableId?: number) {
 
   useEffect(() => {
     async function fetchOptions() {
+      if (!tableId) {
+        setLoading(false);
+        return;
+      }
+
       setLoading(true);
       setError(null);
+      
       try {
         const response = await fetch(`http://localhost:3063/ploomes/${tableId}`);
+        
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
         const data = await response.json();
         let opts = data.value || [];
-        if (tableId) {
-          opts = opts.filter((opt: any) => opt.TableId === tableId);
-        }
+        
+        // A API já retorna apenas as opções para o tableId específico
+        // Não precisamos filtrar novamente
+        
         setOptions(opts);
+        
       } catch (err) {
-        setError('Erro ao buscar opções do CRM');
+        console.error(`[usePloomesOptions] Erro ao buscar opções para tableId ${tableId}:`, err);
+        setError(`Erro ao buscar opções do CRM: ${err instanceof Error ? err.message : 'Erro desconhecido'}`);
       } finally {
         setLoading(false);
       }
     }
+    
     fetchOptions();
   }, [tableId]);
 
