@@ -13,6 +13,8 @@ import Simulador from './Simulador';
 import Formulario from './Formulario';
 import MaterialApoio from './MaterialApoio';
 import Grupos from './Grupos';
+import ClientesCadastrados from './ClientesCadastrados';
+import MetricasRelatorios from './MetricasRelatorios';
 import NewsDetail from '@/components/News/NewsDetail';
 import MaterialDetail from '@/components/Materials/MaterialDetail';
 
@@ -65,6 +67,8 @@ const Index = () => {
           <Route path="/noticias" element={<Noticias />} />
           <Route path="/noticias/:id" element={<NewsDetail />} />
           <Route path="/simulador" element={<Simulador />} />
+          <Route path="/clientes-cadastrados" element={<ClientesCadastrados />} />
+          <Route path="/metricas-relatorios" element={<MetricasRelatorios />} />
           <Route path="/cadastrar-usuario" element={
             <div className="p-6">
               <h1 className="text-2xl font-bold mb-4">Cadastrar Usuário</h1>

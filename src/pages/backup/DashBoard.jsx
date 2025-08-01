@@ -73,7 +73,7 @@ const Dashboard: React.FC = () => {
             createdAt: groupData.created_at
           };
           
-          console.log('🔗 Link do Power BI do usuário (Dashboard):', formattedGroup.name, ':', formattedGroup.powerBiUrl);
+          // console.log('Dashboard: User group data loaded:', formattedGroup);
           setUserGroup(formattedGroup);
         }
       } else {
@@ -396,161 +396,114 @@ const Dashboard: React.FC = () => {
 
   const UserDashboard = () => {
     if (!userGroup) {
-      return (
-        <div className="min-h-screen flex items-center justify-center bg-gray-100">
-          <div className="text-center">
-            <div className="animate-spin h-10 w-10 border-4 border-blue-500 border-t-transparent rounded-full mx-auto mb-4" />
-            <p className="text-gray-700 text-lg">Carregando...</p>
-          </div>
-        </div>
-      );
-    }
-    
     return (
-      <div className="space-y-6">
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900">Painel do Usuário</h1>
-            <p className="text-gray-600 mt-2">Bem-vindo ao seu painel de controle</p>
-          </div>
-          <div className="flex items-center space-x-3">
-            <div className="bg-blue-100 p-3 rounded-full">
-              <Users className="h-6 w-6 text-blue-600" />
-            </div>
-          </div>
+      <div className="min-h-screen flex items-center justify-center bg-gray-100">
+        <div className="text-center">
+          <div className="animate-spin h-10 w-10 border-4 border-blue-500 border-t-transparent rounded-full mx-auto mb-4" />
+          <p className="text-gray-700 text-lg">Carregando...</p>
         </div>
-
-        {/* Main Options Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-          {/* Visualizar Clientes Cadastrados */}
-          <Card className="group hover:shadow-xl transition-all duration-300 border-2 hover:border-blue-300 cursor-pointer">
-            <CardContent className="p-8" onClick={() => navigate('/clientes-cadastrados')}>
-              <div className="text-center space-y-4">
-                <div className="mx-auto w-16 h-16 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
-                  <Users className="h-8 w-8 text-white" />
-                </div>
-                <div>
-                  <h3 className="text-xl font-semibold text-gray-900 group-hover:text-blue-600 transition-colors">
-                    Visualizar Clientes
-                  </h3>
-                  <p className="text-gray-600 mt-2">
-                    Acesse a lista completa de clientes cadastrados no sistema
-                  </p>
-                </div>
-                <div className="flex items-center justify-center space-x-2 text-blue-600 group-hover:text-blue-700">
-                  <span className="text-sm font-medium">Acessar</span>
-                  <svg className="w-4 h-4 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                  </svg>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Métricas e Relatórios */}
-          <Card className="group hover:shadow-xl transition-all duration-300 border-2 hover:border-green-300 cursor-pointer">
-            <CardContent className="p-8" onClick={() => navigate('/metricas-relatorios')}>
-              <div className="text-center space-y-4">
-                <div className="mx-auto w-16 h-16 bg-gradient-to-br from-green-500 to-green-600 rounded-full flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
-                  <BarChart3 className="h-8 w-8 text-white" />
-                </div>
-                <div>
-                  <h3 className="text-xl font-semibold text-gray-900 group-hover:text-green-600 transition-colors">
-                    Métricas e Relatórios
-                  </h3>
-                  <p className="text-gray-600 mt-2">
-                    Visualize estatísticas, métricas e relatórios detalhados
-                  </p>
-                </div>
-                <div className="flex items-center justify-center space-x-2 text-green-600 group-hover:text-green-700">
-                  <span className="text-sm font-medium">Acessar</span>
-                  <svg className="w-4 h-4 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                  </svg>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Quick Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <Card className="bg-gradient-to-r from-blue-50 to-blue-100 border-blue-200">
-            <CardContent className="p-6">
-              <div className="flex items-center space-x-3">
-                <div className="p-2 bg-blue-500 rounded-lg">
-                  <Users className="h-5 w-5 text-white" />
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-blue-700">Total de Clientes</p>
-                  <p className="text-2xl font-bold text-blue-900">0</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-gradient-to-r from-green-50 to-green-100 border-green-200">
-            <CardContent className="p-6">
-              <div className="flex items-center space-x-3">
-                <div className="p-2 bg-green-500 rounded-lg">
-                  <TrendingUp className="h-5 w-5 text-white" />
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-green-700">Crescimento Mensal</p>
-                  <p className="text-2xl font-bold text-green-900">+12%</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-gradient-to-r from-purple-50 to-purple-100 border-purple-200">
-            <CardContent className="p-6">
-              <div className="flex items-center space-x-3">
-                <div className="p-2 bg-purple-500 rounded-lg">
-                  <Activity className="h-5 w-5 text-white" />
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-purple-700">Atividades Hoje</p>
-                  <p className="text-2xl font-bold text-purple-900">5</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Recent Activity */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center space-x-2">
-              <Activity className="h-5 w-5 text-gray-600" />
-              <span>Atividade Recente</span>
-            </CardTitle>
-            <CardDescription>Últimas ações realizadas no sistema</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <div className="flex items-center space-x-4 p-3 bg-gray-50 rounded-lg">
-                <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                <div className="flex-1">
-                  <p className="text-sm font-medium">Painel acessado</p>
-                  <p className="text-xs text-gray-500">Agora mesmo</p>
-                </div>
-              </div>
-              <div className="text-center text-gray-500 text-sm py-4">
-                Nenhuma outra atividade recente
-              </div>
-            </div>
-          </CardContent>
-        </Card>
       </div>
     );
+    }
+    else {
+      return (
+        <div>oi</div>
+    //   <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
+    //   <div className="container mx-auto px-6 py-8 space-y-8">
+    //     {/* Menu Toggle for Mobile */}
+    //     <div className="flex justify-between items-center">
+    //       <h1 className="text-3xl font-bold text-blue-700">
+    //         Dashboard - {userGroup?.name || 'Sem Grupo'}
+    //       </h1>
+    //     </div>
+
+    //     <section className="bg-white shadow-lg rounded-2xl p-6">
+    //       {userGroup ? (
+    //         <>
+    //           <p className="text-gray-700">
+    //             Grupo: <span className="font-semibold text-gray-900">{userGroup.name}</span>
+    //           </p>
+    //           <p className="text-gray-600 mt-2">
+    //             Visualize os dados e métricas do seu grupo em tempo real.
+    //           </p>
+    //         </>
+    //       ) : (
+    //         <p className="text-gray-600">
+    //           Você não está vinculado a nenhum grupo. Entre em contato com o administrador.
+    //         </p>
+    //       )}
+    //     </section>
+
+    //     {userGroup && userGroup.powerBiUrl ? (
+    //       <Card className="shadow-xl rounded-2xl">
+    //         <CardHeader className="pb-4">
+    //           <CardTitle className="flex items-center space-x-2 text-blue-700">
+    //             <TrendingUp className="h-6 w-6" />
+    //             <span>Analytics do Grupo</span>
+    //           </CardTitle>
+    //           <CardDescription>
+    //             Dashboard Power BI configurado especificamente para o seu grupo.
+    //           </CardDescription>
+    //         </CardHeader>
+    //         <CardContent className="p-0 bg-white rounded-b-2xl overflow-hidden border-t">
+    //           <iframe
+    //             src={userGroup.powerBiUrl}
+    //             width="100%"
+    //             height="700"
+    //             frameBorder="0"
+    //             allowFullScreen
+    //             title={`Power BI - ${userGroup.name}`}
+    //             className="rounded-b-2xl"
+    //           />
+    //         </CardContent>
+    //       </Card>
+    //     ) : userGroup ? (
+    //       <Card className="shadow-md rounded-2xl">
+    //         <CardContent className="p-6 bg-white">
+    //           <div className="flex items-start space-x-4">
+    //             <BarChart3 className="h-5 w-5 text-orange-500 mt-1 flex-shrink-0" />
+    //             <div>
+    //               <h3 className="text-xl font-semibold text-gray-900 mb-2">
+    //                 📊 Dashboard não configurado
+    //               </h3>
+    //               <p className="text-gray-700">
+    //                 O grupo <span className="font-medium">"{userGroup.name}"</span> ainda não possui um link do Power BI configurado. Entre em contato com o administrador.
+    //               </p>
+    //             </div>
+    //           </div>
+    //         </CardContent>
+    //       </Card>
+    //     ) : null}
+
+    //     <Card className="shadow-md rounded-2xl">
+    //       <CardContent className="p-6 bg-white">
+    //         <div className="flex items-start space-x-4">
+    //           <BarChart3 className="h-5 w-5 text-green-600 mt-1 flex-shrink-0" />
+    //           <div>
+    //             <h3 className="text-xl font-semibold text-gray-900 mb-2">
+    //               📊 Sobre este Dashboard
+    //             </h3>
+    //             <p className="text-gray-700 leading-relaxed">
+    //               {userGroup ? (
+    //                 `Este dashboard apresenta uma visão analítica dos dados do seu grupo ${userGroup.name} em tempo real. Os dados são atualizados automaticamente com base nos formulários enviados e refletem métricas de performance, produtividade e tendências. Use os filtros do Power BI para explorar os dados conforme sua necessidade e obter insights valiosos para a gestão do seu grupo.`
+    //               ) : (
+    //                 'Você não está vinculado a nenhum grupo. Entre em contato com o administrador para ser adicionado a um grupo e ter acesso aos dashboards e formulários específicos.'
+    //               )}
+    //             </p>
+    //           </div>
+    //         </div>
+    //       </CardContent>
+    //     </Card>
+    //   </div>
+    //  </div>
+    )
+    }
   };
 
   return (
-    <div className="p-6">
+    <>
       {profile?.role === 'admin' ? <AdminDashboard /> : <UserDashboard />}
-    </div>
+    </>
   );
 };
 

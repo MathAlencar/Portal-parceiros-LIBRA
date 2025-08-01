@@ -77,6 +77,7 @@ const Header: React.FC<HeaderProps> = ({ onMenuToggle }) => {
               formUrl: groupData.form_url || undefined,
               createdAt: groupData.created_at
             };
+            console.log('🔗 Link do Power BI do usuário (Header):', formattedGroup.name, ':', formattedGroup.powerBiUrl);
             setUserGroup(formattedGroup);
           }
         } else {

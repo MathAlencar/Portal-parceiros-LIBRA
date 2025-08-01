@@ -335,7 +335,10 @@ const GroupRow: React.FC<{
           <Button 
             variant="outline" 
             size="sm"
-            onClick={() => onViewContent('powerbi', group.powerBiUrl!, group.name)}
+            onClick={() => {
+              console.log('🔗 Link do Power BI do grupo:', group.name, ':', group.powerBiUrl);
+              onViewContent('powerbi', group.powerBiUrl!, group.name);
+            }}
             className="flex items-center gap-1"
           >
             <Eye className="h-3 w-3" />
