@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -172,14 +172,14 @@ const ClienteCard: React.FC<{ cliente: ClientePowerBI; onClick: () => void }> = 
       className="cursor-pointer hover:shadow-lg transition-all duration-200 border-2 hover:border-blue-300 bg-white"
       onClick={onClick}
     >
-             <CardContent className="p-6">
+      <CardContent className="p-6">
         <div className="space-y-4">
           {/* Header do card */}
           <div className="flex items-start justify-between">
             <div className="flex-1">
-                             <h4 className="font-semibold text-gray-900 text-lg truncate">
-                 {formatarNome(cliente.Cliente)}
-               </h4>
+              <h4 className="font-semibold text-gray-900 text-lg truncate">
+                {formatarNome(cliente.Cliente)}
+              </h4>
               <p className="text-sm text-gray-500 truncate mt-1">
                 {cliente['Responsável (Parceiro)']}
               </p>
@@ -192,9 +192,9 @@ const ClienteCard: React.FC<{ cliente: ClientePowerBI; onClick: () => void }> = 
           {/* Valor */}
           <div className="flex items-center space-x-2">
             <DollarSign className="h-5 w-5 text-green-600" />
-                         <span className="text-lg font-medium text-gray-900">
-               {formatarValor(cliente.Valor)}
-             </span>
+            <span className="text-lg font-medium text-gray-900">
+              {formatarValor(cliente.Valor)}
+            </span>
           </div>
 
           {/* Parceiro */}
@@ -240,19 +240,19 @@ const EstagioPipeline: React.FC<{
     teal: 'bg-teal-50 border-teal-200'
   };
 
-     return (
-     <div className={`w-96 min-w-96 ${cores[estagio.cor as keyof typeof cores]} rounded-lg border-2 p-4 h-[700px] flex flex-col`}>
+  return (
+    <div className={`w-96 min-w-96 ${cores[estagio.cor as keyof typeof cores]} rounded-lg border-2 p-4 h-[700px] flex flex-col`}>
       {/* Header do estágio */}
       <div className="mb-4 flex-shrink-0">
-                 <h3 className="font-semibold text-gray-900 text-lg mb-1">{estagio.nome}</h3>
+        <h3 className="font-semibold text-gray-900 text-lg mb-1">{estagio.nome}</h3>
         <div className="flex items-center justify-between">
           <span className="text-sm text-gray-600">{clientes.length} clientes</span>
           <div className="w-2 h-2 bg-gray-400 rounded-full"></div>
         </div>
       </div>
 
-             {/* Lista de clientes */}
-       <div className="flex-1 overflow-y-auto space-y-4 pr-2">
+      {/* Lista de clientes */}
+      <div className="flex-1 overflow-y-auto space-y-4 pr-2">
         {clientes.length > 0 ? (
           clientes.map((cliente, index) => (
             <ClienteCard 
@@ -278,7 +278,6 @@ const ClientesCadastrados: React.FC = () => {
   const [clienteSelecionado, setClienteSelecionado] = useState<ClientePowerBI | null>(null);
   const [showModal, setShowModal] = useState(false);
   const [clientes, setClientes] = useState<ClientePowerBI[]>([]);
-  const [clientesFiltrados, setClientesFiltrados] = useState<ClientePowerBI[]>([]);
   const [loading, setLoading] = useState(true);
   const [userGroup, setUserGroup] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
@@ -316,18 +315,16 @@ const ClientesCadastrados: React.FC = () => {
       console.log('📊 Dados filtrados para o grupo:', dadosFiltrados);
       console.log(`📈 Total de clientes: ${data.length} | Filtrados: ${dadosFiltrados.length}`);
       
-             setClientes(dadosFiltrados);
-       setClientesFiltrados(dadosFiltrados); // Inicialmente, todos os clientes são mostrados
-     } catch (error) {
-       console.error('❌ Erro ao buscar dados do Power BI:', error);
-       setError('Erro ao carregar dados do Power BI. Verifique se o link está correto.');
-       // Usar dados de fallback em caso de erro
-       setClientes([]);
-       setClientesFiltrados([]);
-     } finally {
-       setLoading(false);
-     }
-   };
+      setClientes(dadosFiltrados);
+    } catch (error) {
+      console.error('❌ Erro ao buscar dados do Power BI:', error);
+      setError('Erro ao carregar dados do Power BI. Verifique se o link está correto.');
+      // Usar dados de fallback em caso de erro
+      setClientes([]);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Buscar grupo do usuário
   const fetchUserGroup = async () => {
@@ -368,9 +365,40 @@ const ClientesCadastrados: React.FC = () => {
     }
   }, [profile]);
 
-  // Atualizar clientes filtrados quando os dados mudarem
-  useEffect(() => {
-    filtrarClientes(searchTerm, filtroSituacao);
+  // Calcular clientes filtrados usando useMemo para evitar recálculos desnecessários
+  const clientesFiltrados = useMemo(() => {
+    let clientesFiltrados = clientes;
+
+    // Primeiro filtrar por situação
+    if (filtroSituacao !== 'Todos') {
+      clientesFiltrados = clientes.filter((cliente) => cliente.Situação === filtroSituacao);
+    }
+
+    // Depois filtrar por termo de busca
+    if (searchTerm.trim()) {
+      const termoLower = searchTerm.toLowerCase().trim();
+      clientesFiltrados = clientesFiltrados.filter((cliente) => {
+        // Buscar principalmente pelo nome do cliente
+        const nomeCliente = cliente.Cliente.toLowerCase();
+        if (nomeCliente.includes(termoLower)) {
+          return true;
+        }
+
+        // Buscar também por outros campos relevantes
+        const responsavel = cliente['Responsável (Parceiro)']?.toLowerCase() || '';
+        const parceiro = cliente.Parceiros?.toLowerCase() || '';
+        const id = cliente.Id.toString();
+
+        return (
+          responsavel.includes(termoLower) ||
+          parceiro.includes(termoLower) ||
+          id.includes(termoLower)
+        );
+      });
+    }
+
+    console.log(`🔍 Filtro: "${filtroSituacao}" | Busca: "${searchTerm}" | Resultados: ${clientesFiltrados.length}`);
+    return clientesFiltrados;
   }, [clientes, searchTerm, filtroSituacao]);
 
   // Organizar clientes por estágio
@@ -378,6 +406,7 @@ const ClientesCadastrados: React.FC = () => {
     const clientesNoEstagio = clientesFiltrados.filter(cliente => 
       mapearEstagioParaPipeline(cliente.Estágio) === estagio.id
     );
+    
     return {
       ...estagio,
       clientes: clientesNoEstagio
@@ -400,59 +429,20 @@ const ClientesCadastrados: React.FC = () => {
     }
   };
 
-  // Função para filtrar clientes baseada no termo de busca e situação
-  const filtrarClientes = (termo: string, situacao: string = filtroSituacao) => {
-    let clientesFiltrados = clientes;
-
-    // Primeiro filtrar por situação
-    if (situacao !== 'Todos') {
-      clientesFiltrados = clientes.filter((cliente) => cliente.Situação === situacao);
-    }
-
-    // Depois filtrar por termo de busca
-    if (termo.trim()) {
-      const termoLower = termo.toLowerCase().trim();
-      clientesFiltrados = clientesFiltrados.filter((cliente) => {
-        // Buscar principalmente pelo nome do cliente
-        const nomeCliente = cliente.Cliente.toLowerCase();
-        if (nomeCliente.includes(termoLower)) {
-          return true;
-        }
-
-        // Buscar também por outros campos relevantes
-        const responsavel = cliente['Responsável (Parceiro)']?.toLowerCase() || '';
-        const parceiro = cliente.Parceiros?.toLowerCase() || '';
-        const id = cliente.Id.toString();
-
-        return (
-          responsavel.includes(termoLower) ||
-          parceiro.includes(termoLower) ||
-          id.includes(termoLower)
-        );
-      });
-    }
-
-    setClientesFiltrados(clientesFiltrados);
-    console.log(`🔍 Filtro: "${situacao}" | Busca: "${termo}" | Resultados: ${clientesFiltrados.length}`);
-  };
-
   // Função para lidar com mudanças no campo de busca
   const handleSearchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const termo = event.target.value;
     setSearchTerm(termo);
-    filtrarClientes(termo, filtroSituacao);
   };
 
   // Função para limpar a busca
   const limparBusca = () => {
     setSearchTerm('');
-    filtrarClientes('', filtroSituacao);
   };
 
   // Função para mudar filtro de situação
   const handleFiltroSituacaoChange = (situacao: string) => {
     setFiltroSituacao(situacao);
-    filtrarClientes(searchTerm, situacao);
   };
 
   // Loading state
@@ -536,14 +526,14 @@ const ClientesCadastrados: React.FC = () => {
           </Button>
           <div>
             <h1 className="text-3xl font-bold text-gray-900">Pipeline de Clientes</h1>
-                         <p className="text-gray-600 mt-2">
-               Visualize o progresso dos clientes através dos estágios
-               {userGroup && (
-                 <span className="text-blue-600">
-                   • Grupo: {userGroup.name} • Filtrado por parceiro
-                 </span>
-               )}
-             </p>
+            <p className="text-gray-600 mt-2">
+              Visualize o progresso dos clientes através dos estágios
+              {userGroup && (
+                <span className="text-blue-600">
+                  • Grupo: {userGroup.name} • Filtrado por parceiro
+                </span>
+              )}
+            </p>
           </div>
         </div>
         <div className="flex items-center space-x-3">
@@ -555,95 +545,95 @@ const ClientesCadastrados: React.FC = () => {
             <RefreshCw className="h-4 w-4" />
             Atualizar
           </Button>
-                     <Button 
-             className="bg-blue-600 hover:bg-blue-700"
-             onClick={() => navigate('/formulario')}
-           >
-             <Plus className="h-4 w-4 mr-2" />
-             Novo Cliente
-           </Button>
+          <Button 
+            className="bg-blue-600 hover:bg-blue-700"
+            onClick={() => navigate('/formulario')}
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            Novo Cliente
+          </Button>
         </div>
       </div>
 
-             {/* Filtro Ativo */}
-       {userGroup && (
-         <Card className="border-blue-200 bg-blue-50">
-           <CardContent className="p-4">
-             <div className="flex items-center justify-between">
-               <div className="flex items-center space-x-3">
-                 <Filter className="h-5 w-5 text-blue-600" />
-                 <div>
-                   <p className="text-sm font-medium text-blue-800">Filtro Ativo</p>
-                                        <p className="text-xs text-blue-600">
-                       Mostrando apenas clientes do parceiro: <span className="font-semibold">{userGroup.name}</span>
-                       {filtroSituacao !== 'Todos' && (
-                         <span> • Situação: <span className="font-semibold">{filtroSituacao}</span></span>
-                       )}
-                     </p>
-                 </div>
-               </div>
-                                <div className="text-right">
-                   <p className="text-xs text-blue-600">
-                     {clientesFiltrados.length} cliente{clientesFiltrados.length !== 1 ? 's' : ''} encontrado{clientesFiltrados.length !== 1 ? 's' : ''}
-                     {searchTerm && clientesFiltrados.length !== clientes.length && (
-                       <span className="block text-blue-500">
-                         de {clientes.length} total
-                       </span>
-                     )}
-                   </p>
-                 </div>
-             </div>
-           </CardContent>
-         </Card>
-       )}
-
-               {/* Search and Filters */}
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex flex-col md:flex-row gap-4">
-              <div className="flex-1 relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-                <input
-                  type="text"
-                  placeholder="Buscar por nome do cliente, responsável, parceiro ou ID..."
-                  value={searchTerm}
-                  onChange={handleSearchChange}
-                  className="w-full pl-10 pr-12 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
-                {searchTerm && (
-                  <button
-                    onClick={limparBusca}
-                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                  >
-                    ✕
-                  </button>
-                )}
+      {/* Filtro Ativo */}
+      {userGroup && (
+        <Card className="border-blue-200 bg-blue-50">
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-3">
+                <Filter className="h-5 w-5 text-blue-600" />
+                <div>
+                  <p className="text-sm font-medium text-blue-800">Filtro Ativo</p>
+                  <p className="text-xs text-blue-600">
+                    Mostrando apenas clientes do parceiro: <span className="font-semibold">{userGroup.name}</span>
+                    {filtroSituacao !== 'Todos' && (
+                      <span> • Situação: <span className="font-semibold">{filtroSituacao}</span></span>
+                    )}
+                  </p>
+                </div>
               </div>
-              <div className="flex items-center gap-2">
-                {searchTerm && (
-                  <div className="text-sm text-gray-600">
-                    {clientesFiltrados.length} resultado{clientesFiltrados.length !== 1 ? 's' : ''}
-                  </div>
-                )}
-                                 <div className="flex items-center gap-2">
-                   <select
-                     value={filtroSituacao}
-                     onChange={(e) => handleFiltroSituacaoChange(e.target.value)}
-                     className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
-                   >
-                     <option value="Em aberto">Em Aberto</option>
-                     <option value="Perdida">Perdidos</option>
-                     <option value="Todos">Todos</option>
-                   </select>
-                   <Button variant="outline" className="flex items-center gap-2">
-                     <Filter className="h-4 w-4" />
-                     Mais Filtros
-                   </Button>
-                 </div>
+              <div className="text-right">
+                <p className="text-xs text-blue-600">
+                  {clientesFiltrados.length} cliente{clientesFiltrados.length !== 1 ? 's' : ''} encontrado{clientesFiltrados.length !== 1 ? 's' : ''}
+                  {searchTerm && clientesFiltrados.length !== clientes.length && (
+                    <span className="block text-blue-500">
+                      de {clientes.length} total
+                    </span>
+                  )}
+                </p>
               </div>
             </div>
           </CardContent>
         </Card>
+      )}
+
+      {/* Search and Filters */}
+      <Card>
+        <CardContent className="p-6">
+          <div className="flex flex-col md:flex-row gap-4">
+            <div className="flex-1 relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+              <input
+                type="text"
+                placeholder="Buscar por nome do cliente, responsável, parceiro ou ID..."
+                value={searchTerm}
+                onChange={handleSearchChange}
+                className="w-full pl-10 pr-12 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+              {searchTerm && (
+                <button
+                  onClick={limparBusca}
+                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                >
+                  ✕
+                </button>
+              )}
+            </div>
+            <div className="flex items-center gap-2">
+              {searchTerm && (
+                <div className="text-sm text-gray-600">
+                  {clientesFiltrados.length} resultado{clientesFiltrados.length !== 1 ? 's' : ''}
+                </div>
+              )}
+              <div className="flex items-center gap-2">
+                <select
+                  value={filtroSituacao}
+                  onChange={(e) => handleFiltroSituacaoChange(e.target.value)}
+                  className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                >
+                  <option value="Em aberto">Em Aberto</option>
+                  <option value="Perdida">Perdidos</option>
+                  <option value="Todos">Todos</option>
+                </select>
+                <Button variant="outline" className="flex items-center gap-2">
+                  <Filter className="h-4 w-4" />
+                  Mais Filtros
+                </Button>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
@@ -655,7 +645,7 @@ const ClientesCadastrados: React.FC = () => {
               </div>
               <div>
                 <p className="text-sm font-medium text-blue-700">Total de Clientes</p>
-                                 <p className="text-2xl font-bold text-blue-900">{clientesFiltrados.length}</p>
+                <p className="text-2xl font-bold text-blue-900">{clientesFiltrados.length}</p>
               </div>
             </div>
           </CardContent>
@@ -669,9 +659,9 @@ const ClientesCadastrados: React.FC = () => {
               </div>
               <div>
                 <p className="text-sm font-medium text-green-700">Em Aberto</p>
-                                 <p className="text-2xl font-bold text-green-900">
-                   {clientesFiltrados.filter(c => c.Situação === 'Em aberto').length}
-                 </p>
+                <p className="text-2xl font-bold text-green-900">
+                  {clientesFiltrados.filter(c => c.Situação === 'Em aberto').length}
+                </p>
               </div>
             </div>
           </CardContent>
@@ -685,12 +675,15 @@ const ClientesCadastrados: React.FC = () => {
               </div>
               <div>
                 <p className="text-sm font-medium text-yellow-700">Em Análise</p>
-                                 <p className="text-2xl font-bold text-yellow-900">
-                   {clientesFiltrados.filter(c => 
-                     c.Situação === 'Em aberto' && 
-                     (c.Estágio === 'Análise Financeira' || c.Estágio === 'Análise Jurídica' || c.Estágio === 'Comitê')
-                   ).length}
-                 </p>
+                <p className="text-2xl font-bold text-yellow-900">
+                  {clientesFiltrados.filter(c => 
+                    c.Situação === 'Em aberto' && 
+                    (c.Estágio === 'Análise Financeira' || c.Estágio === 'Análise Jurídica')
+                  ).length}
+                </p>
+                <p className="text-xs text-yellow-600 mt-1">
+                  Análise Financeira + Jurídica
+                </p>
               </div>
             </div>
           </CardContent>
@@ -704,9 +697,9 @@ const ClientesCadastrados: React.FC = () => {
               </div>
               <div>
                 <p className="text-sm font-medium text-red-700">Perdidos</p>
-                                 <p className="text-2xl font-bold text-red-900">
-                   {clientesFiltrados.filter(c => c.Situação === 'Perdida').length}
-                 </p>
+                <p className="text-2xl font-bold text-red-900">
+                  {clientesFiltrados.filter(c => c.Situação === 'Perdida').length}
+                </p>
               </div>
             </div>
           </CardContent>
@@ -725,7 +718,7 @@ const ClientesCadastrados: React.FC = () => {
           </CardDescription>
         </CardHeader>
         <CardContent>
-                     <div className="flex gap-8 overflow-x-auto pb-4 px-2">
+          <div className="flex gap-8 overflow-x-auto pb-4 px-2">
             {clientesPorEstagio.map((estagio) => (
               <EstagioPipeline
                 key={estagio.id}
@@ -756,7 +749,7 @@ const ClientesCadastrados: React.FC = () => {
                   <div>
                     <h3 className="font-semibold text-gray-900 mb-2">Informações Básicas</h3>
                     <div className="space-y-2 text-sm">
-                                             <div><span className="font-medium">Cliente:</span> {formatarNome(clienteSelecionado.Cliente)}</div>
+                      <div><span className="font-medium">Cliente:</span> {formatarNome(clienteSelecionado.Cliente)}</div>
                       <div><span className="font-medium">ID:</span> {clienteSelecionado.Id}</div>
                       <div><span className="font-medium">Parceiro:</span> {clienteSelecionado.Parceiros}</div>
                       <div><span className="font-medium">Responsável:</span> {clienteSelecionado['Responsável (Parceiro)']}</div>

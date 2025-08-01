@@ -1318,7 +1318,7 @@ const Formulario: React.FC = () => {
       : etapas;
 
     return (
-      <div className="w-full flex justify-center py-6 bg-gradient-to-r from-purple-100 to-indigo-100">
+      <div className="w-full flex justify-center py-6 from-purple-100 ">
         <div className="max-w-7xl w-full rounded-3xl shadow-xl p-8 flex justify-between bg-white">
           {/* Header com logo e botão */}
 
@@ -1473,7 +1473,7 @@ const Formulario: React.FC = () => {
     const textoAtual = obterTextoDinamico();
     
     return (
-      <aside className="w-64 bg-white rounded-2xl shadow-lg p-6">
+      <aside className="w-64 bg-white rounded-2xl shadow-lg p-6 border-gray-700">
         <div className="text-sm text-gray-600">
           <h2 className="font-semibold text-gray-800 mb-2">{textoAtual.titulo}</h2>
           <p>
@@ -1500,7 +1500,7 @@ const Formulario: React.FC = () => {
       return <LoadingStep msg="Carregando opções de quantidade de tomadores..." />;
     }
     return (
-      <section className="bg-white rounded-2xl shadow-xl p-10 w-full max-w-5xl space-y-8 flex flex-col items-center border border-gray-100">
+      <section className="bg-white rounded-2xl shadow-xl p-10 w-full max-w-5xl space-y-8 flex flex-col items-center border border-gray-300">
         {/* Header com ícone */}
         <div className="text-center space-y-4">
           <div className="flex items-center justify-center mb-6">
@@ -3502,7 +3502,7 @@ const Formulario: React.FC = () => {
             )}
 
             {/* Status da operação */}
-            <div className="w-full bg-gray-50 border border-gray-200 rounded-lg p-3 mb-6">
+            <div className="w-full bg-gray-50 border border-gray-300 rounded-lg p-3 mb-6">
               <div className="flex items-center justify-between">
                 <span className="text-sm font-medium text-gray-700">Status:</span>
                 <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
@@ -3642,10 +3642,10 @@ const Formulario: React.FC = () => {
 
   // Ajustar renderização principal para incluir fluxo correto
   return (
-    <>
+    <div className="p-6">
       {showGarantidorModal && renderGarantidorModal()}
       {renderBanner()}
-      <main className="min-h-screen bg-gradient-to-r from-purple-100 to-indigo-100 flex items-start justify-center py-16">
+      <main className="min-h-screen from-purple-100 to-indigo-100 flex items-start justify-center py-16">
         <div className="flex space-x-8 max-w-7xl w-full px-4">
           {renderSidebar()}
           <div className="flex-1 flex flex-col items-center max-w-8xl">
@@ -3696,7 +3696,7 @@ const Formulario: React.FC = () => {
       <LoadingEnvioOverlay />
       {/* <BotaoTesteEnvio /> */}
       {showSuccessModal && renderModalSucesso()}
-    </>
+    </div>
   );
 };
 

@@ -54,7 +54,6 @@ const Dashboard: React.FC = () => {
       setLoading(true);
       
       if (profile?.group_id) {
-        // console.log('Dashboard: Fetching group data for user group:', profile.group_id);
         
         const { data: groupData, error } = await supabase
           .from('groups')
@@ -77,7 +76,6 @@ const Dashboard: React.FC = () => {
           setUserGroup(formattedGroup);
         }
       } else {
-        // console.log('Dashboard: User has no group assigned');
         setUserGroup(null);
       }
     } catch (error) {
