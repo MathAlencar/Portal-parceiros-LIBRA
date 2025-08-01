@@ -422,6 +422,7 @@ const Dashboard: React.FC = () => {
         {/* Main Options Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
           {/* Visualizar Clientes Cadastrados */}
+
           <Card className="group hover:shadow-xl transition-all duration-300 border-2 hover:border-blue-300 cursor-pointer">
             <CardContent className="p-8" onClick={() => navigate('/clientes-cadastrados')}>
               <div className="text-center space-y-4">
@@ -473,7 +474,7 @@ const Dashboard: React.FC = () => {
         </div>
 
         {/* Quick Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        {/* <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <Card className="bg-gradient-to-r from-blue-50 to-blue-100 border-blue-200">
             <CardContent className="p-6">
               <div className="flex items-center space-x-3">
@@ -515,10 +516,10 @@ const Dashboard: React.FC = () => {
               </div>
             </CardContent>
           </Card>
-        </div>
+        </div> */}
 
         {/* Recent Activity */}
-        <Card>
+        {/* <Card>
           <CardHeader>
             <CardTitle className="flex items-center space-x-2">
               <Activity className="h-5 w-5 text-gray-600" />
@@ -540,7 +541,7 @@ const Dashboard: React.FC = () => {
               </div>
             </div>
           </CardContent>
-        </Card>
+        </Card> */}
       </div>
     );
   };

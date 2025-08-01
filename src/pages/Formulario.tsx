@@ -1318,9 +1318,43 @@ const Formulario: React.FC = () => {
       : etapas;
 
     return (
-      <div className="w-full flex justify-center py-6 from-purple-100 ">
-        <div className="max-w-7xl w-full rounded-3xl shadow-xl p-8 flex justify-between bg-white">
+      <div className="w-full flex justify-center py-6">
+        <div className="max-w-7xl w-full rounded-3xl shadow-2xl p-8 bg-white border-2 border-gray-200">
           {/* Header com logo e botão */}
+
+          {/* Indicador de progresso geral */}
+          <div className="w-full mb-8">
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-lg font-bold text-gray-800">Progresso Geral</span>
+              <span className="text-lg font-bold text-blue-600">
+                {(() => {
+                  let etapasCompletadas = 0;
+                  if (verificarEtapaTomadoresCompleta()) etapasCompletadas++;
+                  if (verificarEtapaEmprestimoCompleta()) etapasCompletadas++;
+                  if (verificarEtapaGarantiaCompleta()) etapasCompletadas++;
+                  if (garantia.garantiaPertenceTomador?.Name === 'Imóvel de terceiro' && verificarEtapaGarantidoresCompleta()) etapasCompletadas++;
+                  const totalEtapas = garantia.garantiaPertenceTomador?.Name === 'Imóvel de terceiro' ? 4 : 3;
+                  return `${etapasCompletadas}/${totalEtapas} etapas`;
+                })()}
+              </span>
+            </div>
+            <div className="w-full bg-gray-200 rounded-full h-4 shadow-inner">
+              <div 
+                className="bg-gradient-to-r from-blue-500 to-green-500 h-4 rounded-full transition-all duration-500 shadow-md"
+                style={{
+                  width: `${(() => {
+                    let etapasCompletadas = 0;
+                    if (verificarEtapaTomadoresCompleta()) etapasCompletadas++;
+                    if (verificarEtapaEmprestimoCompleta()) etapasCompletadas++;
+                    if (verificarEtapaGarantiaCompleta()) etapasCompletadas++;
+                    if (garantia.garantiaPertenceTomador?.Name === 'Imóvel de terceiro' && verificarEtapaGarantidoresCompleta()) etapasCompletadas++;
+                    const totalEtapas = garantia.garantiaPertenceTomador?.Name === 'Imóvel de terceiro' ? 4 : 3;
+                    return (etapasCompletadas / totalEtapas) * 100;
+                  })()}%`
+                }}
+              ></div>
+            </div>
+          </div>
 
           {/* Barra de progresso das etapas */}
           <div className="flex items-center w-full justify-between space-x-6">
@@ -1366,14 +1400,14 @@ const Formulario: React.FC = () => {
                   return (
                     <div key={label} className="flex items-center">
                       <button
-                        className={`flex flex-col items-center space-y-3 px-6 py-4 rounded-xl transition-all duration-300 min-w-[120px] ${
+                        className={`flex flex-col items-center space-y-3 px-6 py-4 rounded-xl transition-all duration-300 min-w-[120px] relative ${
                           isActive
-                            ? 'bg-blue-50 text-blue-900 border-2 border-blue-200 shadow-lg'
+                            ? 'bg-gradient-to-br from-blue-100 to-blue-200 text-blue-900 border-2 border-blue-400 shadow-lg'
                             : isCompleted
-                              ? 'bg-green-50 text-green-800 border-2 border-green-200 hover:bg-green-100'
+                              ? 'bg-gradient-to-br from-green-100 to-green-200 text-green-900 border-2 border-green-400 hover:from-green-200 hover:to-green-300 shadow-lg'
                               : isEnabled
-                                ? 'bg-white text-gray-700 border-2 border-gray-200 hover:bg-gray-50'
-                                : 'bg-gray-50 text-gray-400 border-2 border-gray-200'
+                                ? 'bg-white text-gray-800 border-2 border-gray-300 hover:bg-gray-50 shadow-md'
+                                : 'bg-gray-100 text-gray-500 border-2 border-gray-300'
                         }`}
                         disabled={!isEnabled}
                         onClick={() => {
@@ -1402,32 +1436,51 @@ const Formulario: React.FC = () => {
                           }
                         }}
                       >
+                        {/* Indicador de primeira etapa */}
+                        {idx === 0 && (
+                          <div className="absolute -top-2 -left-2 bg-blue-600 text-white text-xs font-bold px-2 py-1 rounded-full shadow-md">
+                            1º
+                          </div>
+                        )}
+                        
+                        {/* Indicador de última etapa */}
+                        {idx === etapasSidebar.length - 1 && (
+                          <div className="absolute -top-2 -right-2 bg-purple-600 text-white text-xs font-bold px-2 py-1 rounded-full shadow-md">
+                            Última
+                          </div>
+                        )}
+                        
+                        {/* Indicador numérico para todas as etapas */}
+                        <div className="absolute -bottom-2 -left-2 bg-gray-700 text-white text-xs font-bold w-6 h-6 rounded-full flex items-center justify-center shadow-md">
+                          {idx + 1}
+                        </div>
+                        
                         <div className={`w-14 h-14 flex items-center justify-center rounded-full border-2 text-2xl ${
                           isActive 
-                            ? 'border-blue-600 bg-blue-600 text-white' 
+                            ? 'border-blue-600 bg-blue-600 text-white shadow-lg' 
                             : isCompleted
-                              ? 'border-green-600 bg-green-600 text-white'
+                              ? 'border-green-600 bg-green-600 text-white shadow-lg'
                               : isEnabled
-                                ? 'border-gray-400 bg-white text-gray-600'
-                                : 'border-gray-300 bg-gray-100 text-gray-400'
+                                ? 'border-gray-500 bg-white text-gray-700 shadow-md'
+                                : 'border-gray-400 bg-gray-200 text-gray-500'
                         }`}>
                           {getStepIcon()}
                         </div>
-                        <span className="text-sm font-semibold whitespace-nowrap">
+                        <span className="text-sm font-bold whitespace-nowrap">
                           {label}
                         </span>
                         {isActive && (
-                          <span className="text-xs text-blue-600 font-medium flex items-center gap-1">
+                          <span className="text-xs text-blue-700 font-bold flex items-center gap-1">
                             <span>▶</span> Etapa atual
                           </span>
                         )}
                         {isCompleted && (
-                          <span className="text-xs text-green-600 font-medium flex items-center gap-1">
+                          <span className="text-xs text-green-700 font-bold flex items-center gap-1">
                             <span>✓</span> Concluída
                           </span>
                         )}
                         {!isEnabled && (
-                          <span className="text-xs text-gray-500 font-medium flex items-center gap-1">
+                          <span className="text-xs text-gray-600 font-bold flex items-center gap-1">
                             <span>🔒</span> Bloqueada
                           </span>
                         )}
@@ -1436,7 +1489,7 @@ const Formulario: React.FC = () => {
                       {/* Linha conectora entre etapas */}
                       {idx < etapasSidebar.length - 1 && (
                         <div className={`w-20 h-1 mx-3 rounded-full ${
-                          isCompleted ? 'bg-green-400' : 'bg-gray-300'
+                          isCompleted ? 'bg-green-500' : 'bg-gray-400'
                         }`} />
                       )}
                     </div>
@@ -1448,7 +1501,7 @@ const Formulario: React.FC = () => {
               {(quantidade || emprestimo.valorSolicitado || garantia.valorGarantia) && (
                 <button
                   onClick={() => setShowModalLimparDados(true)}
-                  className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium text-sm w-48"
+                  className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium text-sm w-48 shadow-md"
                   title="Limpar todos os dados preenchidos"
                 >
                   <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
@@ -1463,7 +1516,7 @@ const Formulario: React.FC = () => {
       </div>
     );
   };
-
+  
   // Sidebar dinâmica
   const etapasSidebar = showGarantidores
     ? [...etapas, 'Garantidores']
@@ -1473,10 +1526,10 @@ const Formulario: React.FC = () => {
     const textoAtual = obterTextoDinamico();
     
     return (
-      <aside className="w-64 bg-white rounded-2xl shadow-lg p-6 border-gray-700">
-        <div className="text-sm text-gray-600">
-          <h2 className="font-semibold text-gray-800 mb-2">{textoAtual.titulo}</h2>
-          <p>
+      <aside className="w-64 bg-white rounded-2xl shadow-xl p-6 border-2 border-gray-200">
+        <div className="text-sm text-gray-700">
+          <h2 className="font-bold text-gray-900 mb-3 text-lg">{textoAtual.titulo}</h2>
+          <p className="leading-relaxed">
             {textoAtual.descricao}
           </p>
         </div>
@@ -1500,20 +1553,20 @@ const Formulario: React.FC = () => {
       return <LoadingStep msg="Carregando opções de quantidade de tomadores..." />;
     }
     return (
-      <section className="bg-white rounded-2xl shadow-xl p-10 w-full max-w-5xl space-y-8 flex flex-col items-center border border-gray-300">
+      <section className="bg-white rounded-2xl shadow-2xl p-10 w-full max-w-5xl space-y-8 flex flex-col items-center border-2 border-gray-200">
         {/* Header com ícone */}
         <div className="text-center space-y-4">
           <div className="flex items-center justify-center mb-6">
-            <div className="w-20 h-20 bg-gradient-to-br from-indigo-500 to-blue-600 rounded-full flex items-center justify-center mr-4 shadow-lg">
-              <svg className="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div className="w-24 h-24 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-full flex items-center justify-center mr-4 shadow-xl">
+              <svg className="w-12 h-12 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
               </svg>
             </div>
           </div>
-          <h2 className="text-3xl font-bold text-gray-800 mb-2">
+          <h2 className="text-4xl font-bold text-gray-900 mb-3">
             1. Quantidade de Tomadores
           </h2>
-          <p className="text-gray-600 text-lg max-w-md leading-relaxed">
+          <p className="text-gray-700 text-lg max-w-md leading-relaxed font-medium">
             Selecione quantos tomadores participarão desta operação de empréstimo
           </p>
         </div>
@@ -1521,32 +1574,34 @@ const Formulario: React.FC = () => {
         {/* Campo de seleção */}
         <div className="w-full max-w-sm">
           {loading && (
-            <div className="text-center py-4">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600 mx-auto mb-2"></div>
-              <p className="text-gray-500">Carregando opções...</p>
+            <div className="text-center py-6 bg-gray-50 rounded-xl border border-gray-200">
+              <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600 mx-auto mb-3"></div>
+              <p className="text-gray-700 font-medium">Carregando opções...</p>
             </div>
           )}
           {error && (
             <div className="text-center py-4">
-              <p className="text-red-500 bg-red-50 border border-red-200 rounded-lg px-4 py-2">{error}</p>
+              <p className="text-red-700 bg-red-100 border-2 border-red-300 rounded-lg px-4 py-3 font-medium">{error}</p>
             </div>
           )}
           {!loading && !error && (
-            <div className="space-y-3">
-              <label className="block text-sm font-medium text-gray-700 mb-2 text-center">
+            <div className="space-y-4">
+              <label className="block text-sm font-bold text-gray-800 mb-3 text-center">
                 Quantidade de Tomadores
               </label>
-              <SelectInput
-                options={options.filter(o => o.Name !== '0')}
-                value={quantidadeId ?? undefined}
-                onChange={opt => {
-                  setQuantidadeId(Number(opt.Id));
-                  setQuantidade(Number(opt.Name));
-                  localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify({ Id: opt.Id, Name: opt.Name }));
-                  console.log('Quantidade selecionada:', { Id: opt.Id, Name: opt.Name });
-                }}
-                placeholder="Selecione a quantidade"
-              />
+              <div className="bg-gray-50 p-4 rounded-xl border-2 border-gray-200">
+                <SelectInput
+                  options={options.filter(o => o.Name !== '0')}
+                  value={quantidadeId ?? undefined}
+                  onChange={opt => {
+                    setQuantidadeId(Number(opt.Id));
+                    setQuantidade(Number(opt.Name));
+                    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify({ Id: opt.Id, Name: opt.Name }));
+                    console.log('Quantidade selecionada:', { Id: opt.Id, Name: opt.Name });
+                  }}
+                  placeholder="Selecione a quantidade"
+                />
+              </div>
             </div>
           )}
         </div>
@@ -1554,13 +1609,13 @@ const Formulario: React.FC = () => {
         {/* Botão */}
         <div className="w-full max-w-sm">
           <button
-            className="w-full py-4 px-6 font-semibold text-lg rounded-xl bg-gradient-to-r from-indigo-600 to-blue-600 text-white hover:from-indigo-700 hover:to-blue-700 transition-all duration-200 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl"
+            className="w-full py-5 px-6 font-bold text-lg rounded-xl bg-gradient-to-r from-blue-600 to-indigo-700 text-white hover:from-blue-700 hover:to-indigo-800 transition-all duration-200 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed shadow-xl hover:shadow-2xl"
             onClick={() => setEtapa(1)}
             disabled={!quantidade}
           >
             <div className="flex items-center justify-center">
               <span>Continuar</span>
-              <svg className="w-5 h-5 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-6 h-6 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
               </svg>
             </div>
@@ -1576,12 +1631,12 @@ const Formulario: React.FC = () => {
 
   // Componente de loading
   const LoadingStep = ({ msg }: { msg: string }) => (
-    <div className="flex flex-col items-center justify-center h-96">
-      <svg className="animate-spin h-8 w-8 text-indigo-500 mb-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+    <div className="flex flex-col items-center justify-center h-96 bg-white rounded-2xl shadow-2xl p-8 border-2 border-gray-200">
+      <svg className="animate-spin h-12 w-12 text-blue-600 mb-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
         <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path>
       </svg>
-      <span className="text-indigo-700 text-sm font-medium">{msg}</span>
+      <span className="text-blue-800 text-lg font-bold">{msg}</span>
     </div>
   );
 
@@ -3642,10 +3697,10 @@ const Formulario: React.FC = () => {
 
   // Ajustar renderização principal para incluir fluxo correto
   return (
-    <div className="p-6">
+    <div className="p-6 min-h-screen">
       {showGarantidorModal && renderGarantidorModal()}
       {renderBanner()}
-      <main className="min-h-screen from-purple-100 to-indigo-100 flex items-start justify-center py-16">
+      <main className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-start justify-center py-16">
         <div className="flex space-x-8 max-w-7xl w-full px-4">
           {renderSidebar()}
           <div className="flex-1 flex flex-col items-center max-w-8xl">
