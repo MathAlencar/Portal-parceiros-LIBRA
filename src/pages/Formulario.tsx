@@ -1,5 +1,5 @@
 import React, { useState, useEffect, Fragment } from 'react';
-import { usePloomesOptions } from '@/hooks/usePloomesOptions';
+import { usePloomesOptions, clearExpiredCache, clearAllPloomesCache, getCacheInfo } from '@/hooks/usePloomesOptions';
 import { TOMADORES_OPTIONS_IDS, QUANTIDADE_GARANTIDORES_OPTIONS_ID, GARANTIDORES_OPTIONS_IDS } from '@/hooks/ploomesOptionsIds';
 import { SelectInput } from '@/components/FormMVP/SelectInput';
 import { InputText } from '@/components/FormInputs/InputText';
@@ -217,6 +217,16 @@ const initialGarantidor = {
 };
 
 const Formulario: React.FC = () => {
+  // Limpar cache expirado ao montar o componente
+  useEffect(() => {
+    console.log('[Formulario] Limpando cache expirado...');
+    clearExpiredCache();
+    
+    // Mostrar informações do cache
+    const cacheInfo = getCacheInfo();
+    console.log('[Formulario] Status do cache:', cacheInfo);
+  }, []);
+
   // Debug: mostrar dados do localStorage ao montar o componente
   useEffect(() => {
     const savedQtd = localStorage.getItem('ploomes_selected_tomadores');
@@ -261,6 +271,14 @@ const Formulario: React.FC = () => {
   );
   const [erros, setErros] = useState<{ [key: string]: string }>({});
   const [mostrarErro, setMostrarErro] = useState(false);
+
+  // Estados para controlar o carregamento progressivo
+  const [carregarOpcoesTomadores, setCarregarOpcoesTomadores] = useState(false);
+  const [carregarOpcoesEmprestimo, setCarregarOpcoesEmprestimo] = useState(false);
+  const [carregarOpcoesGarantia, setCarregarOpcoesGarantia] = useState(false);
+  const [carregarOpcoesGarantidores, setCarregarOpcoesGarantidores] = useState(false);
+
+
 
   const limparErro = (campo: string) => {
     setErros(prev => {
@@ -324,18 +342,24 @@ const Formulario: React.FC = () => {
       const rendaFormalNaoSeAplica = tomador.comprovacaoRendaFormal?.Name?.toLowerCase() === 'não se aplica';
       const rendaInformalNaoSeAplica = tomador.comprovacaoRendaInformal?.Name?.toLowerCase() === 'não se aplica';
 
+      // Força o valor para R$ 0,00 quando "Não se aplica" for selecionado
       const rendaFormal = rendaFormalNaoSeAplica ? 'R$ 0,00' : tomador.rendaFormal;
       const rendaInformal = rendaInformalNaoSeAplica ? 'R$ 0,00' : tomador.rendaInformal;
 
       const rendaTotal = calcularRendaTotal(rendaFormal, rendaInformal);
 
-      // Só atualiza se o valor for diferente
-      if (tomador.rendaTotalInformada !== rendaTotal) {
+      // Verifica se precisa atualizar
+      const needsUpdate = 
+        (rendaFormalNaoSeAplica && tomador.rendaFormal !== 'R$ 0,00') ||
+        (rendaInformalNaoSeAplica && tomador.rendaInformal !== 'R$ 0,00') ||
+        tomador.rendaTotalInformada !== rendaTotal;
+
+      if (needsUpdate) {
         hasChanges = true;
         return {
           ...tomador,
-          rendaFormal: rendaFormalNaoSeAplica ? 'R$ 0,00' : tomador.rendaFormal,
-          rendaInformal: rendaInformalNaoSeAplica ? 'R$ 0,00' : tomador.rendaInformal,
+          rendaFormal: rendaFormal,
+          rendaInformal: rendaInformal,
           rendaTotalInformada: rendaTotal
         };
       }
@@ -374,39 +398,121 @@ const Formulario: React.FC = () => {
   const [erroEnvio, setErroEnvio] = useState<string>('');
   const [showModalLimparDados, setShowModalLimparDados] = useState(false);
 
+  // Hooks com carregamento progressivo
   const { options, loading, error } = usePloomesOptions(QUANTIDADE_TOMADORES_OPTIONS_ID);
-  const { options: quantidadeGarantidoresOptions, loading: loadingGarantidores, error: errorGarantidores } = usePloomesOptions(QUANTIDADE_GARANTIDORES_OPTIONS_ID);
-  const amortizacaoOptions = usePloomesOptions(44254);
-  const carenciaOptions = usePloomesOptions(46299);
-  const motivoEmprestimoOptions = usePloomesOptions(31247);
-  const dividaITROptions = usePloomesOptions(46865);
+  const { options: quantidadeGarantidoresOptions, loading: loadingGarantidores, error: errorGarantidores } = usePloomesOptions(carregarOpcoesGarantidores ? QUANTIDADE_GARANTIDORES_OPTIONS_ID : undefined);
+  
+  // Hooks de empréstimo - carregam apenas quando necessário
+  const amortizacaoOptions = usePloomesOptions(carregarOpcoesEmprestimo ? 44254 : undefined);
+  const carenciaOptions = usePloomesOptions(carregarOpcoesEmprestimo ? 46299 : undefined);
+  const motivoEmprestimoOptions = usePloomesOptions(carregarOpcoesEmprestimo ? 31247 : undefined);
+  
+  // Hooks de garantia - carregam apenas quando necessário
+  const dividaITROptions = usePloomesOptions(carregarOpcoesGarantia ? 46865 : undefined);
+  const pertenceTomadorOptions = usePloomesOptions(carregarOpcoesGarantia ? 31246 : undefined);
+  const cidadeGarantiaOptions = usePloomesOptions(carregarOpcoesGarantia ? 31460 : undefined);
+  const ruralUrbanoOptions = usePloomesOptions(carregarOpcoesGarantia ? 46826 : undefined);
+  const unidadeFederativaOptions = usePloomesOptions(carregarOpcoesGarantia ? 38986 : undefined);
+  const comQuemEstaFinanciadaOptions = usePloomesOptions(carregarOpcoesGarantia ? 32453 : undefined);
+  const utilizacaoGarantiaOptions = usePloomesOptions(carregarOpcoesGarantia ? 31833 : undefined);
+  const tipoGarantiaOptions = usePloomesOptions(carregarOpcoesGarantia ? 31459 : undefined);
 
-  // Hooks de opções para todos os tomadores (sempre na mesma ordem)
-  const estadoCivilOptionsArr = TOMADORES_OPTIONS_IDS.map(ids => usePloomesOptions(ids.estadoCivil));
-  const tipoPessoaOptionsArr = TOMADORES_OPTIONS_IDS.map(ids => usePloomesOptions(ids.tipoPessoa));
-  const qualificacaoProfissaoOptionsArr = TOMADORES_OPTIONS_IDS.map(ids => usePloomesOptions(ids.qualificacaoProfissao));
-  const comprovacaoRendaFormalOptionsArr = TOMADORES_OPTIONS_IDS.map(ids => usePloomesOptions(ids.comprovacaoRendaFormal));
-  const comprovacaoRendaInformalOptionsArr = TOMADORES_OPTIONS_IDS.map(ids => usePloomesOptions(ids.comprovacaoRendaInformal));
-  const quantidadeSociosOptionsArr = TOMADORES_OPTIONS_IDS.map(ids => usePloomesOptions(ids.quantidadeSocios));
-  const numeroAdminOptionsArr = TOMADORES_OPTIONS_IDS.map(ids => usePloomesOptions(ids.numeroAdmin));
+  // Hooks de opções para todos os tomadores - sempre declarados, mas controlados pelo carregarOpcoesTomadores
+  const estadoCivilOptions0 = usePloomesOptions(carregarOpcoesTomadores ? TOMADORES_OPTIONS_IDS[0]?.estadoCivil : undefined);
+  const estadoCivilOptions1 = usePloomesOptions(carregarOpcoesTomadores ? TOMADORES_OPTIONS_IDS[1]?.estadoCivil : undefined);
+  const estadoCivilOptions2 = usePloomesOptions(carregarOpcoesTomadores ? TOMADORES_OPTIONS_IDS[2]?.estadoCivil : undefined);
+  const estadoCivilOptions3 = usePloomesOptions(carregarOpcoesTomadores ? TOMADORES_OPTIONS_IDS[3]?.estadoCivil : undefined);
+  const estadoCivilOptionsArr = [estadoCivilOptions0, estadoCivilOptions1, estadoCivilOptions2, estadoCivilOptions3];
 
-  // Hooks de opções para garantidores
-  const estadoCivilGarantidoresOptionsArr = GARANTIDORES_OPTIONS_IDS.map(ids => usePloomesOptions(ids.estadoCivil));
+  const tipoPessoaOptions0 = usePloomesOptions(carregarOpcoesTomadores ? TOMADORES_OPTIONS_IDS[0]?.tipoPessoa : undefined);
+  const tipoPessoaOptions1 = usePloomesOptions(carregarOpcoesTomadores ? TOMADORES_OPTIONS_IDS[1]?.tipoPessoa : undefined);
+  const tipoPessoaOptions2 = usePloomesOptions(carregarOpcoesTomadores ? TOMADORES_OPTIONS_IDS[2]?.tipoPessoa : undefined);
+  const tipoPessoaOptions3 = usePloomesOptions(carregarOpcoesTomadores ? TOMADORES_OPTIONS_IDS[3]?.tipoPessoa : undefined);
+  const tipoPessoaOptionsArr = [tipoPessoaOptions0, tipoPessoaOptions1, tipoPessoaOptions2, tipoPessoaOptions3];
 
-  // [Após os hooks de empréstimo, adicionar hooks da garantia]
-  const pertenceTomadorOptions = usePloomesOptions(31246);
-  const cidadeGarantiaOptions = usePloomesOptions(31460);
-  const ruralUrbanoOptions = usePloomesOptions(46826);
-  const unidadeFederativaOptions = usePloomesOptions(38986);
-  const comQuemEstaFinanciadaOptions = usePloomesOptions(32453);
-  const utilizacaoGarantiaOptions = usePloomesOptions(31833);
-  const tipoGarantiaOptions = usePloomesOptions(31459);
+  const qualificacaoProfissaoOptions0 = usePloomesOptions(carregarOpcoesTomadores ? TOMADORES_OPTIONS_IDS[0]?.qualificacaoProfissao : undefined);
+  const qualificacaoProfissaoOptions1 = usePloomesOptions(carregarOpcoesTomadores ? TOMADORES_OPTIONS_IDS[1]?.qualificacaoProfissao : undefined);
+  const qualificacaoProfissaoOptions2 = usePloomesOptions(carregarOpcoesTomadores ? TOMADORES_OPTIONS_IDS[2]?.qualificacaoProfissao : undefined);
+  const qualificacaoProfissaoOptions3 = usePloomesOptions(carregarOpcoesTomadores ? TOMADORES_OPTIONS_IDS[3]?.qualificacaoProfissao : undefined);
+  const qualificacaoProfissaoOptionsArr = [qualificacaoProfissaoOptions0, qualificacaoProfissaoOptions1, qualificacaoProfissaoOptions2, qualificacaoProfissaoOptions3];
+
+  const comprovacaoRendaFormalOptions0 = usePloomesOptions(carregarOpcoesTomadores ? TOMADORES_OPTIONS_IDS[0]?.comprovacaoRendaFormal : undefined);
+  const comprovacaoRendaFormalOptions1 = usePloomesOptions(carregarOpcoesTomadores ? TOMADORES_OPTIONS_IDS[1]?.comprovacaoRendaFormal : undefined);
+  const comprovacaoRendaFormalOptions2 = usePloomesOptions(carregarOpcoesTomadores ? TOMADORES_OPTIONS_IDS[2]?.comprovacaoRendaFormal : undefined);
+  const comprovacaoRendaFormalOptions3 = usePloomesOptions(carregarOpcoesTomadores ? TOMADORES_OPTIONS_IDS[3]?.comprovacaoRendaFormal : undefined);
+  const comprovacaoRendaFormalOptionsArr = [comprovacaoRendaFormalOptions0, comprovacaoRendaFormalOptions1, comprovacaoRendaFormalOptions2, comprovacaoRendaFormalOptions3];
+
+  const comprovacaoRendaInformalOptions0 = usePloomesOptions(carregarOpcoesTomadores ? TOMADORES_OPTIONS_IDS[0]?.comprovacaoRendaInformal : undefined);
+  const comprovacaoRendaInformalOptions1 = usePloomesOptions(carregarOpcoesTomadores ? TOMADORES_OPTIONS_IDS[1]?.comprovacaoRendaInformal : undefined);
+  const comprovacaoRendaInformalOptions2 = usePloomesOptions(carregarOpcoesTomadores ? TOMADORES_OPTIONS_IDS[2]?.comprovacaoRendaInformal : undefined);
+  const comprovacaoRendaInformalOptions3 = usePloomesOptions(carregarOpcoesTomadores ? TOMADORES_OPTIONS_IDS[3]?.comprovacaoRendaInformal : undefined);
+  const comprovacaoRendaInformalOptionsArr = [comprovacaoRendaInformalOptions0, comprovacaoRendaInformalOptions1, comprovacaoRendaInformalOptions2, comprovacaoRendaInformalOptions3];
+
+  const quantidadeSociosOptions0 = usePloomesOptions(carregarOpcoesTomadores ? TOMADORES_OPTIONS_IDS[0]?.quantidadeSocios : undefined);
+  const quantidadeSociosOptions1 = usePloomesOptions(carregarOpcoesTomadores ? TOMADORES_OPTIONS_IDS[1]?.quantidadeSocios : undefined);
+  const quantidadeSociosOptions2 = usePloomesOptions(carregarOpcoesTomadores ? TOMADORES_OPTIONS_IDS[2]?.quantidadeSocios : undefined);
+  const quantidadeSociosOptions3 = usePloomesOptions(carregarOpcoesTomadores ? TOMADORES_OPTIONS_IDS[3]?.quantidadeSocios : undefined);
+  const quantidadeSociosOptionsArr = [quantidadeSociosOptions0, quantidadeSociosOptions1, quantidadeSociosOptions2, quantidadeSociosOptions3];
+
+  const numeroAdminOptions0 = usePloomesOptions(carregarOpcoesTomadores ? TOMADORES_OPTIONS_IDS[0]?.numeroAdmin : undefined);
+  const numeroAdminOptions1 = usePloomesOptions(carregarOpcoesTomadores ? TOMADORES_OPTIONS_IDS[1]?.numeroAdmin : undefined);
+  const numeroAdminOptions2 = usePloomesOptions(carregarOpcoesTomadores ? TOMADORES_OPTIONS_IDS[2]?.numeroAdmin : undefined);
+  const numeroAdminOptions3 = usePloomesOptions(carregarOpcoesTomadores ? TOMADORES_OPTIONS_IDS[3]?.numeroAdmin : undefined);
+  const numeroAdminOptionsArr = [numeroAdminOptions0, numeroAdminOptions1, numeroAdminOptions2, numeroAdminOptions3];
+
+  // Hooks de opções para garantidores - sempre declarados, mas controlados pelo carregarOpcoesGarantidores
+  const estadoCivilGarantidoresOptions0 = usePloomesOptions(carregarOpcoesGarantidores ? GARANTIDORES_OPTIONS_IDS[0]?.estadoCivil : undefined);
+  const estadoCivilGarantidoresOptions1 = usePloomesOptions(carregarOpcoesGarantidores ? GARANTIDORES_OPTIONS_IDS[1]?.estadoCivil : undefined);
+  const estadoCivilGarantidoresOptions2 = usePloomesOptions(carregarOpcoesGarantidores ? GARANTIDORES_OPTIONS_IDS[2]?.estadoCivil : undefined);
+  const estadoCivilGarantidoresOptions3 = usePloomesOptions(carregarOpcoesGarantidores ? GARANTIDORES_OPTIONS_IDS[3]?.estadoCivil : undefined);
+  const estadoCivilGarantidoresOptionsArr = [estadoCivilGarantidoresOptions0, estadoCivilGarantidoresOptions1, estadoCivilGarantidoresOptions2, estadoCivilGarantidoresOptions3];
 
   // Opções Sim/Não para campos booleanos
   const opcoesSimNao = [
     { Id: 'true', Name: 'Sim' },
     { Id: 'false', Name: 'Não' }
   ];
+
+  // useEffect para controlar carregamento progressivo das opções
+  useEffect(() => {
+    // Carregar opções de tomadores quando entrar na etapa de tomadores
+    if (etapa > 0 && etapa <= (quantidade || 0)) {
+      if (!carregarOpcoesTomadores) {
+        setCarregarOpcoesTomadores(true);
+        console.log('[Formulario] 🚀 Iniciando carregamento das opções de tomadores...');
+      }
+    }
+  }, [etapa, quantidade, carregarOpcoesTomadores]);
+
+  useEffect(() => {
+    // Carregar opções de empréstimo quando entrar na etapa de empréstimo
+    if (etapa === (quantidade || 0) + 1) {
+      if (!carregarOpcoesEmprestimo) {
+        setCarregarOpcoesEmprestimo(true);
+        console.log('[Formulario] 🚀 Iniciando carregamento das opções de empréstimo...');
+      }
+    }
+  }, [etapa, quantidade, carregarOpcoesEmprestimo]);
+
+  useEffect(() => {
+    // Carregar opções de garantia quando entrar na etapa de garantia
+    if (etapa === (quantidade || 0) + 2) {
+      if (!carregarOpcoesGarantia) {
+        setCarregarOpcoesGarantia(true);
+        console.log('[Formulario] 🚀 Iniciando carregamento das opções de garantia...');
+      }
+    }
+  }, [etapa, quantidade, carregarOpcoesGarantia]);
+
+  useEffect(() => {
+    // Carregar opções de garantidores quando entrar na etapa de garantidores
+    if (showGarantidores && (etapa === (quantidade || 0) + 3 || etapa >= (quantidade || 0) + 4)) {
+      if (!carregarOpcoesGarantidores) {
+        setCarregarOpcoesGarantidores(true);
+        console.log('[Formulario] 🚀 Iniciando carregamento das opções de garantidores...');
+      }
+    }
+  }, [etapa, quantidade, showGarantidores, carregarOpcoesGarantidores]);
 
   useEffect(() => {
     const savedQtd = localStorage.getItem(LOCAL_STORAGE_KEY);
@@ -1180,6 +1286,30 @@ const Formulario: React.FC = () => {
     } else {
       console.log('Nenhum dado de tomadores salvo.');
     }
+
+    // Informações sobre o cache do Ploomes
+    console.log('=== CACHE DO PLOOMES ===');
+    const cacheInfo = getCacheInfo();
+    console.log('Status do cache:', cacheInfo);
+    
+    // Mostrar todas as chaves do cache
+    const keys = Object.keys(localStorage);
+    const ploomesKeys = keys.filter(key => key.startsWith('ploomes_options_'));
+    console.log('Chaves do cache do Ploomes:', ploomesKeys);
+    
+    ploomesKeys.forEach(key => {
+      try {
+        const cached = localStorage.getItem(key);
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          const age = Date.now() - parsed.timestamp;
+          const ageHours = Math.floor(age / (1000 * 60 * 60));
+          console.log(`${key}: ${parsed.options.length} opções, ${ageHours}h atrás`);
+        }
+      } catch (error) {
+        console.log(`${key}: Erro ao ler`);
+      }
+    });
   };
 
   const renderBanner = () => {
@@ -1455,10 +1585,91 @@ const Formulario: React.FC = () => {
     </div>
   );
 
+  // Função para verificar se as opções de tomadores estão carregando
+  const verificarCarregamentoTomadores = () => {
+    if (!carregarOpcoesTomadores) return false;
+    
+    const isLoading = estadoCivilOptionsArr.some(opt => opt.loading) ||
+           tipoPessoaOptionsArr.some(opt => opt.loading) ||
+           qualificacaoProfissaoOptionsArr.some(opt => opt.loading) ||
+           comprovacaoRendaFormalOptionsArr.some(opt => opt.loading) ||
+           comprovacaoRendaInformalOptionsArr.some(opt => opt.loading) ||
+           quantidadeSociosOptionsArr.some(opt => opt.loading) ||
+           numeroAdminOptionsArr.some(opt => opt.loading);
+    
+    // Log quando terminar de carregar
+    if (!isLoading && carregarOpcoesTomadores) {
+      console.log('[Formulario] ✅ Opções de tomadores carregadas com sucesso!');
+    }
+    
+    return isLoading;
+  };
+
+  // Função para verificar se as opções de empréstimo estão carregando
+  const verificarCarregamentoEmprestimo = () => {
+    if (!carregarOpcoesEmprestimo) return false;
+    
+    const isLoading = amortizacaoOptions.loading ||
+           carenciaOptions.loading ||
+           motivoEmprestimoOptions.loading;
+    
+    // Log quando terminar de carregar
+    if (!isLoading && carregarOpcoesEmprestimo) {
+      console.log('[Formulario] ✅ Opções de empréstimo carregadas com sucesso!');
+    }
+    
+    return isLoading;
+  };
+
+  // Função para verificar se as opções de garantia estão carregando
+  const verificarCarregamentoGarantia = () => {
+    if (!carregarOpcoesGarantia) return false;
+    
+    const isLoading = pertenceTomadorOptions.loading ||
+           utilizacaoGarantiaOptions.loading ||
+           tipoGarantiaOptions.loading ||
+           cidadeGarantiaOptions.loading ||
+           ruralUrbanoOptions.loading ||
+           unidadeFederativaOptions.loading ||
+           comQuemEstaFinanciadaOptions.loading ||
+           dividaITROptions.loading;
+    
+    // Log quando terminar de carregar
+    if (!isLoading && carregarOpcoesGarantia) {
+      console.log('[Formulario] ✅ Opções de garantia carregadas com sucesso!');
+    }
+    
+    return isLoading;
+  };
+
+  // Função para verificar se as opções de garantidores estão carregando
+  const verificarCarregamentoGarantidores = () => {
+    if (!carregarOpcoesGarantidores) return false;
+    
+    const isLoading = loadingGarantidores ||
+           estadoCivilGarantidoresOptionsArr.some(opt => opt.loading);
+    
+    // Log quando terminar de carregar
+    if (!isLoading && carregarOpcoesGarantidores) {
+      console.log('[Formulario] ✅ Opções de garantidores carregadas com sucesso!');
+    }
+    
+    return isLoading;
+  };
+
   // Formulário de cadastro de tomador
   const renderCadastroTomador = () => {
     const idx = etapa - 1;
     const tomador = tomadores[idx] || { ...initialTomador };
+
+    // Verificar se as opções estão carregando
+    if (verificarCarregamentoTomadores()) {
+      return (
+        <section className="bg-white rounded-2xl shadow-lg p-8 w-full max-w-5xl flex flex-col items-center justify-center">
+          <LoadingStep msg="Carregando opções de tomadores..." />
+        </section>
+      );
+    }
 
     const estadoCivilOptions = estadoCivilOptionsArr[idx];
     const tipoPessoaOptions = tipoPessoaOptionsArr[idx];
@@ -1773,9 +1984,14 @@ const Formulario: React.FC = () => {
                 value={tomador.comprovacaoRendaFormal.Id ? String(tomador.comprovacaoRendaFormal.Id) : undefined}
                 onChange={opt => {
                   limparErro('comprovacaoRendaFormal');
+                  const isNaoSeAplica = opt.Name?.toLowerCase() === 'não se aplica';
                   setTomadores(prev => {
                     const novo = [...prev];
-                    novo[idx] = { ...novo[idx], comprovacaoRendaFormal: { Id: opt.Id, Name: opt.Name } };
+                    novo[idx] = { 
+                      ...novo[idx], 
+                      comprovacaoRendaFormal: { Id: opt.Id, Name: opt.Name },
+                      rendaFormal: isNaoSeAplica ? 'R$ 0,00' : novo[idx].rendaFormal
+                    };
                     return novo;
                   });
                 }}
@@ -1786,7 +2002,7 @@ const Formulario: React.FC = () => {
               />
               <InputText
                 inputName="Renda Formal"
-                termo={tomador.rendaFormal}
+                termo={tomador.comprovacaoRendaFormal?.Name?.toLowerCase() === 'não se aplica' ? 'R$ 0,00' : tomador.rendaFormal}
                 onSetName={v => {
                   limparErro('rendaFormal');
                   setTomadores(prev => { 
@@ -1806,9 +2022,14 @@ const Formulario: React.FC = () => {
                 value={tomador.comprovacaoRendaInformal.Id ? String(tomador.comprovacaoRendaInformal.Id) : undefined}
                 onChange={opt => {
                   limparErro('comprovacaoRendaInformal');
+                  const isNaoSeAplica = opt.Name?.toLowerCase() === 'não se aplica';
                   setTomadores(prev => {
                     const novo = [...prev];
-                    novo[idx] = { ...novo[idx], comprovacaoRendaInformal: { Id: opt.Id, Name: opt.Name } };
+                    novo[idx] = { 
+                      ...novo[idx], 
+                      comprovacaoRendaInformal: { Id: opt.Id, Name: opt.Name },
+                      rendaInformal: isNaoSeAplica ? 'R$ 0,00' : novo[idx].rendaInformal
+                    };
                     return novo;
                   });
                 }}
@@ -1819,7 +2040,7 @@ const Formulario: React.FC = () => {
               />
               <InputText
                 inputName="Renda Informal"
-                termo={tomador.rendaInformal}
+                termo={tomador.comprovacaoRendaInformal?.Name?.toLowerCase() === 'não se aplica' ? 'R$ 0,00' : tomador.rendaInformal}
                 onSetName={v => {
                   limparErro('rendaInformal');
                   setTomadores(prev => { 
@@ -2020,6 +2241,17 @@ const Formulario: React.FC = () => {
 
   // Renderização da etapa de empréstimo (formulário preenchível)
   const renderEmprestimo = () => {
+    // Verificar se as opções estão carregando
+    if (verificarCarregamentoEmprestimo()) {
+      return (
+        <section className={`bg-white rounded-2xl shadow-lg p-8 w-full max-w-5xl flex flex-col items-center justify-center transition-all duration-300 ease-in-out ${
+          isTransitioning ? 'opacity-0 transform scale-95' : 'opacity-100 transform scale-100'
+        }`}>
+          <LoadingStep msg="Carregando opções de empréstimo..." />
+        </section>
+      );
+    }
+
     return (
       <section className={`bg-white rounded-2xl shadow-lg p-8 w-full max-w-5xl flex flex-col items-center justify-center transition-all duration-300 ease-in-out ${
         isTransitioning ? 'opacity-0 transform scale-95' : 'opacity-100 transform scale-100'
@@ -2272,51 +2504,15 @@ const Formulario: React.FC = () => {
 
   // Renderização da etapa de garantia (formulário preenchível)
   const renderGarantia = () => {
-    // Debug: verificar se as opções estão carregadas
-    const optionsLoading = 
-      pertenceTomadorOptions.loading ||
-      utilizacaoGarantiaOptions.loading ||
-      tipoGarantiaOptions.loading ||
-      cidadeGarantiaOptions.loading ||
-      ruralUrbanoOptions.loading ||
-      unidadeFederativaOptions.loading ||
-      comQuemEstaFinanciadaOptions.loading ||
-      dividaITROptions.loading;
-
-    // Debug: verificar se as opções têm dados
-    const optionsEmpty = 
-      pertenceTomadorOptions.options.length === 0 ||
-      utilizacaoGarantiaOptions.options.length === 0 ||
-      tipoGarantiaOptions.options.length === 0 ||
-      cidadeGarantiaOptions.options.length === 0 ||
-      ruralUrbanoOptions.options.length === 0 ||
-      unidadeFederativaOptions.options.length === 0 ||
-      comQuemEstaFinanciadaOptions.options.length === 0 ||
-      dividaITROptions.options.length === 0;
-
-    if (optionsLoading) {
-      console.log('Opções da garantia ainda carregando...');
+    // Verificar se as opções estão carregando
+    if (verificarCarregamentoGarantia()) {
       return (
         <section className={`bg-white rounded-2xl shadow-lg p-8 w-full max-w-5xl flex flex-col items-center justify-center transition-all duration-300 ease-in-out ${
           isTransitioning ? 'opacity-0 transform scale-95' : 'opacity-100 transform scale-100'
         }`}>
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-700 mx-auto mb-4"></div>
-            <p className="text-gray-600">Carregando opções da garantia...</p>
-          </div>
+          <LoadingStep msg="Carregando opções de garantia..." />
         </section>
       );
-    } else if (optionsEmpty) {
-      console.log('Algumas opções da garantia estão vazias:', {
-        pertenceTomador: pertenceTomadorOptions.options.length,
-        utilizacao: utilizacaoGarantiaOptions.options.length,
-        tipo: tipoGarantiaOptions.options.length,
-        cidade: cidadeGarantiaOptions.options.length,
-        ruralUrbano: ruralUrbanoOptions.options.length,
-        unidadeFederativa: unidadeFederativaOptions.options.length,
-        comQuemEstaFinanciada: comQuemEstaFinanciadaOptions.options.length,
-        dividaITR: dividaITROptions.options.length
-      });
     }
 
     return (
@@ -2780,6 +2976,18 @@ const Formulario: React.FC = () => {
     // O índice do garantidor atual é etapa - ((quantidade || 0) + 4)
     const idx = etapa - ((quantidade || 0) + 4);
     const garantidor = garantidores[idx] || { ...initialGarantidor };
+
+    // Verificar se as opções estão carregando
+    if (verificarCarregamentoGarantidores()) {
+      return (
+        <section className={`bg-white rounded-2xl shadow-lg p-8 w-full max-w-5xl flex flex-col items-center justify-center transition-all duration-300 ease-in-out ${
+          isTransitioning ? 'opacity-0 transform scale-95' : 'opacity-100 transform scale-100'
+        }`}>
+          <LoadingStep msg="Carregando opções de garantidores..." />
+        </section>
+      );
+    }
+
     const estadoCivilOptions = estadoCivilGarantidoresOptionsArr[idx];
 
     console.log('Renderizando garantidor:', { idx, garantidor, totalGarantidores: garantidores.length });
@@ -3464,14 +3672,25 @@ const Formulario: React.FC = () => {
         {showModalErroEnvio && renderModalErroEnvio()}
         {showModalLimparDados && renderModalLimparDados()}
         {/* Botão de debug fixo no canto inferior direito */}
-        {/* <div className="fixed bottom-6 right-6 flex flex-col gap-2 z-50">
+        <div className="fixed bottom-6 right-6 flex flex-col gap-2 z-50">
           <button
             onClick={handleDebug}
             className="bg-blue-900 text-white px-6 py-3 rounded-full shadow-xl hover:bg-blue-700 transition font-bold text-lg tracking-wide"
+            title="Debug - Ver informações do cache e dados"
           >
             Debug
           </button>
-        </div> */}
+          <button
+            onClick={() => {
+              clearAllPloomesCache();
+              alert('Cache do Ploomes limpo! Recarregue a página para buscar novos dados.');
+            }}
+            className="bg-orange-600 text-white px-6 py-3 rounded-full shadow-xl hover:bg-orange-700 transition font-bold text-lg tracking-wide"
+            title="Limpar cache do Ploomes"
+          >
+            🗑️ Cache
+          </button>
+        </div>
       </main>
       <TransitionOverlay />
       <LoadingEnvioOverlay />
