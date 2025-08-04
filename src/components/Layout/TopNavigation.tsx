@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { NavLink } from 'react-router-dom';
+import { NavLink, useLocation } from 'react-router-dom';
 import { 
   LayoutDashboard, 
   FileText, 
@@ -12,6 +12,17 @@ import { useAuth } from '@/contexts/AuthContext';
 
 const TopNavigation: React.FC = () => {
   const { profile } = useAuth();
+  const location = useLocation();
+
+  // Função para verificar se a rota atual é uma subpágina do Dashboard
+  const isDashboardActive = (path: string) => {
+    if (path === '/dashboard') {
+      return location.pathname === '/dashboard' || 
+             location.pathname === '/clientes-cadastrados' || 
+             location.pathname === '/metricas-relatorios';
+    }
+    return location.pathname === path;
+  };
 
   const getMenuItems = () => {
     const baseItems = [
@@ -43,9 +54,9 @@ const TopNavigation: React.FC = () => {
               <NavLink
                 key={item.path}
                 to={item.path}
-                className={({ isActive }) =>
+                className={() =>
                   `inline-flex items-center px-4 py-4 border-b-2 text-sm font-medium transition-colors duration-200 ${
-                    isActive 
+                    isDashboardActive(item.path)
                       ? 'border-blue-500 text-blue-600' 
                       : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                   }`

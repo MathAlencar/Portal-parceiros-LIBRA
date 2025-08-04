@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { LogOut, Menu } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client'; // SupaBase para realizar a chamada no backend;
 import { Group } from '@/types/auth'; // Modal do grupo;
-import { NavLink } from 'react-router-dom';
+import { NavLink, useLocation } from 'react-router-dom';
 import { 
   LayoutDashboard, 
   FileText, 
@@ -19,8 +19,19 @@ interface HeaderProps {
 
 const Header: React.FC<HeaderProps> = ({ onMenuToggle }) => {
   const { profile, signOut } = useAuth();
+  const location = useLocation();
   const [userGroup, setUserGroup] = useState<Group | null>(null);
   const [loading, setLoading] = useState(true);
+
+  // Função para verificar se a rota atual é uma subpágina do Dashboard
+  const isDashboardActive = (path: string) => {
+    if (path === '/dashboard') {
+      return location.pathname === '/dashboard' || 
+             location.pathname === '/clientes-cadastrados' || 
+             location.pathname === '/metricas-relatorios';
+    }
+    return location.pathname === path;
+  };
 
   const getRoleDisplay = (role: string) => {
     switch (role) {
@@ -127,9 +138,9 @@ const Header: React.FC<HeaderProps> = ({ onMenuToggle }) => {
                       <NavLink
                         key={item.path}
                         to={item.path}
-                        className={({ isActive }) =>
+                        className={() =>
                           `inline-flex items-center px-4 py-4 border-b-2 text-sm font-medium transition-colors duration-200 ${
-                            isActive 
+                            isDashboardActive(item.path)
                               ? 'border-blue-500 text-blue-600' 
                               : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                           }`

@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { NavLink } from 'react-router-dom';
+import { NavLink, useLocation } from 'react-router-dom';
 import { 
   LayoutDashboard, 
   Users, 
@@ -28,7 +28,18 @@ import {
 const AppSidebar: React.FC = () => {
   const { profile, signOut } = useAuth();
   const { state } = useSidebar();
+  const location = useLocation();
   const isCollapsed = state === 'collapsed';
+
+  // Função para verificar se a rota atual é uma subpágina do Dashboard
+  const isDashboardActive = (path: string) => {
+    if (path === '/dashboard') {
+      return location.pathname === '/dashboard' || 
+             location.pathname === '/clientes-cadastrados' || 
+             location.pathname === '/metricas-relatorios';
+    }
+    return location.pathname === path;
+  };
 
   const getMenuItems = () => {
     const baseItems = [
@@ -107,9 +118,9 @@ const AppSidebar: React.FC = () => {
                   >
                     <NavLink
                       to={item.path}
-                      className={({ isActive }) =>
+                      className={() =>
                         `flex items-center gap-3 rounded-lg px-3 py-2 transition-all hover:bg-accent ${
-                          isActive 
+                          isDashboardActive(item.path)
                             ? 'bg-primary text-primary-foreground' 
                             : 'text-foreground hover:text-accent-foreground'
                         }`
