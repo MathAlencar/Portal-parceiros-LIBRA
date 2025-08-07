@@ -285,14 +285,12 @@ const MaterialApoio: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="p-6 space-y-6">
-        <div className="flex justify-between items-center">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900">Material de Apoio</h1>
-            <p className="text-gray-600">Carregando materiais...</p>
+      <div className="min-h-screen flex items-center justify-center bg-gray-100">
+          <div className="text-center">
+            <div className="animate-spin h-10 w-10 border-4 border-blue-500 border-t-transparent rounded-full mx-auto mb-4" />
+            <p className="text-gray-700 text-lg">Carregando...</p>
           </div>
         </div>
-      </div>
     );
   }
 
