@@ -9,6 +9,7 @@ import { Routes, Route } from 'react-router-dom';
 import Dashboard from './Dashboard';
 import Usuarios from './Usuarios';
 import Noticias from './Noticias';
+import NewsForm from './NewsForm';
 import Simulador from './Simulador';
 import Formulario from './Formulario';
 import MaterialApoio from './MaterialApoio';
@@ -34,6 +35,8 @@ const Index = () => {
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/usuarios" element={<Usuarios />} />
           <Route path="/noticias" element={<Noticias />} />
+          <Route path="/noticias/criar" element={<NewsForm />} />
+          <Route path="/noticias/editar/:id" element={<NewsForm />} />
           <Route path="/noticias/:id" element={<NewsDetail />} />
           <Route path="/simulador" element={<Simulador />} />
           <Route path="/materiais" element={<MaterialApoio />} />

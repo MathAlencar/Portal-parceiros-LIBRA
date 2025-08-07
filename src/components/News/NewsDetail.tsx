@@ -147,14 +147,6 @@ const NewsDetail: React.FC = () => {
     });
   };
 
-  const formatContent = (content: string) => {
-    return content.split('\n').map((paragraph, index) => (
-      <p key={index} className="mb-4 last:mb-0">
-        {paragraph}
-      </p>
-    ));
-  };
-
   const categories = {
     sistema: 'Sistema',
     treinamento: 'Treinamento',
@@ -211,9 +203,10 @@ const NewsDetail: React.FC = () => {
               </div>
             </header>
 
-            <div className="prose prose-lg max-w-none text-gray-700 leading-relaxed">
-              {formatContent(news.content)}
-            </div>
+            <div 
+              className="prose prose-lg max-w-none text-gray-700 leading-relaxed"
+              dangerouslySetInnerHTML={{ __html: news.content }}
+            />
           </div>
         </article>
 

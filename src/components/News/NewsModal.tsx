@@ -9,11 +9,13 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
+import { Upload, X, Image as ImageIcon } from 'lucide-react';
+import TinyEditor from './TinyEditor';
 
 const newsSchema = z.object({
   title: z.string().min(1, "Título é obrigatório"),
   category: z.string().min(1, "Categoria é obrigatória"),
-  imageUrl: z.string().url("URL da imagem deve ser válida").optional().or(z.literal("")),
+  imageUrl: z.string().optional(),
   content: z.string().min(1, "Conteúdo é obrigatório"),
   excerpt: z.string().optional(),
 });
@@ -23,8 +25,9 @@ type NewsFormData = z.infer<typeof newsSchema>;
 interface NewsModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (data: NewsFormData) => void;
+  onSave: (data: NewsFormData & { imageFile?: File }) => void;
   editingNews?: any;
+  isUploading?: boolean;
 }
 
 const categories = [
@@ -36,7 +39,10 @@ const categories = [
   { id: 'eventos', label: 'Eventos' }
 ];
 
-const NewsModal: React.FC<NewsModalProps> = ({ isOpen, onClose, onSave, editingNews }) => {
+const NewsModal: React.FC<NewsModalProps> = ({ isOpen, onClose, onSave, editingNews, isUploading = false }) => {
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string>('');
+
   const form = useForm<NewsFormData>({
     resolver: zodResolver(newsSchema),
     defaultValues: {
@@ -57,6 +63,9 @@ const NewsModal: React.FC<NewsModalProps> = ({ isOpen, onClose, onSave, editingN
         content: editingNews.content || '',
         excerpt: editingNews.excerpt || '',
       });
+      if (editingNews.imageUrl) {
+        setPreviewUrl(editingNews.imageUrl);
+      }
     } else {
       form.reset({
         title: '',
@@ -65,27 +74,67 @@ const NewsModal: React.FC<NewsModalProps> = ({ isOpen, onClose, onSave, editingN
         content: '',
         excerpt: '',
       });
+      setSelectedFile(null);
+      setPreviewUrl('');
     }
   }, [editingNews, form, isOpen]);
+
+  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      // Validar tipo de arquivo
+      if (!file.type.startsWith('image/')) {
+        alert('Por favor, selecione apenas arquivos de imagem.');
+        return;
+      }
+
+      // Validar tamanho (máximo 5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        alert('O arquivo deve ter no máximo 5MB.');
+        return;
+      }
+
+      setSelectedFile(file);
+      
+      // Criar preview
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        setPreviewUrl(e.target?.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const removeFile = () => {
+    setSelectedFile(null);
+    setPreviewUrl('');
+    form.setValue('imageUrl', '');
+  };
 
   const onSubmit = (data: NewsFormData) => {
     // Generate excerpt if not provided
     if (!data.excerpt && data.content) {
       data.excerpt = data.content.substring(0, 150) + (data.content.length > 150 ? '...' : '');
     }
-    onSave(data);
+    
+    // Passar o arquivo selecionado junto com os dados
+    onSave({ ...data, imageFile: selectedFile || undefined });
     form.reset();
+    setSelectedFile(null);
+    setPreviewUrl('');
     onClose();
   };
 
   const handleClose = () => {
     form.reset();
+    setSelectedFile(null);
+    setPreviewUrl('');
     onClose();
   };
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="max-w-5xl w-[95vw] max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-7xl w-[95vw] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="text-2xl font-bold">
             {editingNews ? 'Editar Notícia' : 'Nova Notícia'}
@@ -144,12 +193,64 @@ const NewsModal: React.FC<NewsModalProps> = ({ isOpen, onClose, onSave, editingN
                   name="imageUrl"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>URL da Imagem (opcional)</FormLabel>
+                      <FormLabel>Imagem da Notícia (opcional)</FormLabel>
                       <FormControl>
-                        <Input 
-                          placeholder="https://exemplo.com/imagem.jpg" 
-                          {...field} 
-                        />
+                        <div className="space-y-4">
+                          {/* Campo de upload */}
+                          <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-gray-400 transition-colors">
+                            <input
+                              type="file"
+                              accept="image/*"
+                              onChange={handleFileSelect}
+                              className="hidden"
+                              id="image-upload"
+                              disabled={isUploading}
+                            />
+                            <label htmlFor="image-upload" className={`cursor-pointer ${isUploading ? 'opacity-50 cursor-not-allowed' : ''}`}>
+                              <div className="flex flex-col items-center space-y-2">
+                                <Upload className="h-8 w-8 text-gray-400" />
+                                <div>
+                                  <p className="text-sm font-medium text-gray-700">
+                                    {isUploading ? 'Processando...' : 'Clique para selecionar uma imagem'}
+                                  </p>
+                                  <p className="text-xs text-gray-500">
+                                    PNG, JPG, GIF até 5MB
+                                  </p>
+                                </div>
+                              </div>
+                            </label>
+                          </div>
+
+                          {/* Preview da imagem */}
+                          {previewUrl && (
+                            <div className="relative">
+                              <div className="relative w-full h-48 rounded-lg overflow-hidden border">
+                                <img
+                                  src={previewUrl}
+                                  alt="Preview"
+                                  className="w-full h-full object-cover"
+                                />
+                                <button
+                                  type="button"
+                                  onClick={removeFile}
+                                  className="absolute top-2 right-2 p-1 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors"
+                                >
+                                  <X className="h-4 w-4" />
+                                </button>
+                              </div>
+                              <p className="text-xs text-gray-500 mt-1">
+                                {selectedFile?.name}
+                              </p>
+                            </div>
+                          )}
+
+                          {/* Campo oculto para manter compatibilidade */}
+                          <input
+                            type="hidden"
+                            {...field}
+                            value={previewUrl}
+                          />
+                        </div>
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -187,11 +288,12 @@ const NewsModal: React.FC<NewsModalProps> = ({ isOpen, onClose, onSave, editingN
                     <FormItem>
                       <FormLabel>Conteúdo da Notícia *</FormLabel>
                       <FormControl>
-                        <Textarea 
-                          placeholder="Digite o conteúdo completo da notícia..."
-                          className="min-h-[400px]"
-                          {...field}
-                        />
+                        <div className="border rounded-lg overflow-hidden">
+                          <TinyEditor
+                            value={field.value}
+                            onChange={field.onChange}
+                          />
+                        </div>
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -201,11 +303,18 @@ const NewsModal: React.FC<NewsModalProps> = ({ isOpen, onClose, onSave, editingN
             </div>
 
             <div className="flex justify-end space-x-3 pt-6 border-t">
-              <Button type="button" variant="outline" onClick={handleClose}>
+              <Button type="button" variant="outline" onClick={handleClose} disabled={isUploading}>
                 Cancelar
               </Button>
-              <Button type="submit">
-                {editingNews ? 'Salvar Alterações' : 'Criar Notícia'}
+              <Button type="submit" disabled={isUploading}>
+                {isUploading ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                    {editingNews ? 'Salvando...' : 'Criando...'}
+                  </>
+                ) : (
+                  editingNews ? 'Salvar Alterações' : 'Criar Notícia'
+                )}
               </Button>
             </div>
           </form>
